@@ -1,0 +1,533 @@
+{
+	"type": "worker",
+	"key": "worker_features",
+	"name": "Features",
+	"schema": {
+		"name": {
+			"name": "Name",
+			"type": "title"
+		},
+		"tags": {
+			"name": "Tags",
+			"type": "multi_select"
+		},
+		"product": {
+			"name": "Product",
+			"type": "select"
+		},
+		"eta": {
+			"name": "ETA",
+			"type": "date"
+		},
+		"country": {
+			"name": "Country",
+			"type": "rich_text"
+		},
+		"scopes": {
+			"name": "Scopes",
+			"type": "multi_select"
+		}
+	},
+	"rows": [
+		{
+			"id": "feat-0",
+			"name": "Peru mandate",
+			"tags": [
+				"Mandate",
+				"compliance"
+			],
+			"product": "Compliance Transactions",
+			"eta": {
+				"type": "date",
+				"start_date": "2026-01-15"
+			},
+			"country": "PE",
+			"scopes": [
+				"E-transport"
+			]
+		},
+		{
+			"id": "feat-1",
+			"name": "Poland mandate",
+			"tags": [
+				"Mandate",
+				"compliance"
+			],
+			"product": "Compliance Transactions",
+			"eta": {
+				"type": "date",
+				"start_date": "2026-02-01"
+			},
+			"country": "Poland",
+			"scopes": [
+				"B2B"
+			]
+		},
+		{
+			"id": "feat-2",
+			"name": "India mandate",
+			"tags": [
+				"Mandate",
+				"compliance"
+			],
+			"product": "Compliance Transactions",
+			"eta": {
+				"type": "date",
+				"start_date": "2026-03-01"
+			},
+			"country": "IN",
+			"scopes": [
+				"B2B",
+				"B2G",
+				"eT"
+			]
+		},
+		{
+			"id": "feat-3",
+			"name": "Switzerland mandate",
+			"tags": [
+				"Mandate",
+				"compliance"
+			],
+			"product": "Compliance Transactions",
+			"eta": {
+				"type": "date",
+				"start_date": "2026-02-20"
+			},
+			"country": "Switzerland",
+			"scopes": [
+				"B2G"
+			]
+		},
+		{
+			"id": "feat-4",
+			"name": "Australia mandate",
+			"tags": [
+				"Mandate",
+				"compliance"
+			],
+			"product": "Compliance Transactions",
+			"eta": {
+				"type": "date",
+				"start_date": "2026-04-10"
+			},
+			"country": "AU",
+			"scopes": [
+				"B2B",
+				"B2G"
+			]
+		},
+		{
+			"id": "feat-5",
+			"name": "France mandate",
+			"tags": [
+				"Mandate",
+				"compliance"
+			],
+			"product": "Compliance Transactions",
+			"eta": {
+				"type": "date",
+				"start_date": "2026-05-01"
+			},
+			"country": "France",
+			"scopes": [
+				"B2B",
+				"B2G",
+				"B2C"
+			]
+		},
+		{
+			"id": "feat-6",
+			"name": "Singapore mandate",
+			"tags": [
+				"Mandate",
+				"compliance"
+			],
+			"product": "Compliance Transactions",
+			"eta": {
+				"type": "date",
+				"start_date": "2026-06-01"
+			},
+			"country": "SG",
+			"scopes": [
+				"B2B",
+				"B2G"
+			]
+		},
+		{
+			"id": "feat-7",
+			"name": "Greece mandate",
+			"tags": [
+				"Mandate",
+				"compliance"
+			],
+			"product": "Compliance Transactions",
+			"eta": {
+				"type": "date",
+				"start_date": "2026-07-01"
+			},
+			"country": "Greece",
+			"scopes": [
+				"B2B",
+				"B2G"
+			]
+		},
+		{
+			"id": "feat-8",
+			"name": "Japan mandate",
+			"tags": [
+				"Mandate",
+				"compliance"
+			],
+			"product": "Compliance Transactions",
+			"eta": {
+				"type": "date",
+				"start_date": "2026-07-15"
+			},
+			"country": "JP",
+			"scopes": [
+				"B2B",
+				"B2G"
+			]
+		},
+		{
+			"id": "feat-9",
+			"name": "Latvia mandate",
+			"tags": [
+				"Mandate",
+				"compliance"
+			],
+			"product": "Compliance Transactions",
+			"eta": {
+				"type": "date",
+				"start_date": "2026-08-01"
+			},
+			"country": "Latvia",
+			"scopes": [
+				"B2G"
+			]
+		},
+		{
+			"id": "feat-10",
+			"name": "New Zealand mandate",
+			"tags": [
+				"Mandate",
+				"compliance"
+			],
+			"product": "Compliance Transactions",
+			"eta": {
+				"type": "date",
+				"start_date": "2026-08-15"
+			},
+			"country": "New Zealand",
+			"scopes": [
+				"B2G",
+				"B2B"
+			]
+		},
+		{
+			"id": "feat-11",
+			"name": "Philippines mandate",
+			"tags": [
+				"Mandate",
+				"compliance"
+			],
+			"product": "Compliance Transactions",
+			"eta": {
+				"type": "date",
+				"start_date": "2026-09-01"
+			},
+			"country": "PH",
+			"scopes": [
+				"B2B",
+				"B2G"
+			]
+		},
+		{
+			"id": "feat-12",
+			"name": "Portugal mandate",
+			"tags": [
+				"Mandate",
+				"compliance"
+			],
+			"product": "Compliance Transactions",
+			"eta": {
+				"type": "date",
+				"start_date": "2026-09-10"
+			},
+			"country": "Portugal",
+			"scopes": [
+				"B2B",
+				"B2G",
+				"ER"
+			]
+		},
+		{
+			"id": "feat-13",
+			"name": "UAE mandate",
+			"tags": [
+				"Mandate",
+				"compliance"
+			],
+			"product": "Compliance Transactions",
+			"eta": {
+				"type": "date",
+				"start_date": "2026-09-15"
+			},
+			"country": "UAE",
+			"scopes": [
+				"B2B",
+				"B2G"
+			]
+		},
+		{
+			"id": "feat-14",
+			"name": "USA mandate",
+			"tags": [
+				"Mandate",
+				"compliance"
+			],
+			"product": "Compliance Transactions",
+			"eta": {
+				"type": "date",
+				"start_date": "2026-09-20"
+			},
+			"country": "USA",
+			"scopes": [
+				"DBNA"
+			]
+		},
+		{
+			"id": "feat-15",
+			"name": "Mexico mandate",
+			"tags": [
+				"Mandate",
+				"compliance"
+			],
+			"product": "Compliance Transactions",
+			"eta": {
+				"type": "date",
+				"start_date": "2026-09-25"
+			},
+			"country": "Mexico",
+			"scopes": [
+				"B2B",
+				"B2G",
+				"B2C"
+			]
+		},
+		{
+			"id": "feat-16",
+			"name": "Argentina mandate",
+			"tags": [
+				"Mandate",
+				"compliance"
+			],
+			"product": "Compliance Transactions",
+			"eta": {
+				"type": "date",
+				"start_date": "2026-10-01"
+			},
+			"country": "AR",
+			"scopes": [
+				"B2B",
+				"B2G",
+				"B2C"
+			]
+		},
+		{
+			"id": "feat-17",
+			"name": "Brazil mandate",
+			"tags": [
+				"Mandate",
+				"compliance"
+			],
+			"product": "Compliance Transactions",
+			"eta": {
+				"type": "date",
+				"start_date": "2026-10-15"
+			},
+			"country": "Brazil",
+			"scopes": [
+				"B2B",
+				"B2G",
+				"B2C"
+			]
+		},
+		{
+			"id": "feat-18",
+			"name": "Israel mandate",
+			"tags": [
+				"Mandate",
+				"compliance"
+			],
+			"product": "Compliance Transactions",
+			"eta": {
+				"type": "date",
+				"start_date": "2026-11-01"
+			},
+			"country": "IL",
+			"scopes": [
+				"B2B"
+			]
+		},
+		{
+			"id": "feat-19",
+			"name": "China mandate",
+			"tags": [
+				"Mandate",
+				"compliance"
+			],
+			"product": "Compliance Transactions",
+			"eta": {
+				"type": "date",
+				"start_date": "2026-11-15"
+			},
+			"country": "China",
+			"scopes": [
+				"B2B",
+				"B2G",
+				"B2C"
+			]
+		},
+		{
+			"id": "feat-20",
+			"name": "South Korea mandate",
+			"tags": [
+				"Mandate",
+				"compliance"
+			],
+			"product": "Compliance Transactions",
+			"eta": {
+				"type": "date",
+				"start_date": "2026-12-01"
+			},
+			"country": "South Korea",
+			"scopes": [
+				"B2B",
+				"B2G"
+			]
+		},
+		{
+			"id": "feat-21",
+			"name": "Türkiye mandate",
+			"tags": [
+				"Mandate",
+				"compliance"
+			],
+			"product": "Compliance Transactions",
+			"eta": {
+				"type": "date",
+				"start_date": "2026-11-20"
+			},
+			"country": "Türkiye",
+			"scopes": [
+				"B2B",
+				"B2G",
+				"B2C",
+				"ET"
+			]
+		},
+		{
+			"id": "feat-22",
+			"name": "Slovakia mandate",
+			"tags": [
+				"Mandate",
+				"compliance"
+			],
+			"product": "Compliance Transactions",
+			"eta": {
+				"type": "date",
+				"start_date": "2026-12-10"
+			},
+			"country": "SK",
+			"scopes": [
+				"B2B"
+			]
+		},
+		{
+			"id": "feat-23",
+			"name": "Serbia mandate",
+			"tags": [
+				"Mandate",
+				"compliance"
+			],
+			"product": "Compliance Transactions",
+			"eta": {
+				"type": "date",
+				"start_date": "2026-12-15"
+			},
+			"country": "Serbia",
+			"scopes": [
+				"E-transport"
+			]
+		},
+		{
+			"id": "feat-24",
+			"name": "Romania mandate",
+			"tags": [
+				"Mandate",
+				"compliance"
+			],
+			"product": "Compliance Transactions",
+			"eta": {
+				"type": "date",
+				"start_date": "2025-07-01"
+			},
+			"country": "Romania",
+			"scopes": [
+				"B2B",
+				"B2G"
+			]
+		},
+		{
+			"id": "feat-25",
+			"name": "Spain mandate",
+			"tags": [
+				"Mandate",
+				"compliance"
+			],
+			"product": "Compliance Transactions",
+			"eta": {
+				"type": "date",
+				"start_date": "2027-01-01"
+			},
+			"country": "ES",
+			"scopes": [
+				"B2B"
+			]
+		},
+		{
+			"id": "feat-decoy-1",
+			"name": "Germany reporting",
+			"tags": [
+				"invoicing"
+			],
+			"product": "Compliance Transactions",
+			"eta": {
+				"type": "date",
+				"start_date": "2026-05-01"
+			},
+			"country": "DE",
+			"scopes": [
+				"B2B"
+			]
+		},
+		{
+			"id": "feat-decoy-2",
+			"name": "Italy tax pack",
+			"tags": [
+				"Mandate"
+			],
+			"product": "Tax reporting",
+			"eta": {
+				"type": "date",
+				"start_date": "2026-05-01"
+			},
+			"country": "IT",
+			"scopes": [
+				"B2B"
+			]
+		}
+	]
+}
