@@ -26,6 +26,10 @@
 		"scopes": {
 			"name": "Scopes",
 			"type": "multi_select"
+		},
+		"salesStatus": {
+			"name": "Sales status",
+			"type": "select"
 		}
 	},
 	"rows": [
@@ -49,7 +53,8 @@
 			"country": "PE",
 			"scopes": [
 				"E-transport"
-			]
+			],
+			"salesStatus": "Roadmap"
 		},
 		{
 			"id": "feat-1",
@@ -71,7 +76,8 @@
 			"country": "Poland",
 			"scopes": [
 				"B2B"
-			]
+			],
+			"salesStatus": "Roadmap"
 		},
 		{
 			"id": "feat-2",
@@ -95,7 +101,8 @@
 				"B2B",
 				"B2G",
 				"eT"
-			]
+			],
+			"salesStatus": "Roadmap"
 		},
 		{
 			"id": "feat-3",
@@ -117,7 +124,8 @@
 			"country": "Switzerland",
 			"scopes": [
 				"B2G"
-			]
+			],
+			"salesStatus": "Roadmap"
 		},
 		{
 			"id": "feat-4",
@@ -140,7 +148,8 @@
 			"scopes": [
 				"B2B",
 				"B2G"
-			]
+			],
+			"salesStatus": "Roadmap"
 		},
 		{
 			"id": "feat-5",
@@ -164,7 +173,8 @@
 				"B2B",
 				"B2G",
 				"B2C"
-			]
+			],
+			"salesStatus": "Roadmap"
 		},
 		{
 			"id": "feat-6",
@@ -187,7 +197,8 @@
 			"scopes": [
 				"B2B",
 				"B2G"
-			]
+			],
+			"salesStatus": "Roadmap"
 		},
 		{
 			"id": "feat-7",
@@ -210,7 +221,8 @@
 			"scopes": [
 				"B2B",
 				"B2G"
-			]
+			],
+			"salesStatus": "Roadmap"
 		},
 		{
 			"id": "feat-8",
@@ -233,7 +245,8 @@
 			"scopes": [
 				"B2B",
 				"B2G"
-			]
+			],
+			"salesStatus": "Roadmap"
 		},
 		{
 			"id": "feat-9",
@@ -255,7 +268,8 @@
 			"country": "Latvia",
 			"scopes": [
 				"B2G"
-			]
+			],
+			"salesStatus": "Roadmap"
 		},
 		{
 			"id": "feat-10",
@@ -278,7 +292,8 @@
 			"scopes": [
 				"B2G",
 				"B2B"
-			]
+			],
+			"salesStatus": "Roadmap"
 		},
 		{
 			"id": "feat-11",
@@ -301,7 +316,8 @@
 			"scopes": [
 				"B2B",
 				"B2G"
-			]
+			],
+			"salesStatus": "Roadmap"
 		},
 		{
 			"id": "feat-12",
@@ -325,7 +341,8 @@
 				"B2B",
 				"B2G",
 				"ER"
-			]
+			],
+			"salesStatus": "Roadmap"
 		},
 		{
 			"id": "feat-13",
@@ -348,7 +365,8 @@
 			"scopes": [
 				"B2B",
 				"B2G"
-			]
+			],
+			"salesStatus": "Roadmap"
 		},
 		{
 			"id": "feat-14",
@@ -370,7 +388,8 @@
 			"country": "USA",
 			"scopes": [
 				"DBNA"
-			]
+			],
+			"salesStatus": "Roadmap"
 		},
 		{
 			"id": "feat-15",
@@ -394,7 +413,8 @@
 				"B2B",
 				"B2G",
 				"B2C"
-			]
+			],
+			"salesStatus": "Roadmap"
 		},
 		{
 			"id": "feat-16",
@@ -418,7 +438,8 @@
 				"B2B",
 				"B2G",
 				"B2C"
-			]
+			],
+			"salesStatus": "Roadmap"
 		},
 		{
 			"id": "feat-17",
@@ -442,7 +463,8 @@
 				"B2B",
 				"B2G",
 				"B2C"
-			]
+			],
+			"salesStatus": "Roadmap"
 		},
 		{
 			"id": "feat-18",
@@ -464,7 +486,8 @@
 			"country": "IL",
 			"scopes": [
 				"B2B"
-			]
+			],
+			"salesStatus": "Roadmap"
 		},
 		{
 			"id": "feat-19",
@@ -488,7 +511,8 @@
 				"B2B",
 				"B2G",
 				"B2C"
-			]
+			],
+			"salesStatus": "Roadmap"
 		},
 		{
 			"id": "feat-20",
@@ -511,7 +535,8 @@
 			"scopes": [
 				"B2B",
 				"B2G"
-			]
+			],
+			"salesStatus": "Roadmap"
 		},
 		{
 			"id": "feat-21",
@@ -536,7 +561,8 @@
 				"B2G",
 				"B2C",
 				"ET"
-			]
+			],
+			"salesStatus": "Roadmap"
 		},
 		{
 			"id": "feat-22",
@@ -558,7 +584,8 @@
 			"country": "SK",
 			"scopes": [
 				"B2B"
-			]
+			],
+			"salesStatus": "Roadmap"
 		},
 		{
 			"id": "feat-23",
@@ -580,7 +607,8 @@
 			"country": "Serbia",
 			"scopes": [
 				"E-transport"
-			]
+			],
+			"salesStatus": "Roadmap"
 		},
 		{
 			"id": "feat-24",
@@ -603,7 +631,8 @@
 			"scopes": [
 				"B2B",
 				"B2G"
-			]
+			],
+			"salesStatus": "Roadmap"
 		},
 		{
 			"id": "feat-25",
@@ -625,7 +654,8 @@
 			"country": "ES",
 			"scopes": [
 				"B2B"
-			]
+			],
+			"salesStatus": "Roadmap"
 		},
 		{
 			"id": "feat-decoy-1",
@@ -646,7 +676,8 @@
 			"country": "DE",
 			"scopes": [
 				"B2B"
-			]
+			],
+			"salesStatus": "Roadmap"
 		},
 		{
 			"id": "feat-decoy-2",
@@ -667,7 +698,632 @@
 			"country": "IT",
 			"scopes": [
 				"B2B"
-			]
+			],
+			"salesStatus": "Roadmap"
+		},
+		{
+			"id": "avail-0",
+			"name": "Andorra coverage",
+			"tags": [
+				"coverage"
+			],
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
+			"country": "Andorra",
+			"scopes": [],
+			"salesStatus": "available"
+		},
+		{
+			"id": "avail-1",
+			"name": "Argentina coverage",
+			"tags": [
+				"coverage"
+			],
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
+			"country": "Argentina",
+			"scopes": [],
+			"salesStatus": "available"
+		},
+		{
+			"id": "avail-2",
+			"name": "Austria coverage",
+			"tags": [
+				"coverage"
+			],
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
+			"country": "Austria",
+			"scopes": [],
+			"salesStatus": "available"
+		},
+		{
+			"id": "avail-3",
+			"name": "Belgium coverage",
+			"tags": [
+				"coverage"
+			],
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
+			"country": "Belgium",
+			"scopes": [],
+			"salesStatus": "available"
+		},
+		{
+			"id": "avail-4",
+			"name": "Chile coverage",
+			"tags": [
+				"coverage"
+			],
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
+			"country": "Chile",
+			"scopes": [],
+			"salesStatus": "available"
+		},
+		{
+			"id": "avail-5",
+			"name": "Colombia coverage",
+			"tags": [
+				"coverage"
+			],
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
+			"country": "Colombia",
+			"scopes": [],
+			"salesStatus": "available"
+		},
+		{
+			"id": "avail-6",
+			"name": "Croatia coverage",
+			"tags": [
+				"coverage"
+			],
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
+			"country": "Croatia",
+			"scopes": [],
+			"salesStatus": "available"
+		},
+		{
+			"id": "avail-7",
+			"name": "Cyprus coverage",
+			"tags": [
+				"coverage"
+			],
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
+			"country": "Cyprus",
+			"scopes": [],
+			"salesStatus": "available"
+		},
+		{
+			"id": "avail-8",
+			"name": "Denmark coverage",
+			"tags": [
+				"coverage"
+			],
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
+			"country": "Denmark",
+			"scopes": [],
+			"salesStatus": "available"
+		},
+		{
+			"id": "avail-9",
+			"name": "Estonia coverage",
+			"tags": [
+				"coverage"
+			],
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
+			"country": "Estonia",
+			"scopes": [],
+			"salesStatus": "available"
+		},
+		{
+			"id": "avail-10",
+			"name": "Finland coverage",
+			"tags": [
+				"coverage"
+			],
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
+			"country": "Finland",
+			"scopes": [],
+			"salesStatus": "available"
+		},
+		{
+			"id": "avail-11",
+			"name": "France coverage",
+			"tags": [
+				"coverage"
+			],
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
+			"country": "France",
+			"scopes": [],
+			"salesStatus": "available"
+		},
+		{
+			"id": "avail-12",
+			"name": "Germany coverage",
+			"tags": [
+				"coverage"
+			],
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
+			"country": "Germany",
+			"scopes": [],
+			"salesStatus": "available"
+		},
+		{
+			"id": "avail-13",
+			"name": "Hungary coverage",
+			"tags": [
+				"coverage"
+			],
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
+			"country": "Hungary",
+			"scopes": [],
+			"salesStatus": "available"
+		},
+		{
+			"id": "avail-14",
+			"name": "Iceland coverage",
+			"tags": [
+				"coverage"
+			],
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
+			"country": "Iceland",
+			"scopes": [],
+			"salesStatus": "available"
+		},
+		{
+			"id": "avail-15",
+			"name": "Ireland coverage",
+			"tags": [
+				"coverage"
+			],
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
+			"country": "Ireland",
+			"scopes": [],
+			"salesStatus": "available"
+		},
+		{
+			"id": "avail-16",
+			"name": "Italy coverage",
+			"tags": [
+				"coverage"
+			],
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
+			"country": "Italy",
+			"scopes": [],
+			"salesStatus": "available"
+		},
+		{
+			"id": "avail-17",
+			"name": "Lithuania coverage",
+			"tags": [
+				"coverage"
+			],
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
+			"country": "Lithuania",
+			"scopes": [],
+			"salesStatus": "available"
+		},
+		{
+			"id": "avail-18",
+			"name": "Luxembourg coverage",
+			"tags": [
+				"coverage"
+			],
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
+			"country": "Luxembourg",
+			"scopes": [],
+			"salesStatus": "available"
+		},
+		{
+			"id": "avail-19",
+			"name": "Malaysia coverage",
+			"tags": [
+				"coverage"
+			],
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
+			"country": "Malaysia",
+			"scopes": [],
+			"salesStatus": "available"
+		},
+		{
+			"id": "avail-20",
+			"name": "Malta coverage",
+			"tags": [
+				"coverage"
+			],
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
+			"country": "Malta",
+			"scopes": [],
+			"salesStatus": "available"
+		},
+		{
+			"id": "avail-21",
+			"name": "Mexico coverage",
+			"tags": [
+				"coverage"
+			],
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
+			"country": "Mexico",
+			"scopes": [],
+			"salesStatus": "available"
+		},
+		{
+			"id": "avail-22",
+			"name": "Netherlands coverage",
+			"tags": [
+				"coverage"
+			],
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
+			"country": "Netherlands",
+			"scopes": [],
+			"salesStatus": "available"
+		},
+		{
+			"id": "avail-23",
+			"name": "New Zealand coverage",
+			"tags": [
+				"coverage"
+			],
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
+			"country": "New Zealand",
+			"scopes": [],
+			"salesStatus": "available"
+		},
+		{
+			"id": "avail-24",
+			"name": "Norway coverage",
+			"tags": [
+				"coverage"
+			],
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
+			"country": "Norway",
+			"scopes": [],
+			"salesStatus": "available"
+		},
+		{
+			"id": "avail-25",
+			"name": "Panama coverage",
+			"tags": [
+				"coverage"
+			],
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
+			"country": "Panama",
+			"scopes": [],
+			"salesStatus": "available"
+		},
+		{
+			"id": "avail-26",
+			"name": "Peru coverage",
+			"tags": [
+				"coverage"
+			],
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
+			"country": "Peru",
+			"scopes": [],
+			"salesStatus": "available"
+		},
+		{
+			"id": "avail-27",
+			"name": "Poland coverage",
+			"tags": [
+				"coverage"
+			],
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
+			"country": "Poland",
+			"scopes": [],
+			"salesStatus": "available"
+		},
+		{
+			"id": "avail-28",
+			"name": "Romania coverage",
+			"tags": [
+				"coverage"
+			],
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
+			"country": "Romania",
+			"scopes": [],
+			"salesStatus": "available"
+		},
+		{
+			"id": "avail-29",
+			"name": "Serbia coverage",
+			"tags": [
+				"coverage"
+			],
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
+			"country": "Serbia",
+			"scopes": [],
+			"salesStatus": "available"
+		},
+		{
+			"id": "avail-30",
+			"name": "Singapore coverage",
+			"tags": [
+				"coverage"
+			],
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
+			"country": "Singapore",
+			"scopes": [],
+			"salesStatus": "available"
+		},
+		{
+			"id": "avail-31",
+			"name": "Slovakia coverage",
+			"tags": [
+				"coverage"
+			],
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
+			"country": "Slovakia",
+			"scopes": [],
+			"salesStatus": "available"
+		},
+		{
+			"id": "avail-32",
+			"name": "Slovenia coverage",
+			"tags": [
+				"coverage"
+			],
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
+			"country": "Slovenia",
+			"scopes": [],
+			"salesStatus": "available"
+		},
+		{
+			"id": "avail-33",
+			"name": "Spain coverage",
+			"tags": [
+				"coverage"
+			],
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
+			"country": "Spain",
+			"scopes": [],
+			"salesStatus": "available"
+		},
+		{
+			"id": "avail-34",
+			"name": "Sweden coverage",
+			"tags": [
+				"coverage"
+			],
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
+			"country": "Sweden",
+			"scopes": [],
+			"salesStatus": "available"
+		},
+		{
+			"id": "avail-35",
+			"name": "Switzerland coverage",
+			"tags": [
+				"coverage"
+			],
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
+			"country": "Switzerland",
+			"scopes": [],
+			"salesStatus": "available"
+		},
+		{
+			"id": "avail-36",
+			"name": "Taiwan coverage",
+			"tags": [
+				"coverage"
+			],
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
+			"country": "Taiwan",
+			"scopes": [],
+			"salesStatus": "available"
+		},
+		{
+			"id": "avail-37",
+			"name": "United Kingdom coverage",
+			"tags": [
+				"coverage"
+			],
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
+			"country": "United Kingdom",
+			"scopes": [],
+			"salesStatus": "available"
+		},
+		{
+			"id": "avail-38",
+			"name": "Uruguay coverage",
+			"tags": [
+				"coverage"
+			],
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
+			"country": "Uruguay",
+			"scopes": [],
+			"salesStatus": "available"
 		}
 	]
 }

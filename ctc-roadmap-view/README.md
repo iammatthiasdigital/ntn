@@ -1,12 +1,16 @@
 # Worker custom block: CTC roadmap view
 
-**TL;DR:** A quarterly kanban rendered inside a Notion page from a Features
-database. It keeps only rows tagged `mandate` for the product
-`Compliance transactions` (both case-insensitive) and buckets them into
-Q1–Q4 columns by ETA. Cards show the page icon (flag), the resolved country
-name, and the mandate scopes. Completed quarters render green, upcoming ones
-blue, and a year picker above the board switches years. Typeface: Manrope
-(bundled, no CDN).
+**TL;DR:** Two switchable views over a Features database, rendered inside a
+Notion page. **Roadmap** is a quarterly kanban of rows tagged `mandate` for
+the product `Compliance transaction(s)`, bucketed into Q1–Q4 by ETA — cards
+show the page icon (flag), resolved country name, and mandate scopes;
+completed quarters render green, upcoming ones blue, with a year picker.
+**Coverage** is a country status key: distinct countries in an AVAILABLE and
+a ROADMAP panel, driven by a Sales status property. All matching is
+case-insensitive, and every filter term is editable in the block's settings
+(⚙) so database wording changes don't need a code change. Lane colors are
+selectable; a PNG export renders the active view on a transparent
+background, fitted to a 16:9 slide canvas. Typeface: Manrope (bundled).
 
 ## Quickstart
 
@@ -42,14 +46,21 @@ roadmap and a setup hint until the data sources are bound.
 
 Two data sources. `features` ("Features") is the board's rows:
 
-| Property  | Type         | Meaning                                              |
-| --------- | ------------ | ---------------------------------------------------- |
-| `name`    | title        | Feature name (fallback for the country)              |
-| `tags`    | multi_select | Board keeps rows with a `mandate` tag (any case)     |
-| `product` | relation     | Board keeps `Compliance transaction(s)` (any case)   |
-| `eta`     | date         | The quarter of this date decides the kanban column   |
-| `country` | rich_text    | ISO 3166-1 alpha-2 code (`FR`) or full name (France) |
-| `scopes`  | multi_select | Mandate scopes, e.g. `B2B`, `B2G`, `B2C`             |
+| Property      | Type         | Meaning                                              |
+| ------------- | ------------ | ---------------------------------------------------- |
+| `name`        | title        | Feature name (fallback for the country)              |
+| `tags`        | multi_select | Kanban keeps rows with a `mandate` tag (any case)    |
+| `product`     | relation     | Both views keep `Compliance transaction(s)`          |
+| `eta`         | date         | The quarter of this date decides the kanban column   |
+| `country`     | rich_text    | ISO 3166-1 alpha-2 code (`FR`) or full name (France) |
+| `scopes`      | multi_select | Mandate scopes, e.g. `B2B`, `B2G`, `B2C`             |
+| `salesStatus` | select       | Coverage lane: `Available` or `Roadmap` (any case)   |
+
+The coverage view ignores the tag filter: it takes every row whose product
+matches and whose sales status matches the Available/Roadmap term, dedupes
+countries per lane (case-insensitive), and sorts them alphabetically. All
+four terms — tag, product, and both statuses — are editable in the ⚙
+settings and persist per browser.
 
 `products` ("Products") is the database the Product relation points to,
 with just a title (`name`). The block reads product names from it to apply
@@ -82,10 +93,16 @@ Notes on tolerance:
   data, else the last year with data.
 - Quarters whose last day has passed render in green ("delivered"), the
   rest in blue — matching the roadmap slide the block is modeled on.
-- **Export PNG** renders the header and board (controls excluded) to a
-  2× PNG download named `ctc-roadmap-<year>.png`. Flag images the browser
-  can't fetch cross-origin are left blank in the export rather than
-  failing it.
+- **View switcher** (Roadmap / Coverage) above the board; the choice
+  persists per browser.
+- **Export PNG** captures only the active view's board — no header or
+  controls — on a transparent background at 2×. The kanban always exports
+  as the 4-across year grid with condensed cards, two per quarter column,
+  whatever the responsive on-screen layout shows. By default the canvas is
+  padded to the smallest containing 16:9 so the file drops straight onto a
+  slide (toggle in ⚙ settings). Files: `ctc-roadmap-<year>.png` /
+  `ctc-coverage.png`. Flag images the browser can't fetch cross-origin are
+  left blank rather than failing the export.
 - Matching rows without an ETA, rows past the 999-row read limit, and rows
   with unreadable Product relations are counted in footnotes instead of
   being silently dropped.

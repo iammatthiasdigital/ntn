@@ -50,6 +50,14 @@ worker.customBlock("ctcRoadmap", {
 					description: "Mandate scopes, e.g. B2B, B2G, B2C, E-transport.",
 					type: "multi_select",
 				},
+				salesStatus: {
+					name: "Sales status",
+					description:
+						"Coverage lane for the coverage view: 'Available' or " +
+						"'Roadmap' (case-insensitive; terms editable in the block " +
+						"settings).",
+					type: "select",
+				},
 			},
 		},
 		products: {

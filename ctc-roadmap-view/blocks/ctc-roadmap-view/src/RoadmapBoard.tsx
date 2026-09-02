@@ -1,88 +1,66 @@
 import { useMemo, useState } from "react"
+import {
+	DEFAULT_DONE_COLOR,
+	DEFAULT_TODO_COLOR,
+	DONE_SOFT_ALPHA,
+	TODO_SOFT_ALPHA,
+	accentFor,
+	isHexColor,
+	withAlpha,
+} from "./colors"
 import { flagEmoji } from "./countries"
-import { MOCK_FEATURES } from "./mockData"
+import { MOCK_FEATURES, MOCK_PRODUCT_TITLES, MOCK_ROWS } from "./mockData"
 import {
 	availableYears,
 	defaultYear,
 	featuresForQuarter,
+	fitTo169,
 	isQuarterComplete,
+	makeContext,
+	rowsToCoverage,
 	unscheduledCount,
 } from "./roadmap"
-import type { Feature, RoadmapDataState } from "./types"
+import type { BlockSettings } from "./settings"
+import type { Coverage, Feature, RoadmapDataState } from "./types"
 
 const QUARTERS = [1, 2, 3, 4] as const
+const COLOR_STORAGE_KEY = "ctc-roadmap-colors"
 
 /** 1×1 transparent PNG for images the exporter can't fetch (CORS). */
 const IMAGE_PLACEHOLDER =
 	"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
 
-export function RoadmapBoard({
-	data,
-	theme,
-	now = new Date(),
-}: {
-	data: RoadmapDataState
-	theme: "light" | "dark"
-	now?: Date
-}): React.ReactNode {
-	if (data.status === "loading") {
-		return (
-			<Shell theme={theme}>
-				<div className="mr-status">Loading mandates…</div>
-			</Shell>
-		)
+type LaneColors = { done: string; todo: string }
+
+function loadColors(): LaneColors {
+	try {
+		const raw = window.localStorage.getItem(COLOR_STORAGE_KEY)
+		if (raw) {
+			const parsed = JSON.parse(raw) as Partial<LaneColors>
+			return {
+				done: isHexColor(parsed.done) ? parsed.done : DEFAULT_DONE_COLOR,
+				todo: isHexColor(parsed.todo) ? parsed.todo : DEFAULT_TODO_COLOR,
+			}
+		}
+	} catch {
+		// Storage unavailable in this sandbox — fall through to defaults.
 	}
-	if (data.status === "empty") {
-		return (
-			<Shell theme={theme}>
-				<div className="mr-status">
-					No matching features. The board shows rows tagged{" "}
-					<strong>mandate</strong> with product{" "}
-					<strong>Compliance transaction(s)</strong>.
-					{data.unreadableProduct ? (
-						<>
-							{" "}
-							{data.unreadableProduct} row
-							{data.unreadableProduct === 1 ? "" : "s"} matched the tag but
-							their Product relation could not be read — check that the block
-							has access to the related product pages.
-						</>
-					) : null}
-				</div>
-			</Shell>
-		)
-	}
-	const unbound = data.status === "unbound"
-	return (
-		<Shell theme={theme}>
-			{unbound && (
-				<div className="mr-hint mr-noexport">
-					Sample data — bind the <strong>Features</strong> data source to show
-					your mandates.
-				</div>
-			)}
-			<Board
-				features={unbound ? MOCK_FEATURES : data.features}
-				notes={unbound ? undefined : data}
-				theme={theme}
-				now={now}
-			/>
-		</Shell>
-	)
+	return { done: DEFAULT_DONE_COLOR, todo: DEFAULT_TODO_COLOR }
 }
 
-function Shell({
-	theme,
-	children,
-}: {
-	theme: "light" | "dark"
-	children: React.ReactNode
-}): React.ReactNode {
-	return (
-		<div className="mr" data-theme={theme}>
-			{children}
-		</div>
-	)
+function storeColors(colors: LaneColors): void {
+	try {
+		window.localStorage.setItem(COLOR_STORAGE_KEY, JSON.stringify(colors))
+	} catch {
+		// Best effort only.
+	}
+}
+
+type ContentData = {
+	features: Feature[]
+	coverage: Coverage
+	statusBound: boolean
+	notes?: BoardNotes
 }
 
 type BoardNotes = {
@@ -91,17 +69,134 @@ type BoardNotes = {
 	unboundFilters?: string[]
 }
 
-function Board({
-	features,
-	notes,
+export function RoadmapBoard({
+	data,
 	theme,
+	settings,
+	onSettingsChange,
+	now = new Date(),
+}: {
+	data: RoadmapDataState
+	theme: "light" | "dark"
+	settings: BlockSettings
+	onSettingsChange: (next: BlockSettings) => void
+	now?: Date
+}): React.ReactNode {
+	const [colors, setColors] = useState<LaneColors>(loadColors)
+	function updateColors(next: LaneColors): void {
+		setColors(next)
+		storeColors(next)
+	}
+	const styleVars = {
+		"--mr-done-border": colors.done,
+		"--mr-done-bg": withAlpha(colors.done, DONE_SOFT_ALPHA),
+		"--mr-done-accent": accentFor(colors.done, theme),
+		"--mr-todo-border": colors.todo,
+		"--mr-todo-bg": withAlpha(colors.todo, TODO_SOFT_ALPHA),
+		"--mr-todo-accent": accentFor(colors.todo, theme),
+	} as React.CSSProperties
+
+	const sample = useMemo<ContentData>(() => {
+		const coverage = rowsToCoverage(
+			MOCK_ROWS,
+			makeContext({ productTitleById: MOCK_PRODUCT_TITLES })
+		)
+		return {
+			features: MOCK_FEATURES,
+			coverage: { available: coverage.available, roadmap: coverage.roadmap },
+			statusBound: true,
+		}
+	}, [])
+
+	if (data.status === "loading") {
+		return (
+			<Shell theme={theme} style={styleVars}>
+				<div className="mr-status">Loading mandates…</div>
+			</Shell>
+		)
+	}
+	if (data.status === "empty") {
+		return (
+			<Shell theme={theme} style={styleVars}>
+				<div className="mr-status">
+					No matching features. The board shows rows tagged{" "}
+					<strong>{settings.tagTerm}</strong> or with a sales status, for the
+					product <strong>{settings.productTerm}(s)</strong>.
+					{data.unreadableProduct ? (
+						<>
+							{" "}
+							{data.unreadableProduct} row
+							{data.unreadableProduct === 1 ? "" : "s"} matched but their
+							Product relation could not be read — check that the block has
+							access to the related product pages.
+						</>
+					) : null}
+				</div>
+			</Shell>
+		)
+	}
+	const unbound = data.status === "unbound"
+	const content: ContentData = unbound
+		? sample
+		: {
+				features: data.features,
+				coverage: data.coverage,
+				statusBound: data.statusBound,
+				notes: data,
+			}
+	return (
+		<Shell theme={theme} style={styleVars}>
+			{unbound && (
+				<div className="mr-hint mr-noexport">
+					Sample data — bind the <strong>Features</strong> data source to show
+					your mandates.
+				</div>
+			)}
+			<Content
+				content={content}
+				colors={colors}
+				onColorsChange={updateColors}
+				settings={settings}
+				onSettingsChange={onSettingsChange}
+				now={now}
+			/>
+		</Shell>
+	)
+}
+
+function Shell({
+	theme,
+	style,
+	children,
+}: {
+	theme: "light" | "dark"
+	style: React.CSSProperties
+	children: React.ReactNode
+}): React.ReactNode {
+	return (
+		<div className="mr" data-theme={theme} style={style}>
+			{children}
+		</div>
+	)
+}
+
+function Content({
+	content,
+	colors,
+	onColorsChange,
+	settings,
+	onSettingsChange,
 	now,
 }: {
-	features: Feature[]
-	notes: BoardNotes | undefined
-	theme: "light" | "dark"
+	content: ContentData
+	colors: LaneColors
+	onColorsChange: (next: LaneColors) => void
+	settings: BlockSettings
+	onSettingsChange: (next: BlockSettings) => void
 	now: Date
 }): React.ReactNode {
+	const { features, coverage, statusBound, notes } = content
+	const view = settings.view
 	const years = useMemo(() => availableYears(features), [features])
 	const [pickedYear, setPickedYear] = useState<number | null>(null)
 	const fallbackYear = defaultYear(years, now)
@@ -112,22 +207,35 @@ function Board({
 		return [...all].sort((a, b) => a - b)
 	}, [years, year])
 	const yearIndex = yearOptions.indexOf(year)
-	const unscheduled = unscheduledCount(features)
+	const [settingsOpen, setSettingsOpen] = useState(false)
 	const [exporting, setExporting] = useState(false)
 	const [exportFailed, setExportFailed] = useState(false)
 
+	/**
+	 * Export the active view on a transparent background — the kanban
+	 * always as the 4-column year grid with condensed two-across cards —
+	 * optionally padded to a 16:9 canvas for slide decks.
+	 */
 	async function handleExport(
 		event: React.MouseEvent<HTMLButtonElement>
 	): Promise<void> {
 		const root = event.currentTarget.closest(".mr")
 		if (!(root instanceof HTMLElement) || exporting) return
+		const target = root.querySelector(".mr-exportable")
+		if (!(target instanceof HTMLElement)) return
 		setExporting(true)
 		setExportFailed(false)
+		root.classList.add("is-exporting")
 		try {
-			const { toPng } = await import("html-to-image")
-			const dataUrl = await toPng(root, {
-				pixelRatio: 2,
-				backgroundColor: theme === "dark" ? "#191919" : "#ffffff",
+			// Force a synchronous reflow so the export layout is applied before
+			// the capture clones computed styles. The SVG is rasterized by hand
+			// instead of via toPng, whose decode step waits on an animation
+			// frame and hangs when the tab isn't visible.
+			void target.offsetWidth
+			const contentWidth = target.offsetWidth
+			const contentHeight = target.offsetHeight
+			const { toSvg } = await import("html-to-image")
+			const svgUrl = await toSvg(target, {
 				imagePlaceholder: IMAGE_PLACEHOLDER,
 				filter: (node) =>
 					!(
@@ -135,15 +243,27 @@ function Board({
 						node.classList.contains("mr-noexport")
 					),
 			})
+			const dataUrl = rasterize(
+				await loadImage(svgUrl),
+				contentWidth * 2,
+				contentHeight * 2,
+				settings.exportSlide
+			)
 			const link = document.createElement("a")
-			link.download = `ctc-roadmap-${year}.png`
+			link.download =
+				view === "kanban" ? `ctc-roadmap-${year}.png` : "ctc-coverage.png"
 			link.href = dataUrl
 			link.click()
 		} catch {
 			setExportFailed(true)
 		} finally {
+			root.classList.remove("is-exporting")
 			setExporting(false)
 		}
+	}
+
+	function patch(partial: Partial<BlockSettings>): void {
+		onSettingsChange({ ...settings, ...partial })
 	}
 
 	return (
@@ -152,41 +272,106 @@ function Board({
 				<div className="mr-heading">
 					<div className="mr-kicker">Global e-invoicing compliance</div>
 					<h1 className="mr-title">
-						Mandate Delivery Roadmap <span className="mr-title-year">{year}</span>
+						{view === "kanban" ? (
+							<>
+								Mandate Delivery Roadmap{" "}
+								<span className="mr-title-year">{year}</span>
+							</>
+						) : (
+							<>Country Coverage Status Key</>
+						)}
 					</h1>
 				</div>
 				<div className="mr-controls mr-noexport">
-					<div className="mr-year-picker" role="group" aria-label="Roadmap year">
+					<div className="mr-tabs" role="tablist" aria-label="View">
 						<button
 							type="button"
-							className="mr-year-step"
-							aria-label="Previous year"
-							disabled={yearIndex <= 0}
-							onClick={() => setPickedYear(yearOptions[yearIndex - 1])}
+							role="tab"
+							aria-selected={view === "kanban"}
+							className={view === "kanban" ? "is-active" : ""}
+							onClick={() => patch({ view: "kanban" })}
 						>
-							‹
+							Roadmap
 						</button>
-						<select
-							className="mr-year-select"
-							aria-label="Year"
-							value={year}
-							onChange={(event) => setPickedYear(Number(event.target.value))}
-						>
-							{yearOptions.map((option) => (
-								<option key={option} value={option}>
-									{option}
-								</option>
-							))}
-						</select>
 						<button
 							type="button"
-							className="mr-year-step"
-							aria-label="Next year"
-							disabled={yearIndex >= yearOptions.length - 1}
-							onClick={() => setPickedYear(yearOptions[yearIndex + 1])}
+							role="tab"
+							aria-selected={view === "coverage"}
+							className={view === "coverage" ? "is-active" : ""}
+							onClick={() => patch({ view: "coverage" })}
 						>
-							›
+							Coverage
 						</button>
+					</div>
+					<div className="mr-colors" role="group" aria-label="Board colors">
+						<label className="mr-color" title="Delivered / roadmap lane color">
+							<input
+								type="color"
+								value={colors.done}
+								onChange={(event) =>
+									onColorsChange({ ...colors, done: event.target.value })
+								}
+							/>
+							<span>{view === "kanban" ? "Delivered" : "Roadmap"}</span>
+						</label>
+						<label className="mr-color" title="Upcoming / available lane color">
+							<input
+								type="color"
+								value={colors.todo}
+								onChange={(event) =>
+									onColorsChange({ ...colors, todo: event.target.value })
+								}
+							/>
+							<span>{view === "kanban" ? "Upcoming" : "Available"}</span>
+						</label>
+					</div>
+					{view === "kanban" && (
+						<div className="mr-year-picker" role="group" aria-label="Roadmap year">
+							<button
+								type="button"
+								className="mr-year-step"
+								aria-label="Previous year"
+								disabled={yearIndex <= 0}
+								onClick={() => setPickedYear(yearOptions[yearIndex - 1])}
+							>
+								‹
+							</button>
+							<select
+								className="mr-year-select"
+								aria-label="Year"
+								value={year}
+								onChange={(event) => setPickedYear(Number(event.target.value))}
+							>
+								{yearOptions.map((option) => (
+									<option key={option} value={option}>
+										{option}
+									</option>
+								))}
+							</select>
+							<button
+								type="button"
+								className="mr-year-step"
+								aria-label="Next year"
+								disabled={yearIndex >= yearOptions.length - 1}
+								onClick={() => setPickedYear(yearOptions[yearIndex + 1])}
+							>
+								›
+							</button>
+						</div>
+					)}
+					<div className="mr-settings-wrap">
+						<button
+							type="button"
+							className="mr-gear"
+							aria-label="Settings"
+							aria-expanded={settingsOpen}
+							onClick={() => setSettingsOpen((open) => !open)}
+						>
+							⚙
+						</button>
+						{settingsOpen && (
+							<SettingsPanel settings={settings} onPatch={patch} />
+						)}
 					</div>
 					<button
 						type="button"
@@ -203,42 +388,178 @@ function Board({
 					)}
 				</div>
 			</header>
-			<div className="mr-board">
-				{QUARTERS.map((quarter) => {
-					const complete = isQuarterComplete(year, quarter, now)
-					const items = featuresForQuarter(features, year, quarter)
-					return (
-						<section
-							key={quarter}
-							className={`mr-col ${complete ? "is-complete" : "is-upcoming"}`}
-							aria-label={`Q${quarter} ${year}${complete ? " (completed)" : ""}`}
-						>
-							<h2 className="mr-col-title">
-								Q{quarter} {year}
-							</h2>
-							<div className="mr-col-rule" />
-							{items.length === 0 ? (
-								<div className="mr-col-empty">No mandates</div>
-							) : (
-								<div className="mr-cards">
-									{items.map((feature) => (
-										<FeatureCard key={feature.id} feature={feature} />
-									))}
-								</div>
-							)}
-						</section>
-					)
-				})}
-			</div>
-			<BoardFootnotes unscheduled={unscheduled} notes={notes} />
+			{view === "kanban" ? (
+				<KanbanView features={features} year={year} now={now} />
+			) : (
+				<CoverageView coverage={coverage} statusBound={statusBound} />
+			)}
+			<BoardFootnotes
+				view={view}
+				unscheduled={unscheduledCount(features)}
+				notes={notes}
+			/>
 		</>
 	)
 }
 
+function SettingsPanel({
+	settings,
+	onPatch,
+}: {
+	settings: BlockSettings
+	onPatch: (partial: Partial<BlockSettings>) => void
+}): React.ReactNode {
+	return (
+		<div className="mr-settings" role="dialog" aria-label="Block settings">
+			<div className="mr-settings-title">Filters (case-insensitive)</div>
+			<label>
+				<span>Mandate tag</span>
+				<input
+					type="text"
+					value={settings.tagTerm}
+					onChange={(event) => onPatch({ tagTerm: event.target.value })}
+				/>
+			</label>
+			<label>
+				<span>Product</span>
+				<input
+					type="text"
+					value={settings.productTerm}
+					onChange={(event) => onPatch({ productTerm: event.target.value })}
+				/>
+			</label>
+			<label>
+				<span>“Available” status</span>
+				<input
+					type="text"
+					value={settings.availableTerm}
+					onChange={(event) => onPatch({ availableTerm: event.target.value })}
+				/>
+			</label>
+			<label>
+				<span>“Roadmap” status</span>
+				<input
+					type="text"
+					value={settings.roadmapTerm}
+					onChange={(event) => onPatch({ roadmapTerm: event.target.value })}
+				/>
+			</label>
+			<div className="mr-settings-title">Export</div>
+			<label className="mr-settings-check">
+				<input
+					type="checkbox"
+					checked={settings.exportSlide}
+					onChange={(event) => onPatch({ exportSlide: event.target.checked })}
+				/>
+				<span>Fit 16:9 slide canvas</span>
+			</label>
+		</div>
+	)
+}
+
+function KanbanView({
+	features,
+	year,
+	now,
+}: {
+	features: Feature[]
+	year: number
+	now: Date
+}): React.ReactNode {
+	return (
+		<div className="mr-board mr-exportable">
+			{QUARTERS.map((quarter) => {
+				const complete = isQuarterComplete(year, quarter, now)
+				const items = featuresForQuarter(features, year, quarter)
+				return (
+					<section
+						key={quarter}
+						className={`mr-col ${complete ? "is-complete" : "is-upcoming"}`}
+						aria-label={`Q${quarter} ${year}${complete ? " (completed)" : ""}`}
+					>
+						<h2 className="mr-col-title">
+							Q{quarter} {year}
+						</h2>
+						<div className="mr-col-rule" />
+						{items.length === 0 ? (
+							<div className="mr-col-empty">No mandates</div>
+						) : (
+							<div className="mr-cards">
+								{items.map((feature) => (
+									<FeatureCard key={feature.id} feature={feature} />
+								))}
+							</div>
+						)}
+					</section>
+				)
+			})}
+		</div>
+	)
+}
+
+function CoverageView({
+	coverage,
+	statusBound,
+}: {
+	coverage: Coverage
+	statusBound: boolean
+}): React.ReactNode {
+	if (!statusBound) {
+		return (
+			<div className="mr-status">
+				Map the <strong>Sales status</strong> property of the Features data
+				source to use the coverage view.
+			</div>
+		)
+	}
+	return (
+		<div className="mr-coverage mr-exportable">
+			<CoveragePanel
+				kind="available"
+				title="Available"
+				items={coverage.available}
+			/>
+			<CoveragePanel kind="roadmap" title="Roadmap" items={coverage.roadmap} />
+		</div>
+	)
+}
+
+function CoveragePanel({
+	kind,
+	title,
+	items,
+}: {
+	kind: "available" | "roadmap"
+	title: string
+	items: Feature[]
+}): React.ReactNode {
+	return (
+		<section className={`mr-cov-panel is-${kind}`} aria-label={title}>
+			<h2 className="mr-cov-head">{title}</h2>
+			{items.length === 0 ? (
+				<div className="mr-col-empty">No countries</div>
+			) : (
+				<div className="mr-cov-grid">
+					{items.map((feature) => (
+						<div key={feature.id} className="mr-cov-pill">
+							<span className="mr-cov-flag" aria-hidden="true">
+								<CardIcon feature={feature} />
+							</span>
+							<span className="mr-cov-name">{feature.countryName}</span>
+						</div>
+					))}
+				</div>
+			)}
+		</section>
+	)
+}
+
 function BoardFootnotes({
+	view,
 	unscheduled,
 	notes,
 }: {
+	view: BlockSettings["view"]
 	unscheduled: number
 	notes: BoardNotes | undefined
 }): React.ReactNode {
@@ -248,7 +569,7 @@ function BoardFootnotes({
 			"Only the first 999 rows could be read — the board may be incomplete."
 		)
 	}
-	if (unscheduled > 0) {
+	if (view === "kanban" && unscheduled > 0) {
 		lines.push(
 			`${unscheduled} matching ${unscheduled === 1 ? "item" : "items"} without an ETA ${unscheduled === 1 ? "isn't" : "aren't"} shown.`
 		)
@@ -299,4 +620,42 @@ function CardIcon({ feature }: { feature: Feature }): React.ReactNode {
 			{feature.iso2 ? flagEmoji(feature.iso2) : "🌐"}
 		</span>
 	)
+}
+
+function loadImage(url: string): Promise<HTMLImageElement> {
+	return new Promise((resolve, reject) => {
+		const image = new Image()
+		image.onload = () => resolve(image)
+		image.onerror = reject
+		image.src = url
+	})
+}
+
+/**
+ * Draw the captured SVG at 2× onto a transparent canvas — padded to the
+ * smallest containing 16:9 canvas when `slide` is set, so the PNG drops
+ * straight onto a slide deck.
+ */
+function rasterize(
+	image: HTMLImageElement,
+	contentWidth: number,
+	contentHeight: number,
+	slide: boolean
+): string {
+	const { width, height } = slide
+		? fitTo169(contentWidth, contentHeight)
+		: { width: contentWidth, height: contentHeight }
+	const canvas = document.createElement("canvas")
+	canvas.width = width
+	canvas.height = height
+	const context = canvas.getContext("2d")
+	if (!context) throw new Error("canvas 2d context unavailable")
+	context.drawImage(
+		image,
+		Math.round((width - contentWidth) / 2),
+		Math.round((height - contentHeight) / 2),
+		contentWidth,
+		contentHeight
+	)
+	return canvas.toDataURL("image/png")
 }

@@ -31,6 +31,13 @@ export type RawRow = {
 	eta: unknown
 	country: unknown
 	scopes: unknown
+	salesStatus: unknown
+}
+
+/** Distinct countries per coverage lane, alphabetical. */
+export type Coverage = {
+	available: Feature[]
+	roadmap: Feature[]
 }
 
 export type RoadmapDataState =
@@ -39,7 +46,12 @@ export type RoadmapDataState =
 	| { status: "empty"; unreadableProduct?: number }
 	| {
 			status: "ready"
+			/** Kanban rows: tag + product filter, bucketed by ETA. */
 			features: Feature[]
+			/** Coverage lanes: product + sales-status filter, distinct countries. */
+			coverage: Coverage
+			/** False when the salesStatus slot has no mapped property. */
+			statusBound: boolean
 			/** True when the 999-row read limit cut the data off. */
 			truncated?: boolean
 			/** Rows dropped because their product relation could not be read. */

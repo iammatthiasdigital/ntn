@@ -6,12 +6,14 @@
 	--mr-card-bg: #ffffff;
 	--mr-card-border: #e3e6ee;
 	--mr-card-shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
-	--mr-done-border: #a8c53d;
-	--mr-done-bg: #f7fae8;
-	--mr-done-accent: #6d8f1f;
-	--mr-todo-border: #3050d8;
-	--mr-todo-bg: #f3f6fc;
-	--mr-todo-accent: #2743b8;
+	/* Lane colors follow the palette; the block overrides these inline from
+	 * the color pickers (soft fills are the base color at low alpha). */
+	--mr-done-border: #def15d;
+	--mr-done-bg: #def15d26;
+	--mr-done-accent: #7e8c15;
+	--mr-todo-border: #0054ff;
+	--mr-todo-bg: #0054ff10;
+	--mr-todo-accent: #0043cc;
 	--mr-picker-bg: #f1f3f9;
 	--mr-hint-bg: #fff7e0;
 	--mr-hint-border: #eddfa8;
@@ -31,12 +33,8 @@
 	--mr-card-bg: #262a36;
 	--mr-card-border: #3a3f4f;
 	--mr-card-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
-	--mr-done-border: #7f9c37;
-	--mr-done-bg: rgba(163, 197, 61, 0.09);
-	--mr-done-accent: #bcd964;
-	--mr-todo-border: #5b74e8;
-	--mr-todo-bg: rgba(91, 116, 232, 0.09);
-	--mr-todo-accent: #a3b2f4;
+	--mr-done-accent: #e7f594;
+	--mr-todo-accent: #7099ff;
 	--mr-picker-bg: #2c303d;
 	--mr-hint-bg: rgba(240, 200, 80, 0.12);
 	--mr-hint-border: rgba(240, 200, 80, 0.35);
@@ -81,6 +79,165 @@
 	align-items: center;
 	gap: 10px;
 	flex-wrap: wrap;
+}
+
+.mr-tabs {
+	display: inline-flex;
+	padding: 4px;
+	gap: 2px;
+	border-radius: 12px;
+	background: var(--mr-picker-bg);
+}
+
+.mr-tabs button {
+	font-family: inherit;
+	font-size: 12.5px;
+	font-weight: 700;
+	color: var(--mr-muted);
+	background: transparent;
+	border: none;
+	border-radius: 9px;
+	height: 30px;
+	padding: 0 12px;
+	cursor: pointer;
+}
+
+.mr-tabs button.is-active {
+	background: var(--mr-card-bg);
+	color: var(--mr-text);
+	box-shadow: var(--mr-card-shadow);
+}
+
+.mr-settings-wrap {
+	position: relative;
+}
+
+.mr-gear {
+	width: 34px;
+	height: 34px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 16px;
+	color: var(--mr-text);
+	background: var(--mr-card-bg);
+	border: 1px solid var(--mr-card-border);
+	border-radius: 10px;
+	cursor: pointer;
+	padding: 0;
+}
+
+.mr-gear:hover {
+	border-color: var(--mr-todo-border);
+}
+
+.mr-settings {
+	position: absolute;
+	top: 40px;
+	right: 0;
+	z-index: 30;
+	width: 240px;
+	padding: 12px 14px 14px;
+	background: var(--mr-card-bg);
+	border: 1px solid var(--mr-card-border);
+	border-radius: 12px;
+	box-shadow: 0 8px 28px rgba(16, 24, 40, 0.18);
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.mr-settings-title {
+	font-size: 10.5px;
+	font-weight: 800;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+	color: var(--mr-muted);
+	margin-top: 4px;
+}
+
+.mr-settings-title:first-child {
+	margin-top: 0;
+}
+
+.mr-settings label {
+	display: flex;
+	flex-direction: column;
+	gap: 3px;
+}
+
+.mr-settings label > span {
+	font-size: 11px;
+	font-weight: 600;
+	color: var(--mr-muted);
+}
+
+.mr-settings input[type="text"] {
+	font-family: inherit;
+	font-size: 12.5px;
+	font-weight: 600;
+	color: var(--mr-text);
+	background: var(--mr-picker-bg);
+	border: 1px solid var(--mr-card-border);
+	border-radius: 8px;
+	height: 30px;
+	padding: 0 9px;
+}
+
+.mr-settings-check {
+	flex-direction: row !important;
+	align-items: center;
+	gap: 7px !important;
+	cursor: pointer;
+}
+
+.mr-settings-check > span {
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--mr-text);
+}
+
+.mr-colors {
+	display: inline-flex;
+	align-items: center;
+	gap: 12px;
+	padding: 6px 10px;
+	border-radius: 12px;
+	background: var(--mr-picker-bg);
+}
+
+.mr-color {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	cursor: pointer;
+}
+
+.mr-color input[type="color"] {
+	appearance: none;
+	-webkit-appearance: none;
+	width: 26px;
+	height: 26px;
+	padding: 0;
+	border: 1px solid var(--mr-card-border);
+	border-radius: 8px;
+	background: none;
+	cursor: pointer;
+}
+
+.mr-color input[type="color"]::-webkit-color-swatch-wrapper {
+	padding: 2px;
+}
+
+.mr-color input[type="color"]::-webkit-color-swatch {
+	border: none;
+	border-radius: 5px;
+}
+
+.mr-color span {
+	font-size: 11px;
+	font-weight: 600;
+	color: var(--mr-muted);
 }
 
 .mr-export {
@@ -181,6 +338,14 @@
 	.mr-board {
 		grid-template-columns: minmax(0, 1fr);
 	}
+}
+
+/* Export mode: the PNG always captures the year as a 4-across grid at a
+ * fixed width, whatever the responsive on-screen layout shows. */
+.mr.is-exporting .mr-board {
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	/* Wide enough that each quarter fits two cards per row, like the slide. */
+	width: 1160px;
 }
 
 .mr-col {
@@ -287,6 +452,144 @@
 	font-weight: 500;
 	color: var(--mr-muted);
 	line-height: 1.3;
+}
+
+/* ---------- Coverage view ---------- */
+
+.mr-coverage {
+	display: flex;
+	align-items: flex-start;
+	gap: 16px;
+	flex-wrap: wrap;
+}
+
+.mr-cov-panel {
+	border: 2px solid;
+	border-radius: 16px;
+	overflow: hidden;
+	min-width: 240px;
+}
+
+.mr-cov-panel.is-available {
+	flex: 1.6 1 340px;
+	border-color: var(--mr-todo-border);
+	background: var(--mr-card-bg);
+}
+
+.mr-cov-panel.is-roadmap {
+	flex: 1 1 250px;
+	border-color: var(--mr-done-border);
+	background: var(--mr-done-bg);
+}
+
+.mr-cov-head {
+	margin: 0;
+	padding: 9px 12px;
+	text-align: center;
+	font-size: 13px;
+	font-weight: 800;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+}
+
+.is-available .mr-cov-head {
+	background: var(--mr-todo-border);
+	color: #ffffff;
+}
+
+.is-roadmap .mr-cov-head {
+	background: var(--mr-done-border);
+	color: #21243a;
+}
+
+.mr-cov-grid {
+	padding: 14px;
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+	gap: 8px;
+}
+
+.mr-cov-pill {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	min-width: 0;
+	background: var(--mr-card-bg);
+	border: 1px solid var(--mr-card-border);
+	border-radius: 8px;
+	box-shadow: var(--mr-card-shadow);
+	padding: 6px 9px;
+}
+
+.mr-cov-flag {
+	flex: none;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 20px;
+}
+
+.mr-cov-flag .mr-card-flag-emoji {
+	font-size: 15px;
+}
+
+.mr-cov-flag .mr-card-flag-img {
+	max-height: 15px;
+	max-width: 20px;
+}
+
+.mr-cov-name {
+	font-size: 12px;
+	font-weight: 600;
+	line-height: 1.2;
+}
+
+/* ---------- Export mode extras ---------- */
+
+/* Condensed cards, two per quarter column. */
+.mr.is-exporting .mr-cards {
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 8px;
+}
+
+.mr.is-exporting .mr-card {
+	padding: 8px 5px 7px;
+}
+
+.mr.is-exporting .mr-card-flag {
+	height: 20px;
+	margin-bottom: 4px;
+}
+
+.mr.is-exporting .mr-card-flag-emoji {
+	font-size: 17px;
+}
+
+.mr.is-exporting .mr-card-flag-img {
+	max-height: 20px;
+}
+
+.mr.is-exporting .mr-card-country {
+	font-size: 11.5px;
+}
+
+.mr.is-exporting .mr-card-scopes {
+	font-size: 10px;
+	margin-top: 1px;
+}
+
+/* Coverage exports at a fixed slide-friendly width. */
+.mr.is-exporting .mr-coverage {
+	width: 1440px;
+	flex-wrap: nowrap;
+}
+
+.mr.is-exporting .mr-cov-panel.is-available .mr-cov-grid {
+	grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.mr.is-exporting .mr-cov-panel.is-roadmap .mr-cov-grid {
+	grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 /* ---------- States & notes ---------- */

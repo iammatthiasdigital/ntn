@@ -1,19 +1,20 @@
-import { rowsToFeatures } from "./roadmap"
+import { makeContext, rowsToFeatures } from "./roadmap"
 import type { Feature, RawRow } from "./types"
 
 /**
  * Sample rows shaped like raw data-source rows so the standalone harness
  * exercises the same filter/transform pipeline as the hosted block —
  * including relation-shaped products resolved through a title map. The set
- * mirrors the 2026 mandate slide and includes decoys that the filter must
- * drop, plus 2025/2027 rows to exercise the year selector.
+ * mirrors the mandate and coverage slides and includes decoys that the
+ * filters must drop, plus 2025/2027 rows to exercise the year selector.
  */
 type MockSpec = {
 	country: string | string[]
-	scopes: string[]
-	eta: string
+	scopes?: string[]
+	eta?: string
 	tags?: string[]
 	product?: unknown
+	status?: string
 }
 
 const CTC_PRODUCT = [{ id: "prod-ctc", table: "block" }]
@@ -26,7 +27,7 @@ export const MOCK_PRODUCT_TITLES: ReadonlyMap<string, string | null> = new Map([
 	["prod-tax", "Tax Reporting"],
 ])
 
-const SPECS: MockSpec[] = [
+const MANDATES: MockSpec[] = [
 	// Q1 2026
 	{ country: "PE", scopes: ["E-transport"], eta: "2026-01-15" },
 	{ country: "Poland", scopes: ["B2B"], eta: "2026-02-01" },
@@ -61,23 +62,46 @@ const SPECS: MockSpec[] = [
 	{ country: "Malaysia", scopes: ["B2B"], eta: "2025-10-01" },
 	{ country: "ES", scopes: ["B2B"], eta: "2027-01-01" },
 	{ country: "Belgium", scopes: ["B2B", "B2G"], eta: "2027-04-01" },
-	// Decoys that the filter must drop
-	{ country: "DE", scopes: ["B2B"], eta: "2026-05-01", tags: ["invoicing"] },
-	{ country: "IT", scopes: ["B2B"], eta: "2026-05-01", product: TAX_PRODUCT },
 ]
+
+/** Countries live today — coverage AVAILABLE lane; no mandate tag. */
+const AVAILABLE: MockSpec[] = [
+	"Andorra", "Argentina", "Austria", "Belgium", "Chile", "Colombia",
+	"Croatia", "Cyprus", "Denmark", "Estonia", "Finland", "France",
+	"Germany", "Hungary", "Iceland", "Ireland", "Italy", "Lithuania",
+	"Luxembourg", "Malaysia", "Malta", "Mexico", "Netherlands",
+	"New Zealand", "Norway", "Panama", "Peru", "Poland", "Romania",
+	"Serbia", "Singapore", "Slovakia", "Slovenia", "Spain", "Sweden",
+	"Switzerland", "Taiwan", "United Kingdom", "Uruguay",
+].map((country) => ({ country, tags: ["coverage"], status: "Available" }))
+
+const DECOYS: MockSpec[] = [
+	{ country: "DE", scopes: ["B2B"], eta: "2026-05-01", tags: ["invoicing"] },
+	{
+		country: "IT",
+		scopes: ["B2B"],
+		eta: "2026-05-01",
+		product: TAX_PRODUCT,
+		status: "Available",
+	},
+]
+
+const SPECS: MockSpec[] = [...MANDATES, ...AVAILABLE, ...DECOYS]
 
 export const MOCK_ROWS: RawRow[] = SPECS.map((spec, index) => ({
 	id: `mock-${index}`,
 	title: Array.isArray(spec.country) ? spec.country.join("") : spec.country,
 	tags: (spec.tags ?? ["Mandate", "compliance"]).map((name) => ({ name })),
 	product: spec.product ?? CTC_PRODUCT,
-	eta: { start: spec.eta },
+	eta: spec.eta ? { start: spec.eta } : null,
 	country: spec.country,
-	scopes: spec.scopes.map((name) => ({ name })),
+	scopes: (spec.scopes ?? []).map((name) => ({ name })),
+	// Mandates default to the ROADMAP lane, like the coverage slide.
+	salesStatus: spec.status ?? "Roadmap",
 }))
 
-export const MOCK_FEATURES: Feature[] = rowsToFeatures(MOCK_ROWS, {
-	tagsBound: true,
-	productBound: true,
-	productTitleById: MOCK_PRODUCT_TITLES,
-}).features
+/** Kanban features under the default settings (standalone default view). */
+export const MOCK_FEATURES: Feature[] = rowsToFeatures(
+	MOCK_ROWS,
+	makeContext({ productTitleById: MOCK_PRODUCT_TITLES })
+).features

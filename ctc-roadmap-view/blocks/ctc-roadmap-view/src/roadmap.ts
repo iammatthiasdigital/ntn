@@ -1,8 +1,8 @@
 import { resolveCountry } from "./countries"
-import type { Feature, QuarterRef, RawRow } from "./types"
+import type { Coverage, Feature, QuarterRef, RawRow } from "./types"
 
 export const MANDATE_TAG = "mandate"
-/** Normalized singular form; "Compliance transaction(s)" both match. */
+/** Singular/plural both match; overridable via settings. */
 export const PRODUCT_NAME = "compliance transaction"
 
 /**
@@ -126,58 +126,91 @@ function normalizeEnum(value: string): string {
 	return value.trim().toLowerCase().replace(/\s+/g, " ")
 }
 
-export function matchesTag(values: string[]): boolean {
-	return values.some((value) => normalizeEnum(value) === MANDATE_TAG)
+/** Case-insensitive equality against a configurable term. */
+export function matchesTerm(values: string[], term: string): boolean {
+	const wanted = normalizeEnum(term)
+	return values.some((value) => normalizeEnum(value) === wanted)
 }
 
-/** "Compliance transaction" / "Compliance Transactions" both match. */
-export function matchesProductName(name: string): boolean {
-	return normalizeEnum(name).replace(/s$/, "") === PRODUCT_NAME
+/** Product names match their term singular or plural, any case. */
+export function matchesProductName(name: string, term = PRODUCT_NAME): boolean {
+	return (
+		normalizeEnum(name).replace(/s$/, "") ===
+		normalizeEnum(term).replace(/s$/, "")
+	)
 }
 
 /**
- * How the board reads each row's filter properties. `tagsBound` /
- * `productBound` are false when the manifest slot has no mapped property —
- * an unbound filter is skipped instead of dropping every row.
- * `productTitleById` carries resolved titles for relation-shaped product
- * values (null = the related page could not be read).
+ * How the board reads each row's filter properties. `*Bound` flags are
+ * false when the manifest slot has no mapped property — an unbound filter
+ * is skipped instead of dropping every row. `productTitleById` carries
+ * resolved titles for relation-shaped product values (null = the related
+ * page could not be read). The term strings come from the block settings.
  */
 export type RowFilterContext = {
 	tagsBound: boolean
 	productBound: boolean
+	statusBound: boolean
+	tagTerm: string
+	productTerm: string
+	availableTerm: string
+	roadmapTerm: string
 	productTitleById: ReadonlyMap<string, string | null>
 }
 
-export const MATCH_ALL_CONTEXT: RowFilterContext = {
-	tagsBound: true,
-	productBound: true,
-	productTitleById: new Map(),
+export function makeContext(
+	overrides: Partial<RowFilterContext> = {}
+): RowFilterContext {
+	return {
+		tagsBound: true,
+		productBound: true,
+		statusBound: true,
+		tagTerm: MANDATE_TAG,
+		productTerm: PRODUCT_NAME,
+		availableTerm: "available",
+		roadmapTerm: "roadmap",
+		productTitleById: new Map(),
+		...overrides,
+	}
 }
 
-type RowVerdict = "match" | "no-match" | "unreadable-product"
+type ProductVerdict = "match" | "no-match" | "unreadable" | "skipped"
 
-function judgeRow(row: RawRow, context: RowFilterContext): RowVerdict {
-	if (context.tagsBound && !matchesTag(toStringList(row.tags))) {
-		return "no-match"
-	}
-	if (!context.productBound) return "match"
+function productVerdict(row: RawRow, context: RowFilterContext): ProductVerdict {
+	if (!context.productBound) return "skipped"
 	const pointerIds = relationIds(row.product)
 	if (pointerIds.length > 0) {
 		const titles = pointerIds
 			.map((id) => context.productTitleById.get(id))
 			.filter((title): title is string => typeof title === "string")
-		if (titles.length === 0) return "unreadable-product"
-		return titles.some(matchesProductName) ? "match" : "no-match"
+		if (titles.length === 0) return "unreadable"
+		return titles.some((title) => matchesProductName(title, context.productTerm))
+			? "match"
+			: "no-match"
 	}
-	return toStringList(row.product).some(matchesProductName)
+	return toStringList(row.product).some((value) =>
+		matchesProductName(value, context.productTerm)
+	)
 		? "match"
 		: "no-match"
 }
 
-/** Tag includes "mandate" and product is "Compliance transaction(s)". */
+type RowVerdict = "match" | "no-match" | "unreadable-product"
+
+function judgeRow(row: RawRow, context: RowFilterContext): RowVerdict {
+	if (context.tagsBound && !matchesTerm(toStringList(row.tags), context.tagTerm)) {
+		return "no-match"
+	}
+	const product = productVerdict(row, context)
+	if (product === "unreadable") return "unreadable-product"
+	if (product === "no-match") return "no-match"
+	return "match"
+}
+
+/** Tag matches the tag term and product matches the product term. */
 export function matchesBoardFilter(
 	row: RawRow,
-	context: RowFilterContext = MATCH_ALL_CONTEXT
+	context: RowFilterContext = makeContext()
 ): boolean {
 	return judgeRow(row, context) === "match"
 }
@@ -205,10 +238,10 @@ export type BoardRows = {
 	unreadableProduct: number
 }
 
-/** Filter raw rows down to the board's features. */
+/** Filter raw rows down to the kanban's features. */
 export function rowsToFeatures(
 	rows: RawRow[],
-	context: RowFilterContext = MATCH_ALL_CONTEXT
+	context: RowFilterContext = makeContext()
 ): BoardRows {
 	const features: Feature[] = []
 	let unreadableProduct = 0
@@ -218,6 +251,52 @@ export function rowsToFeatures(
 		else if (verdict === "unreadable-product") unreadableProduct += 1
 	}
 	return { features, unreadableProduct }
+}
+
+export type CoverageRows = Coverage & {
+	/** Rows dropped because their product relation could not be read. */
+	unreadableProduct: number
+}
+
+/**
+ * Coverage lanes: every row whose product matches and whose sales status
+ * matches the available/roadmap term (case-insensitive; the tag filter
+ * does not apply). Countries are distinct per lane and sorted by name.
+ */
+export function rowsToCoverage(
+	rows: RawRow[],
+	context: RowFilterContext = makeContext()
+): CoverageRows {
+	const lanes = { available: new Map<string, Feature>(), roadmap: new Map<string, Feature>() }
+	let unreadableProduct = 0
+	if (!context.statusBound) {
+		return { available: [], roadmap: [], unreadableProduct }
+	}
+	for (const row of rows) {
+		const status = toStringList(row.salesStatus)
+		const lane = matchesTerm(status, context.availableTerm)
+			? lanes.available
+			: matchesTerm(status, context.roadmapTerm)
+				? lanes.roadmap
+				: null
+		if (lane === null) continue
+		const product = productVerdict(row, context)
+		if (product === "unreadable") {
+			unreadableProduct += 1
+			continue
+		}
+		if (product === "no-match") continue
+		const feature = toFeature(row)
+		const key = feature.iso2 ?? normalizeEnum(feature.countryName)
+		if (!lane.has(key)) lane.set(key, feature)
+	}
+	const byName = (a: Feature, b: Feature): number =>
+		a.countryName.localeCompare(b.countryName)
+	return {
+		available: [...lanes.available.values()].sort(byName),
+		roadmap: [...lanes.roadmap.values()].sort(byName),
+		unreadableProduct,
+	}
 }
 
 /** Years that have at least one scheduled feature, ascending. */
@@ -256,4 +335,13 @@ export function unscheduledCount(features: Feature[]): number {
 export function isQuarterComplete(year: number, quarter: number, now: Date): boolean {
 	const firstOfNext = new Date(year, quarter * 3, 1)
 	return now.getTime() >= firstOfNext.getTime()
+}
+
+/**
+ * Smallest 16:9 canvas that contains a w×h image — the export pads to
+ * this so the PNG drops straight onto a slide.
+ */
+export function fitTo169(w: number, h: number): { width: number; height: number } {
+	const width = Math.max(w, Math.ceil((h * 16) / 9))
+	return { width, height: Math.ceil((width * 9) / 16) }
 }

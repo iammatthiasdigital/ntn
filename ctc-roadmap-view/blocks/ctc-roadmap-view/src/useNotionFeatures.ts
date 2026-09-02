@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { pages } from "@notionhq/custom-blocks"
 import { useDataSource } from "@notionhq/custom-blocks/react"
-import { joinedText, relationIds, rowsToFeatures } from "./roadmap"
-import type { FeatureIcon, RawRow, RoadmapDataState } from "./types"
+import { joinedText, makeContext, relationIds, rowsToCoverage, rowsToFeatures } from "./roadmap"
+import type { BlockSettings } from "./settings"
+import type { Feature, FeatureIcon, RawRow, RoadmapDataState } from "./types"
 
 const FEATURES_KEY = "features"
 const PRODUCTS_KEY = "products"
@@ -12,10 +13,10 @@ const FETCH_CONCURRENCY = 5
  * Real data layer: reads the `features` data source, resolves product
  * relation pointers to names — first through the `products` data source
  * (whose row ids are the pages the relation points at), then via pages.get
- * for ids outside it — applies the board filter, and lazily resolves each
- * matching row's page icon.
+ * for ids outside it — applies the kanban and coverage filters from the
+ * block settings, and lazily resolves page icons for visible rows.
  */
-export function useNotionFeatures(): RoadmapDataState {
+export function useNotionFeatures(settings: BlockSettings): RoadmapDataState {
 	const { items, isLoading, error, hasMore, propertyIdsByKey } = useDataSource(
 		FEATURES_KEY,
 		{ limit: 999 }
@@ -32,6 +33,7 @@ export function useNotionFeatures(): RoadmapDataState {
 
 	const tagsBound = propertyIdsByKey.tags !== undefined
 	const productBound = propertyIdsByKey.product !== undefined
+	const statusBound = propertyIdsByKey.salesStatus !== undefined
 
 	const rows = useMemo<RawRow[]>(
 		() =>
@@ -45,6 +47,7 @@ export function useNotionFeatures(): RoadmapDataState {
 					eta: props.eta,
 					country: props.country,
 					scopes: props.scopes,
+					salesStatus: props.salesStatus,
 				}
 			}),
 		[items]
@@ -115,20 +118,41 @@ export function useNotionFeatures(): RoadmapDataState {
 		productIds.length > 0 &&
 		(!productsSettled || productIds.some((id) => !productTitles.has(id)))
 
-	const board = useMemo(
+	const context = useMemo(
 		() =>
-			rowsToFeatures(rows, {
+			makeContext({
 				tagsBound,
 				productBound,
+				statusBound,
+				tagTerm: settings.tagTerm,
+				productTerm: settings.productTerm,
+				availableTerm: settings.availableTerm,
+				roadmapTerm: settings.roadmapTerm,
 				productTitleById: productTitles,
 			}),
-		[rows, tagsBound, productBound, productTitles]
+		[
+			tagsBound,
+			productBound,
+			statusBound,
+			settings.tagTerm,
+			settings.productTerm,
+			settings.availableTerm,
+			settings.roadmapTerm,
+			productTitles,
+		]
 	)
 
-	const ids = board.features.map((feature) => feature.id).join("\n")
+	const board = useMemo(() => rowsToFeatures(rows, context), [rows, context])
+	const coverage = useMemo(() => rowsToCoverage(rows, context), [rows, context])
+
+	const visibleFeatures = useMemo(
+		() => [...board.features, ...coverage.available, ...coverage.roadmap],
+		[board, coverage]
+	)
+	const ids = visibleFeatures.map((feature) => feature.id).join("\n")
 
 	useEffect(() => {
-		const pending = board.features
+		const pending = visibleFeatures
 			.map((feature) => feature.id)
 			.filter((id) => !requestedIconsRef.current.has(id))
 		if (pending.length === 0) return
@@ -160,21 +184,35 @@ export function useNotionFeatures(): RoadmapDataState {
 		if (isLoading && items.length === 0) return { status: "loading" }
 		// Filtering is only correct once the product relations are readable.
 		if (productsPending) return { status: "loading" }
-		if (board.features.length === 0) {
-			return { status: "empty", unreadableProduct: board.unreadableProduct }
+		const unreadableProduct = Math.max(
+			board.unreadableProduct,
+			coverage.unreadableProduct
+		)
+		if (
+			board.features.length === 0 &&
+			coverage.available.length === 0 &&
+			coverage.roadmap.length === 0
+		) {
+			return { status: "empty", unreadableProduct }
 		}
+		const withIcon = (feature: Feature): Feature => ({
+			...feature,
+			icon: icons.get(feature.id) ?? undefined,
+		})
 		const unboundFilters = [
 			...(tagsBound ? [] : ["Tags"]),
 			...(productBound ? [] : ["Product"]),
 		]
 		return {
 			status: "ready",
-			features: board.features.map((feature) => ({
-				...feature,
-				icon: icons.get(feature.id) ?? undefined,
-			})),
+			features: board.features.map(withIcon),
+			coverage: {
+				available: coverage.available.map(withIcon),
+				roadmap: coverage.roadmap.map(withIcon),
+			},
+			statusBound,
 			truncated: hasMore,
-			unreadableProduct: board.unreadableProduct,
+			unreadableProduct,
 			unboundFilters: unboundFilters.length > 0 ? unboundFilters : undefined,
 		}
 	}, [
@@ -184,9 +222,11 @@ export function useNotionFeatures(): RoadmapDataState {
 		hasMore,
 		productsPending,
 		board,
+		coverage,
 		icons,
 		tagsBound,
 		productBound,
+		statusBound,
 	])
 }
 
