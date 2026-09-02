@@ -29,7 +29,7 @@
 		},
 		"salesStatus": {
 			"name": "Sales status",
-			"type": "select"
+			"type": "status"
 		}
 	},
 	"rows": [

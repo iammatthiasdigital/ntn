@@ -54,7 +54,7 @@ Two data sources. `features` ("Features") is the board's rows:
 | `eta`         | date         | The quarter of this date decides the kanban column   |
 | `country`     | rich_text    | ISO 3166-1 alpha-2 code (`FR`) or full name (France) |
 | `scopes`      | multi_select | Mandate scopes, e.g. `B2B`, `B2G`, `B2C`             |
-| `salesStatus` | select       | Coverage lane: `Available` or `Roadmap` (any case)   |
+| `salesStatus` | status       | Coverage lane: `Available` or `Roadmap` (any case)   |
 
 The coverage view ignores the tag filter: it takes every row whose product
 matches and whose sales status matches the Available/Roadmap term, dedupes

@@ -56,7 +56,7 @@ worker.customBlock("ctcRoadmap", {
 						"Coverage lane for the coverage view: 'Available' or " +
 						"'Roadmap' (case-insensitive; terms editable in the block " +
 						"settings).",
-					type: "select",
+					type: "status",
 				},
 			},
 		},
