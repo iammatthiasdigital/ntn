@@ -14,11 +14,13 @@ import {
 	availableYears,
 	defaultYear,
 	featuresForQuarter,
+	filterOptions,
 	fitTo169,
 	isQuarterComplete,
 	makeContext,
 	rowsToCoverage,
 	unscheduledCount,
+	type FilterOptions,
 } from "./roadmap"
 import type { BlockSettings } from "./settings"
 import type { Coverage, Feature, RoadmapDataState } from "./types"
@@ -60,7 +62,16 @@ type ContentData = {
 	features: Feature[]
 	coverage: Coverage
 	statusBound: boolean
+	filterOptions: FilterOptions
 	notes?: BoardNotes
+}
+
+type ExportPreview = {
+	dataUrl: string
+	width: number
+	height: number
+	slide: boolean
+	name: string
 }
 
 type BoardNotes = {
@@ -105,6 +116,7 @@ export function RoadmapBoard({
 			features: MOCK_FEATURES,
 			coverage: { available: coverage.available, roadmap: coverage.roadmap },
 			statusBound: true,
+			filterOptions: filterOptions(MOCK_ROWS, MOCK_PRODUCT_TITLES),
 		}
 	}, [])
 
@@ -119,9 +131,8 @@ export function RoadmapBoard({
 		return (
 			<Shell theme={theme} style={styleVars}>
 				<div className="mr-status">
-					No matching features. The board shows rows tagged{" "}
-					<strong>{settings.tagTerm}</strong> or with a sales status, for the
-					product <strong>{settings.productTerm}(s)</strong>.
+					No features match the current filters — adjust them in the ⚙
+					settings.
 					{data.unreadableProduct ? (
 						<>
 							{" "}
@@ -142,6 +153,7 @@ export function RoadmapBoard({
 				features: data.features,
 				coverage: data.coverage,
 				statusBound: data.statusBound,
+				filterOptions: data.filterOptions,
 				notes: data,
 			}
 	return (
@@ -196,6 +208,7 @@ function Content({
 	now: Date
 }): React.ReactNode {
 	const { features, coverage, statusBound, notes } = content
+	const options = content.filterOptions
 	const view = settings.view
 	const years = useMemo(() => availableYears(features), [features])
 	const [pickedYear, setPickedYear] = useState<number | null>(null)
@@ -210,11 +223,14 @@ function Content({
 	const [settingsOpen, setSettingsOpen] = useState(false)
 	const [exporting, setExporting] = useState(false)
 	const [exportFailed, setExportFailed] = useState(false)
+	const [preview, setPreview] = useState<ExportPreview | null>(null)
 
 	/**
 	 * Export the active view on a transparent background — the kanban
 	 * always as the 4-column year grid with condensed two-across cards —
-	 * optionally padded to a 16:9 canvas for slide decks.
+	 * optionally padded to a 16:9 canvas for slide decks. The result opens
+	 * in a preview (Notion's sandbox blocks direct downloads, so the image
+	 * can be copied/saved from there).
 	 */
 	async function handleExport(
 		event: React.MouseEvent<HTMLButtonElement>
@@ -243,23 +259,36 @@ function Content({
 						node.classList.contains("mr-noexport")
 					),
 			})
+			const size = settings.exportSlide
+				? fitTo169(contentWidth * 2, contentHeight * 2)
+				: { width: contentWidth * 2, height: contentHeight * 2 }
 			const dataUrl = rasterize(
 				await loadImage(svgUrl),
 				contentWidth * 2,
 				contentHeight * 2,
 				settings.exportSlide
 			)
-			const link = document.createElement("a")
-			link.download =
-				view === "kanban" ? `ctc-roadmap-${year}.png` : "ctc-coverage.png"
-			link.href = dataUrl
-			link.click()
+			setPreview({
+				dataUrl,
+				width: size.width,
+				height: size.height,
+				slide: settings.exportSlide,
+				name: view === "kanban" ? `ctc-roadmap-${year}.png` : "ctc-coverage.png",
+			})
 		} catch {
 			setExportFailed(true)
 		} finally {
 			root.classList.remove("is-exporting")
 			setExporting(false)
 		}
+	}
+
+	function downloadPreview(): void {
+		if (!preview) return
+		const link = document.createElement("a")
+		link.download = preview.name
+		link.href = preview.dataUrl
+		link.click()
 	}
 
 	function patch(partial: Partial<BlockSettings>): void {
@@ -370,7 +399,11 @@ function Content({
 							⚙
 						</button>
 						{settingsOpen && (
-							<SettingsPanel settings={settings} onPatch={patch} />
+							<SettingsPanel
+								settings={settings}
+								onPatch={patch}
+								options={options}
+							/>
 						)}
 					</div>
 					<button
@@ -398,61 +431,182 @@ function Content({
 				unscheduled={unscheduledCount(features)}
 				notes={notes}
 			/>
+			{preview && (
+				<ExportModal
+					preview={preview}
+					onDownload={downloadPreview}
+					onClose={() => setPreview(null)}
+				/>
+			)}
 		</>
+	)
+}
+
+function ExportModal({
+	preview,
+	onDownload,
+	onClose,
+}: {
+	preview: ExportPreview
+	onDownload: () => void
+	onClose: () => void
+}): React.ReactNode {
+	return (
+		<div className="mr-modal-backdrop mr-noexport" onClick={onClose}>
+			<div
+				className="mr-modal"
+				role="dialog"
+				aria-label="Export preview"
+				onClick={(event) => event.stopPropagation()}
+			>
+				<div className="mr-modal-head">
+					<span className="mr-modal-title">{preview.name}</span>
+					<span className="mr-modal-format">
+						{preview.width} × {preview.height} px ·{" "}
+						{preview.slide ? "16:9 slide" : "natural size"}
+					</span>
+				</div>
+				<div className="mr-modal-imgwrap">
+					<img
+						className="mr-modal-img"
+						src={preview.dataUrl}
+						alt="Exported board"
+					/>
+				</div>
+				<div className="mr-modal-hint">
+					If the download doesn't start (Notion blocks downloads from
+					blocks), right-click the image and choose “Copy image” or “Save
+					image as…”.
+				</div>
+				<div className="mr-modal-actions">
+					<button type="button" className="mr-export" onClick={onDownload}>
+						Download
+					</button>
+					<button type="button" className="mr-modal-close" onClick={onClose}>
+						Close
+					</button>
+				</div>
+			</div>
+		</div>
+	)
+}
+
+/** Case-insensitive membership used by the chip UI. */
+function isSelected(selected: string[], value: string): boolean {
+	const key = value.trim().toLowerCase()
+	return selected.some((entry) => entry.trim().toLowerCase() === key)
+}
+
+function toggleValue(selected: string[], value: string): string[] {
+	return isSelected(selected, value)
+		? selected.filter(
+				(entry) => entry.trim().toLowerCase() !== value.trim().toLowerCase()
+			)
+		: [...selected, value]
+}
+
+function ChipGroup({
+	label,
+	hint,
+	options,
+	selected,
+	onChange,
+}: {
+	label: string
+	hint?: string
+	options: string[]
+	selected: string[]
+	onChange: (next: string[]) => void
+}): React.ReactNode {
+	return (
+		<div className="mr-chipgroup">
+			<div className="mr-chipgroup-label">
+				<span>{label}</span>
+				{hint && <span className="mr-chipgroup-hint">{hint}</span>}
+			</div>
+			{options.length === 0 ? (
+				<div className="mr-chipgroup-empty">No values in the database</div>
+			) : (
+				<div className="mr-chips" role="group" aria-label={label}>
+					{options.map((option) => {
+						const active = isSelected(selected, option)
+						return (
+							<button
+								key={option}
+								type="button"
+								className={`mr-chip${active ? " is-on" : ""}`}
+								aria-pressed={active}
+								onClick={() => onChange(toggleValue(selected, option))}
+							>
+								{option}
+							</button>
+						)
+					})}
+				</div>
+			)}
+		</div>
 	)
 }
 
 function SettingsPanel({
 	settings,
 	onPatch,
+	options,
 }: {
 	settings: BlockSettings
 	onPatch: (partial: Partial<BlockSettings>) => void
+	options: FilterOptions
 }): React.ReactNode {
 	return (
 		<div className="mr-settings" role="dialog" aria-label="Block settings">
-			<div className="mr-settings-title">Filters (case-insensitive)</div>
-			<label>
-				<span>Mandate tag</span>
-				<input
-					type="text"
-					value={settings.tagTerm}
-					onChange={(event) => onPatch({ tagTerm: event.target.value })}
-				/>
-			</label>
-			<label>
-				<span>Product</span>
-				<input
-					type="text"
-					value={settings.productTerm}
-					onChange={(event) => onPatch({ productTerm: event.target.value })}
-				/>
-			</label>
-			<label>
-				<span>“Available” status</span>
-				<input
-					type="text"
-					value={settings.availableTerm}
-					onChange={(event) => onPatch({ availableTerm: event.target.value })}
-				/>
-			</label>
-			<label>
-				<span>“Roadmap” status</span>
-				<input
-					type="text"
-					value={settings.roadmapTerm}
-					onChange={(event) => onPatch({ roadmapTerm: event.target.value })}
-				/>
-			</label>
-			<div className="mr-settings-title">Export</div>
-			<label className="mr-settings-check">
-				<input
-					type="checkbox"
-					checked={settings.exportSlide}
-					onChange={(event) => onPatch({ exportSlide: event.target.checked })}
-				/>
-				<span>Fit 16:9 slide canvas</span>
-			</label>
+			<div className="mr-settings-title">
+				Filters — both views, case-insensitive
+			</div>
+			<ChipGroup
+				label="Tags"
+				hint="none = off"
+				options={options.tags}
+				selected={settings.tagTerms}
+				onChange={(tagTerms) => onPatch({ tagTerms })}
+			/>
+			<ChipGroup
+				label="Product"
+				hint="none = off"
+				options={options.products}
+				selected={settings.productTerms}
+				onChange={(productTerms) => onPatch({ productTerms })}
+			/>
+			<ChipGroup
+				label="Scopes"
+				hint="none = off"
+				options={options.scopes}
+				selected={settings.scopeTerms}
+				onChange={(scopeTerms) => onPatch({ scopeTerms })}
+			/>
+			<ChipGroup
+				label="“Available” statuses"
+				options={options.statuses}
+				selected={settings.availableTerms}
+				onChange={(availableTerms) => onPatch({ availableTerms })}
+			/>
+			<ChipGroup
+				label="“Roadmap” statuses"
+				options={options.statuses}
+				selected={settings.roadmapTerms}
+				onChange={(roadmapTerms) => onPatch({ roadmapTerms })}
+			/>
+			<div className="mr-settings-title">Export format</div>
+			<select
+				className="mr-settings-select"
+				aria-label="Export format"
+				value={settings.exportSlide ? "slide" : "natural"}
+				onChange={(event) =>
+					onPatch({ exportSlide: event.target.value === "slide" })
+				}
+			>
+				<option value="slide">16:9 slide canvas</option>
+				<option value="natural">Natural size (fit to width)</option>
+			</select>
 		</div>
 	)
 }

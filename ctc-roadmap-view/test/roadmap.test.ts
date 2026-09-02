@@ -14,6 +14,7 @@ import {
 	availableYears,
 	defaultYear,
 	featuresForQuarter,
+	filterOptions,
 	fitTo169,
 	isQuarterComplete,
 	joinedText,
@@ -106,18 +107,33 @@ test("board filter resolves relation products through the title map", () => {
 	assert.equal(matchesBoardFilter(row({ tags: [{ name: "invoicing" }] }), CTX), false)
 })
 
-test("filter terms are configurable from settings", () => {
+test("filter terms are configurable multi-selects", () => {
 	const custom = makeContext({
 		productTitleById: PRODUCTS,
-		tagTerm: "Regulatory",
-		productTerm: "tax reporting",
+		tagTerms: ["Regulatory", "mandate"],
+		productTerms: ["tax reporting", "Compliance transaction"],
 	})
 	const taxRow = row({
 		tags: ["regulatory"],
 		product: [{ id: "prod-tax", table: "block" }],
 	})
 	assert.equal(matchesBoardFilter(taxRow, custom), true)
-	assert.equal(matchesBoardFilter(row({}), custom), false)
+	assert.equal(matchesBoardFilter(row({}), custom), true)
+	// Empty selections switch the filter off entirely
+	const off = makeContext({
+		productTitleById: PRODUCTS,
+		tagTerms: [],
+		productTerms: [],
+	})
+	assert.equal(matchesBoardFilter(row({ tags: ["anything"] }), off), true)
+})
+
+test("scope filter applies when scopes are selected", () => {
+	const b2c = makeContext({ productTitleById: PRODUCTS, scopeTerms: ["b2c"] })
+	assert.equal(matchesBoardFilter(row({ scopes: ["B2B", "B2C"] }), b2c), true)
+	assert.equal(matchesBoardFilter(row({ scopes: ["B2B"] }), b2c), false)
+	// Empty selection = scope filter off
+	assert.equal(matchesBoardFilter(row({ scopes: ["B2B"] }), CTX), true)
 })
 
 test("unbound filter slots are skipped instead of dropping everything", () => {
@@ -145,17 +161,18 @@ test("unreadable product relations are counted, not silently dropped", () => {
 	assert.equal(result.unreadableProduct, 2)
 })
 
-test("coverage lanes: sales status any case, distinct countries, no tag filter", () => {
+test("coverage lanes: shared filters, sales status any case, distinct countries", () => {
 	const coverage = rowsToCoverage(
 		[
-			// available, no mandate tag — coverage must not care about tags
-			row({ id: "a1", tags: ["coverage"], country: "DE", salesStatus: "AVAILABLE" }),
+			row({ id: "a1", country: "DE", salesStatus: "AVAILABLE" }),
 			// same country twice, different spellings → one entry
-			row({ id: "a2", tags: [], country: "germany", salesStatus: "Available" }),
+			row({ id: "a2", country: "germany", salesStatus: "Available" }),
 			row({ id: "a3", country: "FR", salesStatus: { name: "available" } }),
 			// roadmap lane
 			row({ id: "r1", country: "KR", salesStatus: "Roadmap" }),
 			row({ id: "r2", country: "South Korea", salesStatus: "roadmap" }),
+			// the shared tag filter applies to coverage too
+			row({ id: "x0", tags: ["other"], country: "AT", salesStatus: "Available" }),
 			// wrong product → dropped
 			row({
 				id: "x1",
@@ -176,12 +193,44 @@ test("coverage lanes: sales status any case, distinct countries, no tag filter",
 		coverage.roadmap.map((f) => f.countryName),
 		["South Korea"]
 	)
+	// Scope selection narrows coverage as well
+	const b2g = rowsToCoverage(
+		[
+			row({ id: "s1", country: "DE", salesStatus: "Available", scopes: ["B2G"] }),
+			row({ id: "s2", country: "FR", salesStatus: "Available", scopes: ["B2B"] }),
+		],
+		makeContext({ productTitleById: PRODUCTS, scopeTerms: ["b2g"] })
+	)
+	assert.deepEqual(
+		b2g.available.map((f) => f.countryName),
+		["Germany"]
+	)
+})
+
+test("filterOptions renders distinct values from the database", () => {
+	const options = filterOptions(
+		[
+			row({ id: "a", tags: ["Mandate", "compliance"], scopes: ["B2B", "B2G"] }),
+			row({
+				id: "b",
+				tags: ["MANDATE"],
+				scopes: ["b2b"],
+				salesStatus: "Available",
+				product: "Custom product",
+			}),
+		],
+		PRODUCTS
+	)
+	assert.deepEqual(options.tags, ["compliance", "Mandate"])
+	assert.deepEqual(options.products, ["Compliance Transaction", "Custom product"])
+	assert.deepEqual(options.scopes, ["B2B", "B2G"])
+	assert.deepEqual(options.statuses, ["Available", "Roadmap"])
 })
 
 test("coverage respects custom status terms and unbound status slot", () => {
 	const custom = makeContext({
 		productTitleById: PRODUCTS,
-		availableTerm: "Live",
+		availableTerms: ["Live"],
 	})
 	const live = rowsToCoverage(
 		[row({ id: "a", country: "AT", salesStatus: "live" })],

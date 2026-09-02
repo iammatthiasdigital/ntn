@@ -126,10 +126,10 @@ function normalizeEnum(value: string): string {
 	return value.trim().toLowerCase().replace(/\s+/g, " ")
 }
 
-/** Case-insensitive equality against a configurable term. */
-export function matchesTerm(values: string[], term: string): boolean {
-	const wanted = normalizeEnum(term)
-	return values.some((value) => normalizeEnum(value) === wanted)
+/** Case-insensitive equality against any of the selected terms. */
+export function matchesTerm(values: string[], terms: string[]): boolean {
+	const wanted = new Set(terms.map(normalizeEnum))
+	return values.some((value) => wanted.has(normalizeEnum(value)))
 }
 
 /** Product names match their term singular or plural, any case. */
@@ -143,18 +143,21 @@ export function matchesProductName(name: string, term = PRODUCT_NAME): boolean {
 /**
  * How the board reads each row's filter properties. `*Bound` flags are
  * false when the manifest slot has no mapped property — an unbound filter
- * is skipped instead of dropping every row. `productTitleById` carries
- * resolved titles for relation-shaped product values (null = the related
- * page could not be read). The term strings come from the block settings.
+ * is skipped instead of dropping every row, and so is one whose selected
+ * term list is empty. `productTitleById` carries resolved titles for
+ * relation-shaped product values (null = the related page could not be
+ * read). The selected terms come from the block settings.
  */
 export type RowFilterContext = {
 	tagsBound: boolean
 	productBound: boolean
+	scopesBound: boolean
 	statusBound: boolean
-	tagTerm: string
-	productTerm: string
-	availableTerm: string
-	roadmapTerm: string
+	tagTerms: string[]
+	productTerms: string[]
+	scopeTerms: string[]
+	availableTerms: string[]
+	roadmapTerms: string[]
 	productTitleById: ReadonlyMap<string, string | null>
 }
 
@@ -164,32 +167,38 @@ export function makeContext(
 	return {
 		tagsBound: true,
 		productBound: true,
+		scopesBound: true,
 		statusBound: true,
-		tagTerm: MANDATE_TAG,
-		productTerm: PRODUCT_NAME,
-		availableTerm: "available",
-		roadmapTerm: "roadmap",
+		tagTerms: [MANDATE_TAG],
+		productTerms: [PRODUCT_NAME],
+		scopeTerms: [],
+		availableTerms: ["available"],
+		roadmapTerms: ["roadmap"],
 		productTitleById: new Map(),
 		...overrides,
 	}
 }
 
+function matchesAnyProduct(name: string, terms: string[]): boolean {
+	return terms.some((term) => matchesProductName(name, term))
+}
+
 type ProductVerdict = "match" | "no-match" | "unreadable" | "skipped"
 
 function productVerdict(row: RawRow, context: RowFilterContext): ProductVerdict {
-	if (!context.productBound) return "skipped"
+	if (!context.productBound || context.productTerms.length === 0) return "skipped"
 	const pointerIds = relationIds(row.product)
 	if (pointerIds.length > 0) {
 		const titles = pointerIds
 			.map((id) => context.productTitleById.get(id))
 			.filter((title): title is string => typeof title === "string")
 		if (titles.length === 0) return "unreadable"
-		return titles.some((title) => matchesProductName(title, context.productTerm))
+		return titles.some((title) => matchesAnyProduct(title, context.productTerms))
 			? "match"
 			: "no-match"
 	}
 	return toStringList(row.product).some((value) =>
-		matchesProductName(value, context.productTerm)
+		matchesAnyProduct(value, context.productTerms)
 	)
 		? "match"
 		: "no-match"
@@ -198,7 +207,18 @@ function productVerdict(row: RawRow, context: RowFilterContext): ProductVerdict 
 type RowVerdict = "match" | "no-match" | "unreadable-product"
 
 function judgeRow(row: RawRow, context: RowFilterContext): RowVerdict {
-	if (context.tagsBound && !matchesTerm(toStringList(row.tags), context.tagTerm)) {
+	if (
+		context.tagsBound &&
+		context.tagTerms.length > 0 &&
+		!matchesTerm(toStringList(row.tags), context.tagTerms)
+	) {
+		return "no-match"
+	}
+	if (
+		context.scopesBound &&
+		context.scopeTerms.length > 0 &&
+		!matchesTerm(toStringList(row.scopes), context.scopeTerms)
+	) {
 		return "no-match"
 	}
 	const product = productVerdict(row, context)
@@ -259,9 +279,10 @@ export type CoverageRows = Coverage & {
 }
 
 /**
- * Coverage lanes: every row whose product matches and whose sales status
- * matches the available/roadmap term (case-insensitive; the tag filter
- * does not apply). Countries are distinct per lane and sorted by name.
+ * Coverage lanes: every row that passes the shared filters (tags, scopes,
+ * product — the same ones the kanban uses) and whose sales status matches
+ * the available/roadmap terms (case-insensitive). Countries are distinct
+ * per lane and sorted by name.
  */
 export function rowsToCoverage(
 	rows: RawRow[],
@@ -274,18 +295,18 @@ export function rowsToCoverage(
 	}
 	for (const row of rows) {
 		const status = toStringList(row.salesStatus)
-		const lane = matchesTerm(status, context.availableTerm)
+		const lane = matchesTerm(status, context.availableTerms)
 			? lanes.available
-			: matchesTerm(status, context.roadmapTerm)
+			: matchesTerm(status, context.roadmapTerms)
 				? lanes.roadmap
 				: null
 		if (lane === null) continue
-		const product = productVerdict(row, context)
-		if (product === "unreadable") {
+		const verdict = judgeRow(row, context)
+		if (verdict === "unreadable-product") {
 			unreadableProduct += 1
 			continue
 		}
-		if (product === "no-match") continue
+		if (verdict === "no-match") continue
 		const feature = toFeature(row)
 		const key = feature.iso2 ?? normalizeEnum(feature.countryName)
 		if (!lane.has(key)) lane.set(key, feature)
@@ -296,6 +317,57 @@ export function rowsToCoverage(
 		available: [...lanes.available.values()].sort(byName),
 		roadmap: [...lanes.roadmap.values()].sort(byName),
 		unreadableProduct,
+	}
+}
+
+export type FilterOptions = {
+	tags: string[]
+	products: string[]
+	scopes: string[]
+	statuses: string[]
+}
+
+function distinctSorted(values: Iterable<string>): string[] {
+	const seen = new Map<string, string>()
+	for (const value of values) {
+		const key = value.trim().toLowerCase().replace(/\s+/g, " ")
+		if (key !== "" && !seen.has(key)) seen.set(key, value.trim())
+	}
+	return [...seen.values()].sort((a, b) => a.localeCompare(b))
+}
+
+/**
+ * The selectable filter values, rendered from what the database actually
+ * holds: distinct tags, product names (relation titles or literal values),
+ * and sales statuses — case-insensitively deduped, first spelling wins.
+ */
+export function filterOptions(
+	rows: RawRow[],
+	productTitleById: ReadonlyMap<string, string | null>
+): FilterOptions {
+	const tags: string[] = []
+	const products: string[] = []
+	const scopes: string[] = []
+	const statuses: string[] = []
+	for (const row of rows) {
+		tags.push(...toStringList(row.tags))
+		scopes.push(...toStringList(row.scopes))
+		statuses.push(...toStringList(row.salesStatus))
+		const pointerIds = relationIds(row.product)
+		if (pointerIds.length > 0) {
+			for (const id of pointerIds) {
+				const title = productTitleById.get(id)
+				if (typeof title === "string") products.push(title)
+			}
+		} else {
+			products.push(...toStringList(row.product))
+		}
+	}
+	return {
+		tags: distinctSorted(tags),
+		products: distinctSorted(products),
+		scopes: distinctSorted(scopes),
+		statuses: distinctSorted(statuses),
 	}
 }
 

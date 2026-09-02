@@ -705,6 +705,7 @@
 			"id": "avail-0",
 			"name": "Andorra coverage",
 			"tags": [
+				"Mandate",
 				"coverage"
 			],
 			"product": [
@@ -721,6 +722,7 @@
 			"id": "avail-1",
 			"name": "Argentina coverage",
 			"tags": [
+				"Mandate",
 				"coverage"
 			],
 			"product": [
@@ -737,6 +739,7 @@
 			"id": "avail-2",
 			"name": "Austria coverage",
 			"tags": [
+				"Mandate",
 				"coverage"
 			],
 			"product": [
@@ -753,6 +756,7 @@
 			"id": "avail-3",
 			"name": "Belgium coverage",
 			"tags": [
+				"Mandate",
 				"coverage"
 			],
 			"product": [
@@ -769,6 +773,7 @@
 			"id": "avail-4",
 			"name": "Chile coverage",
 			"tags": [
+				"Mandate",
 				"coverage"
 			],
 			"product": [
@@ -785,6 +790,7 @@
 			"id": "avail-5",
 			"name": "Colombia coverage",
 			"tags": [
+				"Mandate",
 				"coverage"
 			],
 			"product": [
@@ -801,6 +807,7 @@
 			"id": "avail-6",
 			"name": "Croatia coverage",
 			"tags": [
+				"Mandate",
 				"coverage"
 			],
 			"product": [
@@ -817,6 +824,7 @@
 			"id": "avail-7",
 			"name": "Cyprus coverage",
 			"tags": [
+				"Mandate",
 				"coverage"
 			],
 			"product": [
@@ -833,6 +841,7 @@
 			"id": "avail-8",
 			"name": "Denmark coverage",
 			"tags": [
+				"Mandate",
 				"coverage"
 			],
 			"product": [
@@ -849,6 +858,7 @@
 			"id": "avail-9",
 			"name": "Estonia coverage",
 			"tags": [
+				"Mandate",
 				"coverage"
 			],
 			"product": [
@@ -865,6 +875,7 @@
 			"id": "avail-10",
 			"name": "Finland coverage",
 			"tags": [
+				"Mandate",
 				"coverage"
 			],
 			"product": [
@@ -881,6 +892,7 @@
 			"id": "avail-11",
 			"name": "France coverage",
 			"tags": [
+				"Mandate",
 				"coverage"
 			],
 			"product": [
@@ -897,6 +909,7 @@
 			"id": "avail-12",
 			"name": "Germany coverage",
 			"tags": [
+				"Mandate",
 				"coverage"
 			],
 			"product": [
@@ -913,6 +926,7 @@
 			"id": "avail-13",
 			"name": "Hungary coverage",
 			"tags": [
+				"Mandate",
 				"coverage"
 			],
 			"product": [
@@ -929,6 +943,7 @@
 			"id": "avail-14",
 			"name": "Iceland coverage",
 			"tags": [
+				"Mandate",
 				"coverage"
 			],
 			"product": [
@@ -945,6 +960,7 @@
 			"id": "avail-15",
 			"name": "Ireland coverage",
 			"tags": [
+				"Mandate",
 				"coverage"
 			],
 			"product": [
@@ -961,6 +977,7 @@
 			"id": "avail-16",
 			"name": "Italy coverage",
 			"tags": [
+				"Mandate",
 				"coverage"
 			],
 			"product": [
@@ -977,6 +994,7 @@
 			"id": "avail-17",
 			"name": "Lithuania coverage",
 			"tags": [
+				"Mandate",
 				"coverage"
 			],
 			"product": [
@@ -993,6 +1011,7 @@
 			"id": "avail-18",
 			"name": "Luxembourg coverage",
 			"tags": [
+				"Mandate",
 				"coverage"
 			],
 			"product": [
@@ -1009,6 +1028,7 @@
 			"id": "avail-19",
 			"name": "Malaysia coverage",
 			"tags": [
+				"Mandate",
 				"coverage"
 			],
 			"product": [
@@ -1025,6 +1045,7 @@
 			"id": "avail-20",
 			"name": "Malta coverage",
 			"tags": [
+				"Mandate",
 				"coverage"
 			],
 			"product": [
@@ -1041,6 +1062,7 @@
 			"id": "avail-21",
 			"name": "Mexico coverage",
 			"tags": [
+				"Mandate",
 				"coverage"
 			],
 			"product": [
@@ -1057,6 +1079,7 @@
 			"id": "avail-22",
 			"name": "Netherlands coverage",
 			"tags": [
+				"Mandate",
 				"coverage"
 			],
 			"product": [
@@ -1073,6 +1096,7 @@
 			"id": "avail-23",
 			"name": "New Zealand coverage",
 			"tags": [
+				"Mandate",
 				"coverage"
 			],
 			"product": [
@@ -1089,6 +1113,7 @@
 			"id": "avail-24",
 			"name": "Norway coverage",
 			"tags": [
+				"Mandate",
 				"coverage"
 			],
 			"product": [
@@ -1105,6 +1130,7 @@
 			"id": "avail-25",
 			"name": "Panama coverage",
 			"tags": [
+				"Mandate",
 				"coverage"
 			],
 			"product": [
@@ -1121,6 +1147,7 @@
 			"id": "avail-26",
 			"name": "Peru coverage",
 			"tags": [
+				"Mandate",
 				"coverage"
 			],
 			"product": [
@@ -1137,6 +1164,7 @@
 			"id": "avail-27",
 			"name": "Poland coverage",
 			"tags": [
+				"Mandate",
 				"coverage"
 			],
 			"product": [
@@ -1153,6 +1181,7 @@
 			"id": "avail-28",
 			"name": "Romania coverage",
 			"tags": [
+				"Mandate",
 				"coverage"
 			],
 			"product": [
@@ -1169,6 +1198,7 @@
 			"id": "avail-29",
 			"name": "Serbia coverage",
 			"tags": [
+				"Mandate",
 				"coverage"
 			],
 			"product": [
@@ -1185,6 +1215,7 @@
 			"id": "avail-30",
 			"name": "Singapore coverage",
 			"tags": [
+				"Mandate",
 				"coverage"
 			],
 			"product": [
@@ -1201,6 +1232,7 @@
 			"id": "avail-31",
 			"name": "Slovakia coverage",
 			"tags": [
+				"Mandate",
 				"coverage"
 			],
 			"product": [
@@ -1217,6 +1249,7 @@
 			"id": "avail-32",
 			"name": "Slovenia coverage",
 			"tags": [
+				"Mandate",
 				"coverage"
 			],
 			"product": [
@@ -1233,6 +1266,7 @@
 			"id": "avail-33",
 			"name": "Spain coverage",
 			"tags": [
+				"Mandate",
 				"coverage"
 			],
 			"product": [
@@ -1249,6 +1283,7 @@
 			"id": "avail-34",
 			"name": "Sweden coverage",
 			"tags": [
+				"Mandate",
 				"coverage"
 			],
 			"product": [
@@ -1265,6 +1300,7 @@
 			"id": "avail-35",
 			"name": "Switzerland coverage",
 			"tags": [
+				"Mandate",
 				"coverage"
 			],
 			"product": [
@@ -1281,6 +1317,7 @@
 			"id": "avail-36",
 			"name": "Taiwan coverage",
 			"tags": [
+				"Mandate",
 				"coverage"
 			],
 			"product": [
@@ -1297,6 +1334,7 @@
 			"id": "avail-37",
 			"name": "United Kingdom coverage",
 			"tags": [
+				"Mandate",
 				"coverage"
 			],
 			"product": [
@@ -1313,6 +1351,7 @@
 			"id": "avail-38",
 			"name": "Uruguay coverage",
 			"tags": [
+				"Mandate",
 				"coverage"
 			],
 			"product": [

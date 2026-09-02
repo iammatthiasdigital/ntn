@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client"
 import { NotionCustomBlock, useTheme } from "@notionhq/custom-blocks/react"
 import { RoadmapBoard } from "./RoadmapBoard"
 import { MOCK_PRODUCT_TITLES, MOCK_ROWS } from "./mockData"
-import { makeContext, rowsToCoverage, rowsToFeatures } from "./roadmap"
+import { filterOptions, makeContext, rowsToCoverage, rowsToFeatures } from "./roadmap"
 import { loadSettings, storeSettings, type BlockSettings } from "./settings"
 import { useNotionFeatures } from "./useNotionFeatures"
 import type { RoadmapDataState } from "./types"
@@ -33,10 +33,11 @@ function MockRoot(): React.ReactNode {
 	const [settings, updateSettings] = useSettingsState()
 	const mockData = useMemo<RoadmapDataState>(() => {
 		const context = makeContext({
-			tagTerm: settings.tagTerm,
-			productTerm: settings.productTerm,
-			availableTerm: settings.availableTerm,
-			roadmapTerm: settings.roadmapTerm,
+			tagTerms: settings.tagTerms,
+			productTerms: settings.productTerms,
+			scopeTerms: settings.scopeTerms,
+			availableTerms: settings.availableTerms,
+			roadmapTerms: settings.roadmapTerms,
 			productTitleById: MOCK_PRODUCT_TITLES,
 		})
 		const board = rowsToFeatures(MOCK_ROWS, context)
@@ -44,6 +45,7 @@ function MockRoot(): React.ReactNode {
 		return {
 			status: "ready",
 			features: board.features,
+			filterOptions: filterOptions(MOCK_ROWS, MOCK_PRODUCT_TITLES),
 			coverage: { available: coverage.available, roadmap: coverage.roadmap },
 			statusBound: true,
 			unreadableProduct: Math.max(

@@ -48,6 +48,13 @@ export type RoadmapDataState =
 			status: "ready"
 			/** Kanban rows: tag + product filter, bucketed by ETA. */
 			features: Feature[]
+			/** Selectable filter values rendered from the database. */
+			filterOptions: {
+				tags: string[]
+				products: string[]
+				scopes: string[]
+				statuses: string[]
+			}
 			/** Coverage lanes: product + sales-status filter, distinct countries. */
 			coverage: Coverage
 			/** False when the salesStatus slot has no mapped property. */

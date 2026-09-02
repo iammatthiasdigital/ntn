@@ -56,11 +56,14 @@ Two data sources. `features` ("Features") is the board's rows:
 | `scopes`      | multi_select | Mandate scopes, e.g. `B2B`, `B2G`, `B2C`             |
 | `salesStatus` | status       | Coverage lane: `Available` or `Roadmap` (any case)   |
 
-The coverage view ignores the tag filter: it takes every row whose product
-matches and whose sales status matches the Available/Roadmap term, dedupes
-countries per lane (case-insensitive), and sorts them alphabetically. All
-four terms — tag, product, and both statuses — are editable in the ⚙
-settings and persist per browser.
+Filtering is configured entirely in the ⚙ settings — nothing is hardcoded.
+Each filter (tags, product, scopes, and the two status lanes) is a
+multi-select over the values actually present in the database, deduped
+case-insensitively; picking none switches that filter off (for the status
+lanes it empties the lane). The shared filters apply to **both** views;
+coverage additionally lanes the surviving rows by sales status, dedupes
+countries per lane, and sorts them alphabetically. Selections persist per
+browser.
 
 `products` ("Products") is the database the Product relation points to,
 with just a title (`name`). The block reads product names from it to apply
@@ -98,11 +101,14 @@ Notes on tolerance:
 - **Export PNG** captures only the active view's board — no header or
   controls — on a transparent background at 2×. The kanban always exports
   as the 4-across year grid with condensed cards, two per quarter column,
-  whatever the responsive on-screen layout shows. By default the canvas is
-  padded to the smallest containing 16:9 so the file drops straight onto a
-  slide (toggle in ⚙ settings). Files: `ctc-roadmap-<year>.png` /
-  `ctc-coverage.png`. Flag images the browser can't fetch cross-origin are
-  left blank rather than failing the export.
+  whatever the responsive on-screen layout shows. The format is a setting
+  (⚙): "16:9 slide canvas" (default; padded to the smallest containing
+  16:9) or "Natural size". The result opens in a preview showing the file
+  name and format — Notion's sandbox blocks direct downloads from blocks,
+  so from there the image can be right-clicked to copy/save, or downloaded
+  via the button where the host allows it. Files: `ctc-roadmap-<year>.png`
+  / `ctc-coverage.png`. Flag images the browser can't fetch cross-origin
+  are left blank rather than failing the export.
 - Matching rows without an ETA, rows past the 999-row read limit, and rows
   with unreadable Product relations are counted in footnotes instead of
   being silently dropped.

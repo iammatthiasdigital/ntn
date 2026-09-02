@@ -1,7 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { pages } from "@notionhq/custom-blocks"
 import { useDataSource } from "@notionhq/custom-blocks/react"
-import { joinedText, makeContext, relationIds, rowsToCoverage, rowsToFeatures } from "./roadmap"
+import {
+	filterOptions,
+	joinedText,
+	makeContext,
+	relationIds,
+	rowsToCoverage,
+	rowsToFeatures,
+} from "./roadmap"
 import type { BlockSettings } from "./settings"
 import type { Feature, FeatureIcon, RawRow, RoadmapDataState } from "./types"
 
@@ -33,6 +40,7 @@ export function useNotionFeatures(settings: BlockSettings): RoadmapDataState {
 
 	const tagsBound = propertyIdsByKey.tags !== undefined
 	const productBound = propertyIdsByKey.product !== undefined
+	const scopesBound = propertyIdsByKey.scopes !== undefined
 	const statusBound = propertyIdsByKey.salesStatus !== undefined
 
 	const rows = useMemo<RawRow[]>(
@@ -123,21 +131,25 @@ export function useNotionFeatures(settings: BlockSettings): RoadmapDataState {
 			makeContext({
 				tagsBound,
 				productBound,
+				scopesBound,
 				statusBound,
-				tagTerm: settings.tagTerm,
-				productTerm: settings.productTerm,
-				availableTerm: settings.availableTerm,
-				roadmapTerm: settings.roadmapTerm,
+				tagTerms: settings.tagTerms,
+				productTerms: settings.productTerms,
+				scopeTerms: settings.scopeTerms,
+				availableTerms: settings.availableTerms,
+				roadmapTerms: settings.roadmapTerms,
 				productTitleById: productTitles,
 			}),
 		[
 			tagsBound,
 			productBound,
+			scopesBound,
 			statusBound,
-			settings.tagTerm,
-			settings.productTerm,
-			settings.availableTerm,
-			settings.roadmapTerm,
+			settings.tagTerms,
+			settings.productTerms,
+			settings.scopeTerms,
+			settings.availableTerms,
+			settings.roadmapTerms,
 			productTitles,
 		]
 	)
@@ -206,6 +218,7 @@ export function useNotionFeatures(settings: BlockSettings): RoadmapDataState {
 		return {
 			status: "ready",
 			features: board.features.map(withIcon),
+			filterOptions: filterOptions(rows, productTitles),
 			coverage: {
 				available: coverage.available.map(withIcon),
 				roadmap: coverage.roadmap.map(withIcon),
@@ -223,6 +236,8 @@ export function useNotionFeatures(settings: BlockSettings): RoadmapDataState {
 		productsPending,
 		board,
 		coverage,
+		rows,
+		productTitles,
 		icons,
 		tagsBound,
 		productBound,

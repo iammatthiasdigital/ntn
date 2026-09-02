@@ -73,7 +73,7 @@ const AVAILABLE: MockSpec[] = [
 	"New Zealand", "Norway", "Panama", "Peru", "Poland", "Romania",
 	"Serbia", "Singapore", "Slovakia", "Slovenia", "Spain", "Sweden",
 	"Switzerland", "Taiwan", "United Kingdom", "Uruguay",
-].map((country) => ({ country, tags: ["coverage"], status: "Available" }))
+].map((country) => ({ country, tags: ["Mandate", "coverage"], status: "Available" }))
 
 const DECOYS: MockSpec[] = [
 	{ country: "DE", scopes: ["B2B"], eta: "2026-05-01", tags: ["invoicing"] },

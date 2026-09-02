@@ -1,53 +1,76 @@
 /**
  * Block settings, editable on the page so wording changes in the database
  * (a renamed tag, product, or sales status) don't require a code change.
- * All matching is case-insensitive. Persisted per browser, best effort.
+ * Filters hold the selected values (multi-select against lists rendered
+ * from the database); matching is case-insensitive. An empty tag/product
+ * selection switches that filter off. Persisted per browser, best effort.
  */
 
 export type BlockView = "kanban" | "coverage"
 
 export type BlockSettings = {
 	view: BlockView
-	/** Tag that marks a mandate row (kanban view). */
-	tagTerm: string
-	/** Product name to keep; singular/plural both match. */
-	productTerm: string
-	/** Sales status that puts a country into the AVAILABLE lane. */
-	availableTerm: string
-	/** Sales status that puts a country into the ROADMAP lane. */
-	roadmapTerm: string
+	/** Tags to keep (both views); empty = filter off. */
+	tagTerms: string[]
+	/** Product names to keep (singular/plural match); empty = filter off. */
+	productTerms: string[]
+	/** Scopes to keep (both views); empty = filter off. */
+	scopeTerms: string[]
+	/** Sales statuses of the AVAILABLE lane; empty = empty lane. */
+	availableTerms: string[]
+	/** Sales statuses of the ROADMAP lane; empty = empty lane. */
+	roadmapTerms: string[]
 	/** Pad the exported PNG to a 16:9 canvas so it drops onto a slide. */
 	exportSlide: boolean
 }
 
 export const DEFAULT_SETTINGS: BlockSettings = {
 	view: "kanban",
-	tagTerm: "mandate",
-	productTerm: "Compliance transaction",
-	availableTerm: "available",
-	roadmapTerm: "roadmap",
+	tagTerms: ["mandate"],
+	productTerms: ["Compliance transaction"],
+	scopeTerms: [],
+	availableTerms: ["available"],
+	roadmapTerms: ["roadmap"],
 	exportSlide: true,
 }
 
 const STORAGE_KEY = "ctc-roadmap-settings"
+
+function textList(value: unknown, legacy: unknown, fallback: string[]): string[] {
+	if (Array.isArray(value)) {
+		return value.filter(
+			(entry): entry is string => typeof entry === "string" && entry.trim() !== ""
+		)
+	}
+	// Migration from the free-text single-term settings.
+	if (typeof legacy === "string" && legacy.trim() !== "") return [legacy]
+	return [...fallback]
+}
 
 function sanitize(value: unknown): BlockSettings {
 	const record =
 		value !== null && typeof value === "object"
 			? (value as Record<string, unknown>)
 			: {}
-	function text(key: keyof BlockSettings): string {
-		const raw = record[key]
-		return typeof raw === "string" && raw.trim() !== ""
-			? raw
-			: (DEFAULT_SETTINGS[key] as string)
-	}
 	return {
 		view: record.view === "coverage" ? "coverage" : "kanban",
-		tagTerm: text("tagTerm"),
-		productTerm: text("productTerm"),
-		availableTerm: text("availableTerm"),
-		roadmapTerm: text("roadmapTerm"),
+		tagTerms: textList(record.tagTerms, record.tagTerm, DEFAULT_SETTINGS.tagTerms),
+		productTerms: textList(
+			record.productTerms,
+			record.productTerm,
+			DEFAULT_SETTINGS.productTerms
+		),
+		scopeTerms: textList(record.scopeTerms, undefined, DEFAULT_SETTINGS.scopeTerms),
+		availableTerms: textList(
+			record.availableTerms,
+			record.availableTerm,
+			DEFAULT_SETTINGS.availableTerms
+		),
+		roadmapTerms: textList(
+			record.roadmapTerms,
+			record.roadmapTerm,
+			DEFAULT_SETTINGS.roadmapTerms
+		),
 		exportSlide:
 			typeof record.exportSlide === "boolean"
 				? record.exportSlide
@@ -62,7 +85,7 @@ export function loadSettings(): BlockSettings {
 	} catch {
 		// Storage unavailable in this sandbox — fall through to defaults.
 	}
-	return { ...DEFAULT_SETTINGS }
+	return sanitize({})
 }
 
 export function storeSettings(settings: BlockSettings): void {
