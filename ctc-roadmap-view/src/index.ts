@@ -28,9 +28,9 @@ worker.customBlock("ctcRoadmap", {
 				product: {
 					name: "Product",
 					description:
-						"Product line the feature belongs to. The board shows " +
-						"'Compliance transactions'.",
-					type: "select",
+						"Relation to the product the feature belongs to. The board " +
+						"shows 'Compliance transaction(s)'.",
+					type: "relation",
 				},
 				eta: {
 					name: "ETA",
@@ -50,6 +50,16 @@ worker.customBlock("ctcRoadmap", {
 					description: "Mandate scopes, e.g. B2B, B2G, B2C, E-transport.",
 					type: "multi_select",
 				},
+			},
+		},
+		products: {
+			name: "Products",
+			description:
+				"The database the Product relation points to. Used to read product " +
+				"names so the board can keep 'Compliance transaction(s)'.",
+			icon: { type: "emoji", emoji: "📦" },
+			properties: {
+				name: { name: "Name", type: "title" },
 			},
 		},
 	},

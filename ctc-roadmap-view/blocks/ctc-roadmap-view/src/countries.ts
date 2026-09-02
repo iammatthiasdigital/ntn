@@ -119,19 +119,37 @@ function nameLookup(): Map<string, string> {
 
 export type ResolvedCountry = { name: string; iso2: string | null }
 
+function fromIso2(code: string): ResolvedCountry {
+	const upper = code.toUpperCase()
+	return { name: countryNameFromIso2(upper) ?? upper, iso2: upper }
+}
+
 /**
- * Resolve free-form country input. Unresolvable input is passed through as
- * the display name so the card still reads sensibly.
+ * Resolve free-form country input. Accepts a bare alpha-2 code ("KR",
+ * "kr "), a full name, an alias, a code with a label ("KR - South Korea"),
+ * or a trailing parenthesized code ("Korea (KR)"). Unresolvable input is
+ * passed through as the display name so the card still reads sensibly.
  */
 export function resolveCountry(input: string): ResolvedCountry | null {
-	const raw = input.trim()
+	// Rich text likes to smuggle in NBSPs and zero-width characters.
+	const raw = input
+		.replace(/[\u00a0\u2007\u202f]/g, " ")
+		.replace(/[\u200b-\u200d\ufeff]/g, "")
+		.trim()
 	if (raw === "") return null
 	if (/^[A-Za-z]{2}$/.test(raw) && ISO2_SET.has(raw.toUpperCase())) {
-		const code = raw.toUpperCase()
-		return { name: countryNameFromIso2(code) ?? code, iso2: code }
+		return fromIso2(raw)
 	}
 	const code = nameLookup().get(normalizeCountryKey(raw))
 	if (code) return { name: countryNameFromIso2(code) ?? raw, iso2: code }
+	const leading = /^([A-Za-z]{2})[\s\-–—:/(,.]/.exec(raw)
+	if (leading && ISO2_SET.has(leading[1].toUpperCase())) {
+		return fromIso2(leading[1])
+	}
+	const trailing = /[([]([A-Za-z]{2})[)\]]\s*$/.exec(raw)
+	if (trailing && ISO2_SET.has(trailing[1].toUpperCase())) {
+		return fromIso2(trailing[1])
+	}
 	return { name: raw, iso2: null }
 }
 

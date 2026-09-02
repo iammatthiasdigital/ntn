@@ -2,7 +2,8 @@ import { resolveCountry } from "./countries"
 import type { Feature, QuarterRef, RawRow } from "./types"
 
 export const MANDATE_TAG = "mandate"
-export const PRODUCT_NAME = "compliance transactions"
+/** Normalized singular form; "Compliance transaction(s)" both match. */
+export const PRODUCT_NAME = "compliance transaction"
 
 /**
  * Flatten a property value of unknown shape (string, {name}, rich text
@@ -24,8 +25,48 @@ export function toStringList(value: unknown): string[] {
 	return []
 }
 
+/**
+ * Join a value's string fragments into one string. Unlike firstString this
+ * survives rich text split into several runs (["K", "R"] → "KR").
+ */
+export function joinedText(value: unknown): string {
+	return collectText(value).trim()
+}
+
+function collectText(value: unknown): string {
+	if (value === null || value === undefined) return ""
+	if (typeof value === "string") return value
+	if (Array.isArray(value)) return value.map(collectText).join("")
+	if (typeof value === "object") {
+		const record = value as Record<string, unknown>
+		for (const key of ["name", "plain_text", "content", "value"]) {
+			if (typeof record[key] === "string") return record[key] as string
+		}
+	}
+	return ""
+}
+
 export function firstString(value: unknown): string | null {
 	return toStringList(value)[0] ?? null
+}
+
+/** Relation pointer ids ({id, table} entries) inside a property value. */
+export function relationIds(value: unknown): string[] {
+	if (!Array.isArray(value)) return []
+	const ids: string[] = []
+	for (const entry of value) {
+		if (
+			entry !== null &&
+			typeof entry === "object" &&
+			"id" in entry &&
+			typeof (entry as { id: unknown }).id === "string" &&
+			!("name" in entry) &&
+			!("plain_text" in entry)
+		) {
+			ids.push((entry as { id: string }).id)
+		}
+	}
+	return ids
 }
 
 function quarterOfMonth(monthIndex: number): number {
@@ -81,33 +122,102 @@ export function parseEta(value: unknown): QuarterRef | null {
 	return null
 }
 
-function containsIgnoreCase(values: string[], wanted: string): boolean {
-	return values.some((value) => value.trim().toLowerCase() === wanted)
+function normalizeEnum(value: string): string {
+	return value.trim().toLowerCase().replace(/\s+/g, " ")
 }
 
-/** Tag includes "mandate" and product is "Compliance transactions" — both case-insensitive. */
-export function matchesBoardFilter(row: RawRow): boolean {
-	return (
-		containsIgnoreCase(toStringList(row.tags), MANDATE_TAG) &&
-		containsIgnoreCase(toStringList(row.product), PRODUCT_NAME)
-	)
+export function matchesTag(values: string[]): boolean {
+	return values.some((value) => normalizeEnum(value) === MANDATE_TAG)
+}
+
+/** "Compliance transaction" / "Compliance Transactions" both match. */
+export function matchesProductName(name: string): boolean {
+	return normalizeEnum(name).replace(/s$/, "") === PRODUCT_NAME
+}
+
+/**
+ * How the board reads each row's filter properties. `tagsBound` /
+ * `productBound` are false when the manifest slot has no mapped property —
+ * an unbound filter is skipped instead of dropping every row.
+ * `productTitleById` carries resolved titles for relation-shaped product
+ * values (null = the related page could not be read).
+ */
+export type RowFilterContext = {
+	tagsBound: boolean
+	productBound: boolean
+	productTitleById: ReadonlyMap<string, string | null>
+}
+
+export const MATCH_ALL_CONTEXT: RowFilterContext = {
+	tagsBound: true,
+	productBound: true,
+	productTitleById: new Map(),
+}
+
+type RowVerdict = "match" | "no-match" | "unreadable-product"
+
+function judgeRow(row: RawRow, context: RowFilterContext): RowVerdict {
+	if (context.tagsBound && !matchesTag(toStringList(row.tags))) {
+		return "no-match"
+	}
+	if (!context.productBound) return "match"
+	const pointerIds = relationIds(row.product)
+	if (pointerIds.length > 0) {
+		const titles = pointerIds
+			.map((id) => context.productTitleById.get(id))
+			.filter((title): title is string => typeof title === "string")
+		if (titles.length === 0) return "unreadable-product"
+		return titles.some(matchesProductName) ? "match" : "no-match"
+	}
+	return toStringList(row.product).some(matchesProductName)
+		? "match"
+		: "no-match"
+}
+
+/** Tag includes "mandate" and product is "Compliance transaction(s)". */
+export function matchesBoardFilter(
+	row: RawRow,
+	context: RowFilterContext = MATCH_ALL_CONTEXT
+): boolean {
+	return judgeRow(row, context) === "match"
 }
 
 export function toFeature(row: RawRow): Feature {
-	const countryInput = firstString(row.country) ?? firstString(row.title) ?? ""
+	const countryInput = joinedText(row.country)
 	const resolved = resolveCountry(countryInput)
+	const title = joinedText(row.title)
+	// A country that resolves to a real region wins; otherwise give the
+	// title a chance (covers rows where the country cell holds free text).
+	const fromTitle = resolved?.iso2 ? null : resolveCountry(title)
+	const best = resolved?.iso2 ? resolved : (fromTitle?.iso2 ? fromTitle : resolved ?? fromTitle)
 	return {
 		id: row.id,
-		countryName: resolved?.name ?? firstString(row.title) ?? "Unknown",
-		iso2: resolved?.iso2 ?? null,
+		countryName: best?.name ?? (title || "Unknown"),
+		iso2: best?.iso2 ?? null,
 		scopes: toStringList(row.scopes),
 		eta: parseEta(row.eta),
 	}
 }
 
+export type BoardRows = {
+	features: Feature[]
+	/** Rows dropped because their product relation could not be read. */
+	unreadableProduct: number
+}
+
 /** Filter raw rows down to the board's features. */
-export function rowsToFeatures(rows: RawRow[]): Feature[] {
-	return rows.filter(matchesBoardFilter).map(toFeature)
+export function rowsToFeatures(
+	rows: RawRow[],
+	context: RowFilterContext = MATCH_ALL_CONTEXT
+): BoardRows {
+	const features: Feature[] = []
+	let unreadableProduct = 0
+	for (const row of rows) {
+		const verdict = judgeRow(row, context)
+		if (verdict === "match") features.push(toFeature(row))
+		else if (verdict === "unreadable-product") unreadableProduct += 1
+	}
+	return { features, unreadableProduct }
 }
 
 /** Years that have at least one scheduled feature, ascending. */

@@ -36,5 +36,14 @@ export type RawRow = {
 export type RoadmapDataState =
 	| { status: "loading" }
 	| { status: "unbound" }
-	| { status: "empty" }
-	| { status: "ready"; features: Feature[] }
+	| { status: "empty"; unreadableProduct?: number }
+	| {
+			status: "ready"
+			features: Feature[]
+			/** True when the 999-row read limit cut the data off. */
+			truncated?: boolean
+			/** Rows dropped because their product relation could not be read. */
+			unreadableProduct?: number
+			/** Manifest filter slots with no mapped property (filter skipped). */
+			unboundFilters?: string[]
+	  }

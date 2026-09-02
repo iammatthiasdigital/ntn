@@ -13,7 +13,7 @@
 		},
 		"product": {
 			"name": "Product",
-			"type": "select"
+			"type": "relation"
 		},
 		"eta": {
 			"name": "ETA",
@@ -36,7 +36,12 @@
 				"Mandate",
 				"compliance"
 			],
-			"product": "Compliance Transactions",
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
 			"eta": {
 				"type": "date",
 				"start_date": "2026-01-15"
@@ -53,7 +58,12 @@
 				"Mandate",
 				"compliance"
 			],
-			"product": "Compliance Transactions",
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
 			"eta": {
 				"type": "date",
 				"start_date": "2026-02-01"
@@ -70,7 +80,12 @@
 				"Mandate",
 				"compliance"
 			],
-			"product": "Compliance Transactions",
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
 			"eta": {
 				"type": "date",
 				"start_date": "2026-03-01"
@@ -89,7 +104,12 @@
 				"Mandate",
 				"compliance"
 			],
-			"product": "Compliance Transactions",
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
 			"eta": {
 				"type": "date",
 				"start_date": "2026-02-20"
@@ -106,7 +126,12 @@
 				"Mandate",
 				"compliance"
 			],
-			"product": "Compliance Transactions",
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
 			"eta": {
 				"type": "date",
 				"start_date": "2026-04-10"
@@ -124,7 +149,12 @@
 				"Mandate",
 				"compliance"
 			],
-			"product": "Compliance Transactions",
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
 			"eta": {
 				"type": "date",
 				"start_date": "2026-05-01"
@@ -143,7 +173,12 @@
 				"Mandate",
 				"compliance"
 			],
-			"product": "Compliance Transactions",
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
 			"eta": {
 				"type": "date",
 				"start_date": "2026-06-01"
@@ -161,7 +196,12 @@
 				"Mandate",
 				"compliance"
 			],
-			"product": "Compliance Transactions",
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
 			"eta": {
 				"type": "date",
 				"start_date": "2026-07-01"
@@ -179,7 +219,12 @@
 				"Mandate",
 				"compliance"
 			],
-			"product": "Compliance Transactions",
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
 			"eta": {
 				"type": "date",
 				"start_date": "2026-07-15"
@@ -197,7 +242,12 @@
 				"Mandate",
 				"compliance"
 			],
-			"product": "Compliance Transactions",
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
 			"eta": {
 				"type": "date",
 				"start_date": "2026-08-01"
@@ -214,7 +264,12 @@
 				"Mandate",
 				"compliance"
 			],
-			"product": "Compliance Transactions",
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
 			"eta": {
 				"type": "date",
 				"start_date": "2026-08-15"
@@ -232,7 +287,12 @@
 				"Mandate",
 				"compliance"
 			],
-			"product": "Compliance Transactions",
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
 			"eta": {
 				"type": "date",
 				"start_date": "2026-09-01"
@@ -250,7 +310,12 @@
 				"Mandate",
 				"compliance"
 			],
-			"product": "Compliance Transactions",
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
 			"eta": {
 				"type": "date",
 				"start_date": "2026-09-10"
@@ -269,7 +334,12 @@
 				"Mandate",
 				"compliance"
 			],
-			"product": "Compliance Transactions",
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
 			"eta": {
 				"type": "date",
 				"start_date": "2026-09-15"
@@ -287,7 +357,12 @@
 				"Mandate",
 				"compliance"
 			],
-			"product": "Compliance Transactions",
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
 			"eta": {
 				"type": "date",
 				"start_date": "2026-09-20"
@@ -304,7 +379,12 @@
 				"Mandate",
 				"compliance"
 			],
-			"product": "Compliance Transactions",
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
 			"eta": {
 				"type": "date",
 				"start_date": "2026-09-25"
@@ -323,7 +403,12 @@
 				"Mandate",
 				"compliance"
 			],
-			"product": "Compliance Transactions",
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
 			"eta": {
 				"type": "date",
 				"start_date": "2026-10-01"
@@ -342,7 +427,12 @@
 				"Mandate",
 				"compliance"
 			],
-			"product": "Compliance Transactions",
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
 			"eta": {
 				"type": "date",
 				"start_date": "2026-10-15"
@@ -361,7 +451,12 @@
 				"Mandate",
 				"compliance"
 			],
-			"product": "Compliance Transactions",
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
 			"eta": {
 				"type": "date",
 				"start_date": "2026-11-01"
@@ -378,7 +473,12 @@
 				"Mandate",
 				"compliance"
 			],
-			"product": "Compliance Transactions",
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
 			"eta": {
 				"type": "date",
 				"start_date": "2026-11-15"
@@ -397,12 +497,17 @@
 				"Mandate",
 				"compliance"
 			],
-			"product": "Compliance Transactions",
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
 			"eta": {
 				"type": "date",
 				"start_date": "2026-12-01"
 			},
-			"country": "South Korea",
+			"country": "KR",
 			"scopes": [
 				"B2B",
 				"B2G"
@@ -415,7 +520,12 @@
 				"Mandate",
 				"compliance"
 			],
-			"product": "Compliance Transactions",
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
 			"eta": {
 				"type": "date",
 				"start_date": "2026-11-20"
@@ -435,7 +545,12 @@
 				"Mandate",
 				"compliance"
 			],
-			"product": "Compliance Transactions",
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
 			"eta": {
 				"type": "date",
 				"start_date": "2026-12-10"
@@ -452,7 +567,12 @@
 				"Mandate",
 				"compliance"
 			],
-			"product": "Compliance Transactions",
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
 			"eta": {
 				"type": "date",
 				"start_date": "2026-12-15"
@@ -469,7 +589,12 @@
 				"Mandate",
 				"compliance"
 			],
-			"product": "Compliance Transactions",
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
 			"eta": {
 				"type": "date",
 				"start_date": "2025-07-01"
@@ -487,7 +612,12 @@
 				"Mandate",
 				"compliance"
 			],
-			"product": "Compliance Transactions",
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
 			"eta": {
 				"type": "date",
 				"start_date": "2027-01-01"
@@ -503,7 +633,12 @@
 			"tags": [
 				"invoicing"
 			],
-			"product": "Compliance Transactions",
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
 			"eta": {
 				"type": "date",
 				"start_date": "2026-05-01"
@@ -519,7 +654,12 @@
 			"tags": [
 				"Mandate"
 			],
-			"product": "Tax reporting",
+			"product": [
+				{
+					"id": "prod-tax",
+					"table": "block"
+				}
+			],
 			"eta": {
 				"type": "date",
 				"start_date": "2026-05-01"

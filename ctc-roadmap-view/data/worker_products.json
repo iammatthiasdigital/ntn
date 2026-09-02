@@ -1,0 +1,22 @@
+{
+	"type": "worker",
+	"key": "worker_products",
+	"name": "Products",
+	"icon": "📦",
+	"schema": {
+		"name": {
+			"name": "Name",
+			"type": "title"
+		}
+	},
+	"rows": [
+		{
+			"id": "prod-ctc",
+			"name": "Compliance Transaction"
+		},
+		{
+			"id": "prod-tax",
+			"name": "Tax Reporting"
+		}
+	]
+}
