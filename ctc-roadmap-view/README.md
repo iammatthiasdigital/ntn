@@ -58,12 +58,13 @@ Two data sources. `features` ("Features") is the board's rows:
 
 Filtering is configured entirely in the ⚙ settings — nothing is hardcoded.
 Each filter (tags, product, scopes, and the two status lanes) is a
-multi-select over the values actually present in the database, deduped
-case-insensitively; picking none switches that filter off (for the status
-lanes it empties the lane). The shared filters apply to **both** views;
-coverage additionally lanes the surviving rows by sales status, dedupes
-countries per lane, and sorts them alphabetically. Selections persist per
-browser.
+multi-select dropdown over the values actually present in the database,
+deduped case-insensitively, with an **All** option at the top: for the
+shared filters All switches the filter off, and for the status lanes it
+lanes every row that has any status (available wins when both lanes say
+All). The shared filters apply to **both** views; coverage additionally
+lanes the surviving rows by sales status, dedupes countries per lane, and
+sorts them alphabetically. Selections persist per browser.
 
 `products` ("Products") is the database the Product relation points to,
 with just a title (`name`). The block reads product names from it to apply

@@ -11,6 +11,7 @@ import {
 import { flagEmoji } from "./countries"
 import { MOCK_FEATURES, MOCK_PRODUCT_TITLES, MOCK_ROWS } from "./mockData"
 import {
+	ALL_TERM,
 	availableYears,
 	defaultYear,
 	featuresForQuarter,
@@ -491,7 +492,7 @@ function ExportModal({
 	)
 }
 
-/** Case-insensitive membership used by the chip UI. */
+/** Case-insensitive membership used by the dropdown UI. */
 function isSelected(selected: string[], value: string): boolean {
 	const key = value.trim().toLowerCase()
 	return selected.some((entry) => entry.trim().toLowerCase() === key)
@@ -505,44 +506,97 @@ function toggleValue(selected: string[], value: string): string[] {
 		: [...selected, value]
 }
 
-function ChipGroup({
+/**
+ * Multi-select dropdown with an "All" option. `allMode` decides what All
+ * stores: "empty" (no selection = filter off, used by the shared filters)
+ * or "sentinel" (the ALL_TERM wildcard, used by the status lanes where an
+ * empty selection legitimately means an empty lane).
+ */
+function MultiDropdown({
 	label,
-	hint,
 	options,
 	selected,
+	allMode,
 	onChange,
 }: {
 	label: string
-	hint?: string
 	options: string[]
 	selected: string[]
+	allMode: "empty" | "sentinel"
 	onChange: (next: string[]) => void
 }): React.ReactNode {
+	const [open, setOpen] = useState(false)
+	const values = selected.filter((entry) => entry !== ALL_TERM)
+	const allActive =
+		allMode === "empty" ? values.length === 0 : selected.includes(ALL_TERM)
+
+	function summary(): string {
+		if (allActive) return "All"
+		if (values.length === 0) return "None"
+		if (values.length <= 2) return values.join(", ")
+		return `${values.length} selected`
+	}
+
+	function pickAll(): void {
+		onChange(allMode === "empty" ? [] : [ALL_TERM])
+	}
+
+	function pick(option: string): void {
+		// Leaving "All" starts a fresh selection with just the picked value.
+		onChange(allActive ? [option] : toggleValue(values, option))
+	}
+
 	return (
-		<div className="mr-chipgroup">
-			<div className="mr-chipgroup-label">
-				<span>{label}</span>
-				{hint && <span className="mr-chipgroup-hint">{hint}</span>}
-			</div>
-			{options.length === 0 ? (
-				<div className="mr-chipgroup-empty">No values in the database</div>
-			) : (
-				<div className="mr-chips" role="group" aria-label={label}>
-					{options.map((option) => {
-						const active = isSelected(selected, option)
-						return (
-							<button
-								key={option}
-								type="button"
-								className={`mr-chip${active ? " is-on" : ""}`}
-								aria-pressed={active}
-								onClick={() => onChange(toggleValue(selected, option))}
-							>
-								{option}
-							</button>
-						)
-					})}
-				</div>
+		<div className="mr-dd">
+			<div className="mr-dd-label">{label}</div>
+			<button
+				type="button"
+				className="mr-dd-btn"
+				aria-haspopup="listbox"
+				aria-expanded={open}
+				onClick={() => setOpen((value) => !value)}
+			>
+				<span className="mr-dd-summary">{summary()}</span>
+				<span className="mr-dd-caret" aria-hidden="true">
+					▾
+				</span>
+			</button>
+			{open && (
+				<>
+					<div className="mr-dd-backdrop" onClick={() => setOpen(false)} />
+					<div className="mr-dd-menu" role="listbox" aria-label={label}>
+						<button
+							type="button"
+							className="mr-dd-item"
+							role="option"
+							aria-selected={allActive}
+							onClick={pickAll}
+						>
+							<span className={`mr-dd-check${allActive ? " is-on" : ""}`} />
+							<span>All</span>
+						</button>
+						{options.length === 0 ? (
+							<div className="mr-dd-empty">No values in the database</div>
+						) : (
+							options.map((option) => {
+								const active = !allActive && isSelected(values, option)
+								return (
+									<button
+										key={option}
+										type="button"
+										className="mr-dd-item"
+										role="option"
+										aria-selected={active}
+										onClick={() => pick(option)}
+									>
+										<span className={`mr-dd-check${active ? " is-on" : ""}`} />
+										<span>{option}</span>
+									</button>
+								)
+							})
+						)}
+					</div>
+				</>
 			)}
 		</div>
 	)
@@ -562,35 +616,37 @@ function SettingsPanel({
 			<div className="mr-settings-title">
 				Filters — both views, case-insensitive
 			</div>
-			<ChipGroup
+			<MultiDropdown
 				label="Tags"
-				hint="none = off"
+				allMode="empty"
 				options={options.tags}
 				selected={settings.tagTerms}
 				onChange={(tagTerms) => onPatch({ tagTerms })}
 			/>
-			<ChipGroup
+			<MultiDropdown
 				label="Product"
-				hint="none = off"
+				allMode="empty"
 				options={options.products}
 				selected={settings.productTerms}
 				onChange={(productTerms) => onPatch({ productTerms })}
 			/>
-			<ChipGroup
+			<MultiDropdown
 				label="Scopes"
-				hint="none = off"
+				allMode="empty"
 				options={options.scopes}
 				selected={settings.scopeTerms}
 				onChange={(scopeTerms) => onPatch({ scopeTerms })}
 			/>
-			<ChipGroup
+			<MultiDropdown
 				label="“Available” statuses"
+				allMode="sentinel"
 				options={options.statuses}
 				selected={settings.availableTerms}
 				onChange={(availableTerms) => onPatch({ availableTerms })}
 			/>
-			<ChipGroup
+			<MultiDropdown
 				label="“Roadmap” statuses"
+				allMode="sentinel"
 				options={options.statuses}
 				selected={settings.roadmapTerms}
 				onChange={(roadmapTerms) => onPatch({ roadmapTerms })}

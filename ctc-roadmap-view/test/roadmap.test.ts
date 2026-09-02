@@ -227,6 +227,23 @@ test("filterOptions renders distinct values from the database", () => {
 	assert.deepEqual(options.statuses, ["Available", "Roadmap"])
 })
 
+test("the All sentinel lanes every row that has a status", () => {
+	const allAvailable = rowsToCoverage(
+		[
+			row({ id: "a", country: "DE", salesStatus: "Available" }),
+			row({ id: "b", country: "FR", salesStatus: "Lost" }),
+			row({ id: "c", country: "ES", salesStatus: undefined }),
+		],
+		makeContext({ productTitleById: PRODUCTS, availableTerms: ["*"] })
+	)
+	assert.deepEqual(
+		allAvailable.available.map((f) => f.countryName),
+		["France", "Germany"]
+	)
+	// A row with no status at all is never laned
+	assert.equal(allAvailable.roadmap.length, 0)
+})
+
 test("coverage respects custom status terms and unbound status slot", () => {
 	const custom = makeContext({
 		productTitleById: PRODUCTS,

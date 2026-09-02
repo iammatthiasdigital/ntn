@@ -126,8 +126,12 @@ function normalizeEnum(value: string): string {
 	return value.trim().toLowerCase().replace(/\s+/g, " ")
 }
 
+/** Selecting this term matches every non-empty value ("All"). */
+export const ALL_TERM = "*"
+
 /** Case-insensitive equality against any of the selected terms. */
 export function matchesTerm(values: string[], terms: string[]): boolean {
+	if (terms.includes(ALL_TERM)) return values.length > 0
 	const wanted = new Set(terms.map(normalizeEnum))
 	return values.some((value) => wanted.has(normalizeEnum(value)))
 }
