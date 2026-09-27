@@ -1,0 +1,60 @@
+{
+  "hash": "aa9ee061",
+  "configHash": "188cdbf7",
+  "lockfileHash": "ea7527d8",
+  "browserHash": "9b2c0ff3",
+  "optimized": {
+    "@notionhq/custom-blocks": {
+      "src": "../../../../../node_modules/@notionhq/custom-blocks/dist/index.js",
+      "file": "@notionhq_custom-blocks.js",
+      "fileHash": "b56be738",
+      "needsInterop": false
+    },
+    "@notionhq/custom-blocks/react": {
+      "src": "../../../../../node_modules/@notionhq/custom-blocks/dist/react/index.js",
+      "file": "@notionhq_custom-blocks_react.js",
+      "fileHash": "b727890a",
+      "needsInterop": false
+    },
+    "react-dom": {
+      "src": "../../../../../node_modules/react-dom/index.js",
+      "file": "react-dom.js",
+      "fileHash": "e2985a73",
+      "needsInterop": true
+    },
+    "react-dom/client": {
+      "src": "../../../../../node_modules/react-dom/client.js",
+      "file": "react-dom_client.js",
+      "fileHash": "2b3683f8",
+      "needsInterop": true
+    },
+    "react": {
+      "src": "../../../../../node_modules/react/index.js",
+      "file": "react.js",
+      "fileHash": "fb3c5107",
+      "needsInterop": true
+    },
+    "react/jsx-dev-runtime": {
+      "src": "../../../../../node_modules/react/jsx-dev-runtime.js",
+      "file": "react_jsx-dev-runtime.js",
+      "fileHash": "66883eb6",
+      "needsInterop": true
+    },
+    "react/jsx-runtime": {
+      "src": "../../../../../node_modules/react/jsx-runtime.js",
+      "file": "react_jsx-runtime.js",
+      "fileHash": "5529a511",
+      "needsInterop": true
+    }
+  },
+  "chunks": {
+    "init-CgFXAkmx": {
+      "file": "init-CgFXAkmx.js",
+      "isDynamicEntry": false
+    },
+    "rolldown-runtime-BvCyGRYZ": {
+      "file": "rolldown-runtime-BvCyGRYZ.js",
+      "isDynamicEntry": false
+    }
+  }
+}

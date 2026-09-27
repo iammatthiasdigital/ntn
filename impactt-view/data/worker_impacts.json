@@ -1,0 +1,350 @@
+{
+	"type": "worker",
+	"key": "worker_impacts",
+	"name": "Impacts",
+	"icon": "📈",
+	"schema": {
+		"name": {
+			"name": "Name",
+			"type": "title"
+		},
+		"initiative": {
+			"name": "Initiative",
+			"type": "relation"
+		},
+		"kpi": {
+			"name": "KPI",
+			"type": "relation"
+		},
+		"planned": {
+			"name": "Planned",
+			"type": "number"
+		},
+		"achieved": {
+			"name": "Achieved",
+			"type": "number"
+		},
+		"kpiTag": {
+			"name": "KPI tag",
+			"type": "select"
+		}
+	},
+	"rows": [
+		{
+			"id": "imp-beta-wau",
+			"name": "Private beta → Weekly active users",
+			"initiative": [
+				{
+					"id": "init-beta",
+					"table": "block"
+				}
+			],
+			"kpi": [
+				{
+					"id": "kpi-wau",
+					"table": "block"
+				}
+			],
+			"planned": 800,
+			"achieved": 700,
+			"kpiTag": "Weekly active users"
+		},
+		{
+			"id": "imp-beta-ret",
+			"name": "Private beta → Week-4 retention",
+			"initiative": [
+				{
+					"id": "init-beta",
+					"table": "block"
+				}
+			],
+			"kpi": [
+				{
+					"id": "kpi-ret",
+					"table": "block"
+				}
+			],
+			"planned": 4,
+			"achieved": 6,
+			"kpiTag": "Week-4 retention"
+		},
+		{
+			"id": "imp-beta-churn",
+			"name": "Private beta → Monthly churn",
+			"initiative": [
+				{
+					"id": "init-beta",
+					"table": "block"
+				}
+			],
+			"kpi": [
+				{
+					"id": "kpi-churn",
+					"table": "block"
+				}
+			],
+			"planned": -1,
+			"achieved": -0.5,
+			"kpiTag": "Monthly churn"
+		},
+		{
+			"id": "imp-launch-wau",
+			"name": "Public launch → Weekly active users",
+			"initiative": [
+				{
+					"id": "init-launch",
+					"table": "block"
+				}
+			],
+			"kpi": [
+				{
+					"id": "kpi-wau",
+					"table": "block"
+				}
+			],
+			"planned": 2500,
+			"achieved": 2600,
+			"kpiTag": "Weekly active users"
+		},
+		{
+			"id": "imp-referral-wau",
+			"name": "Referral programme → Weekly active users",
+			"initiative": [
+				{
+					"id": "init-referral",
+					"table": "block"
+				}
+			],
+			"kpi": [
+				{
+					"id": "kpi-wau",
+					"table": "block"
+				}
+			],
+			"planned": 3000,
+			"achieved": 450,
+			"kpiTag": "Weekly active users"
+		},
+		{
+			"id": "imp-android-wau",
+			"name": "Android app → Weekly active users",
+			"initiative": [
+				{
+					"id": "init-android",
+					"table": "block"
+				}
+			],
+			"kpi": [
+				{
+					"id": "kpi-wau",
+					"table": "block"
+				}
+			],
+			"planned": 5000,
+			"achieved": 1100,
+			"kpiTag": "Weekly active users"
+		},
+		{
+			"id": "imp-android-ret",
+			"name": "Android app → Week-4 retention",
+			"initiative": [
+				{
+					"id": "init-android",
+					"table": "block"
+				}
+			],
+			"kpi": [
+				{
+					"id": "kpi-ret",
+					"table": "block"
+				}
+			],
+			"planned": 3,
+			"achieved": 0.5,
+			"kpiTag": "Week-4 retention"
+		},
+		{
+			"id": "imp-android-churn",
+			"name": "Android app → Monthly churn",
+			"initiative": [
+				{
+					"id": "init-android",
+					"table": "block"
+				}
+			],
+			"kpi": [
+				{
+					"id": "kpi-churn",
+					"table": "block"
+				}
+			],
+			"planned": -1,
+			"achieved": -0.2,
+			"kpiTag": "Monthly churn"
+		},
+		{
+			"id": "imp-onboarding-ret",
+			"name": "Onboarding redesign → Week-4 retention",
+			"initiative": [
+				{
+					"id": "init-onboarding",
+					"table": "block"
+				}
+			],
+			"kpi": [
+				{
+					"id": "kpi-ret",
+					"table": "block"
+				}
+			],
+			"planned": 4,
+			"achieved": 3,
+			"kpiTag": "Week-4 retention"
+		},
+		{
+			"id": "imp-onboarding-churn",
+			"name": "Onboarding redesign → Monthly churn",
+			"initiative": [
+				{
+					"id": "init-onboarding",
+					"table": "block"
+				}
+			],
+			"kpi": [
+				{
+					"id": "kpi-churn",
+					"table": "block"
+				}
+			],
+			"planned": -2,
+			"achieved": -1.4,
+			"kpiTag": "Monthly churn"
+		},
+		{
+			"id": "imp-premium-mrr",
+			"name": "Premium tier → MRR",
+			"initiative": [
+				{
+					"id": "init-premium",
+					"table": "block"
+				}
+			],
+			"kpi": [
+				{
+					"id": "kpi-mrr",
+					"table": "block"
+				}
+			],
+			"planned": 4000,
+			"kpiTag": "MRR"
+		},
+		{
+			"id": "imp-premium-ret",
+			"name": "Premium tier → Week-4 retention",
+			"initiative": [
+				{
+					"id": "init-premium",
+					"table": "block"
+				}
+			],
+			"kpi": [
+				{
+					"id": "kpi-ret",
+					"table": "block"
+				}
+			],
+			"planned": 2,
+			"kpiTag": "Week-4 retention"
+		},
+		{
+			"id": "imp-premium-churn",
+			"name": "Premium tier → Monthly churn",
+			"initiative": [
+				{
+					"id": "init-premium",
+					"table": "block"
+				}
+			],
+			"kpi": [
+				{
+					"id": "kpi-churn",
+					"table": "block"
+				}
+			],
+			"planned": -1.5,
+			"kpiTag": "Monthly churn"
+		},
+		{
+			"id": "imp-uni-wau",
+			"name": "University partnerships → Weekly active users",
+			"initiative": [
+				{
+					"id": "init-uni",
+					"table": "block"
+				}
+			],
+			"kpi": [
+				{
+					"id": "kpi-wau",
+					"table": "block"
+				}
+			],
+			"planned": 6000,
+			"kpiTag": "Weekly active users"
+		},
+		{
+			"id": "imp-events-mrr",
+			"name": "Sponsored events → MRR",
+			"initiative": [
+				{
+					"id": "init-events",
+					"table": "block"
+				}
+			],
+			"kpi": [
+				{
+					"id": "kpi-mrr",
+					"table": "block"
+				}
+			],
+			"planned": 2500,
+			"kpiTag": "MRR"
+		},
+		{
+			"id": "imp-city-wau",
+			"name": "Second city → Weekly active users",
+			"initiative": [
+				{
+					"id": "init-city",
+					"table": "block"
+				}
+			],
+			"kpi": [
+				{
+					"id": "kpi-wau",
+					"table": "block"
+				}
+			],
+			"planned": 12000,
+			"kpiTag": "Weekly active users"
+		},
+		{
+			"id": "imp-city-mrr",
+			"name": "Second city → MRR",
+			"initiative": [
+				{
+					"id": "init-city",
+					"table": "block"
+				}
+			],
+			"kpi": [
+				{
+					"id": "kpi-mrr",
+					"table": "block"
+				}
+			],
+			"planned": 3500,
+			"kpiTag": "MRR"
+		}
+	]
+}

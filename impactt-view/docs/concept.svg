@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="270" viewBox="0 0 1000 270" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif">
+  <rect width="1000" height="270" rx="10" fill="#ffffff"/>
+  <!-- panel frames -->
+  <g fill="#f7f7f5" stroke="#e9e9e7">
+    <rect x="20" y="20" width="210" height="190" rx="8"/>
+    <rect x="270" y="20" width="210" height="190" rx="8"/>
+    <rect x="520" y="20" width="210" height="190" rx="8"/>
+    <rect x="770" y="20" width="210" height="190" rx="8" fill="#f4f0f8" stroke="#d9cbe6"/>
+  </g>
+  <!-- Gantt -->
+  <g>
+    <line x1="40" y1="190" x2="215" y2="190" stroke="#c7c6c3"/>
+    <rect x="45" y="50" width="60" height="16" rx="4" fill="#529cca"/>
+    <rect x="80" y="80" width="80" height="16" rx="4" fill="#529cca"/>
+    <rect x="120" y="110" width="45" height="16" rx="4" fill="#9b9a97"/>
+    <rect x="150" y="140" width="60" height="16" rx="4" fill="#9b9a97"/>
+    <line x1="130" y1="40" x2="130" y2="190" stroke="#eb5757" stroke-width="1.2"/>
+  </g>
+  <!-- Marimekko -->
+  <g>
+    <line x1="290" y1="190" x2="465" y2="190" stroke="#c7c6c3"/>
+    <rect x="292" y="120" width="30" height="70" fill="#d3e5ef" stroke="#529cca"/>
+    <rect x="322" y="70" width="70" height="120" fill="#dbeddb" stroke="#448361"/>
+    <rect x="392" y="140" width="25" height="50" fill="#fadec9" stroke="#d9730d"/>
+    <rect x="417" y="95" width="46" height="95" fill="#e8deee" stroke="#9065b0"/>
+  </g>
+  <!-- Burn-up -->
+  <g fill="none">
+    <line x1="540" y1="190" x2="715" y2="190" stroke="#c7c6c3"/>
+    <line x1="540" y1="55" x2="715" y2="55" stroke="#9065b0" stroke-width="1.5" stroke-dasharray="7 4"/>
+    <path d="M540 190 L575 172 L600 160 L625 132" stroke="#37352f" stroke-width="2.4"/>
+    <path d="M625 132 L660 105 L700 78" stroke="#787774" stroke-width="1.5" stroke-dasharray="5 4"/>
+    <path d="M540 190 L590 150 L640 110 L700 60" stroke="#b4b3af" stroke-width="1.4" stroke-dasharray="2 4" stroke-linecap="round"/>
+    <circle cx="625" cy="132" r="4" fill="#37352f"/>
+  </g>
+  <!-- Impactt -->
+  <g>
+    <line x1="790" y1="190" x2="965" y2="190" stroke="#c7c6c3"/>
+    <line x1="790" y1="52" x2="965" y2="52" stroke="#9065b0" stroke-width="1.5" stroke-dasharray="7 4"/>
+    <rect x="795" y="172" width="40" height="18" rx="3" fill="#448361"/>
+    <rect x="828" y="146" width="36" height="26" rx="3" fill="#d9730d"/>
+    <rect x="858" y="112" width="44" height="34" rx="3" fill="#529cca" fill-opacity=".18" stroke="#529cca" stroke-width="1.4"/>
+    <rect x="858" y="128" width="18" height="18" rx="2" fill="#529cca"/>
+    <rect x="896" y="80" width="40" height="32" rx="3" fill="#9b9a97" fill-opacity=".18" stroke="#9b9a97" stroke-width="1.4"/>
+    <rect x="930" y="56" width="32" height="24" rx="3" fill="#9b9a97" fill-opacity=".18" stroke="#9b9a97" stroke-width="1.4"/>
+    <path d="M795 190 L835 172 L864 146 L876 128" fill="none" stroke="#37352f" stroke-width="2"/>
+    <path d="M876 128 L936 90 L962 62" fill="none" stroke="#787774" stroke-width="1.3" stroke-dasharray="5 4"/>
+    <line x1="876" y1="40" x2="876" y2="190" stroke="#eb5757" stroke-width="1.1"/>
+  </g>
+  <!-- operators -->
+  <g font-size="28" font-weight="300" fill="#9b9a97" text-anchor="middle">
+    <text x="250" y="124">+</text><text x="500" y="124">+</text><text x="750" y="124">=</text>
+  </g>
+  <!-- captions -->
+  <g font-size="15" font-weight="600" fill="#37352f" text-anchor="middle">
+    <text x="125" y="236">Gantt</text><text x="375" y="236">Marimekko</text><text x="625" y="236">Burn-up</text>
+    <text x="875" y="236" fill="#6b3f99">Impactt</text>
+  </g>
+  <g font-size="12" fill="#787774" text-anchor="middle">
+    <text x="125" y="255">when work happens</text><text x="375" y="255">width × height = size</text>
+    <text x="625" y="255">progress toward a goal</text><text x="875" y="255">what the plan delivers, when</text>
+  </g>
+</svg>

@@ -1,0 +1,136 @@
+import { Worker } from "@notionhq/workers"
+
+const worker = new Worker()
+export default worker
+
+worker.customBlock("impactt", {
+	path: "./blocks/impactt-view",
+	command: "npx vite build",
+	output: "dist",
+	version: 1,
+	dataSources: {
+		initiatives: {
+			name: "Initiatives",
+			description:
+				"The initiatives drawn as bars. Each row needs a Plan date range; " +
+				"its KPI impact comes from the Impacts database. Every property of " +
+				"this database can be used in the block's filter bar.",
+			icon: { type: "emoji", emoji: "🚀" },
+			properties: {
+				name: { name: "Name", type: "title" },
+				plan: {
+					name: "Plan",
+					description:
+						"Planned window (a date range). A single date plans the " +
+						"whole month it falls in.",
+					type: "date",
+				},
+				start: {
+					name: "Started",
+					description: "Actual start, when it differs from the plan.",
+					type: "date",
+				},
+				done: {
+					name: "Done",
+					description: "Actual finish date. Set once the initiative is complete.",
+					type: "date",
+				},
+				timing: {
+					name: "If off plan",
+					description:
+						"'Timeline moves' (impact is kept, the end date slips) or " +
+						"'Impact changes' (the date is fixed, the impact shrinks or " +
+						"grows). Empty uses the block default.",
+					type: "select",
+				},
+				growth: {
+					name: "Growth",
+					description: "'Linear' or 'Exponential' ramp of the impact.",
+					type: "select",
+				},
+				note: {
+					name: "Note",
+					description: "Shown in the bar's tooltip.",
+					type: "rich_text",
+				},
+			},
+		},
+		kpis: {
+			name: "KPIs",
+			description:
+				"Optional details for the KPIs named in the Impacts database: unit, " +
+				"baseline, direction and goal. Matched by relation, or by title when " +
+				"Impacts names KPIs with a select or multi-select.",
+			icon: { type: "emoji", emoji: "🎯" },
+			properties: {
+				name: { name: "Name", type: "title" },
+				unit: {
+					name: "Unit",
+					description: "'Number', 'Percent', 'EUR' or 'USD'.",
+					type: "select",
+				},
+				baseline: {
+					name: "Baseline",
+					description: "The KPI's value before the first initiative.",
+					type: "number",
+				},
+				direction: {
+					name: "Direction",
+					description:
+						"'Increase' or 'Decrease' (burndown KPIs such as churn or " +
+						"cost, where initiatives have negative impact).",
+					type: "select",
+				},
+				goal: {
+					name: "Goal",
+					description: "Target value. Empty uses the total of the plan.",
+					type: "number",
+				},
+				goalBy: {
+					name: "Goal by",
+					description: "When the goal should be reached.",
+					type: "date",
+				},
+				range: {
+					name: "Range ±",
+					description:
+						"Uncertainty of the projection as a fraction (0.3 = ±30%). " +
+						"Empty uses 0.3.",
+					type: "number",
+				},
+			},
+		},
+		impacts: {
+			name: "Impacts",
+			description:
+				"One row per initiative and KPI it moves: the planned change and " +
+				"what it has achieved so far.",
+			icon: { type: "emoji", emoji: "📈" },
+			properties: {
+				name: { name: "Name", type: "title" },
+				initiative: {
+					name: "Initiative",
+					description: "Relation to the initiative.",
+					type: "relation",
+				},
+				kpi: {
+					name: "KPI",
+					description:
+						"Relation to the KPI. The block's settings can instead use any " +
+						"select or multi-select column of this database as the KPI.",
+					type: "relation",
+				},
+				planned: {
+					name: "Planned",
+					description: "Planned change of the KPI (negative for burndown KPIs).",
+					type: "number",
+				},
+				achieved: {
+					name: "Achieved",
+					description: "Change achieved so far.",
+					type: "number",
+				},
+			},
+		},
+	},
+})

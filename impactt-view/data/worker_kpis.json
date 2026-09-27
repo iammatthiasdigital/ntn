@@ -1,0 +1,89 @@
+{
+	"type": "worker",
+	"key": "worker_kpis",
+	"name": "KPIs",
+	"icon": "🎯",
+	"schema": {
+		"name": {
+			"name": "Name",
+			"type": "title"
+		},
+		"unit": {
+			"name": "Unit",
+			"type": "select"
+		},
+		"baseline": {
+			"name": "Baseline",
+			"type": "number"
+		},
+		"direction": {
+			"name": "Direction",
+			"type": "select"
+		},
+		"goal": {
+			"name": "Goal",
+			"type": "number"
+		},
+		"goalBy": {
+			"name": "Goal by",
+			"type": "date"
+		},
+		"range": {
+			"name": "Range ±",
+			"type": "number"
+		}
+	},
+	"rows": [
+		{
+			"id": "kpi-wau",
+			"name": "Weekly active users",
+			"unit": "Number",
+			"baseline": 0,
+			"direction": "Increase",
+			"goal": 30000,
+			"goalBy": {
+				"type": "date",
+				"start_date": "2027-06-30"
+			},
+			"range": 0.3
+		},
+		{
+			"id": "kpi-mrr",
+			"name": "MRR",
+			"unit": "EUR",
+			"baseline": 0,
+			"direction": "Increase",
+			"goalBy": {
+				"type": "date",
+				"start_date": "2027-06-30"
+			},
+			"range": 0.35
+		},
+		{
+			"id": "kpi-ret",
+			"name": "Week-4 retention",
+			"unit": "Percent",
+			"baseline": 18,
+			"direction": "Increase",
+			"goal": 35,
+			"goalBy": {
+				"type": "date",
+				"start_date": "2027-06-30"
+			},
+			"range": 0.3
+		},
+		{
+			"id": "kpi-churn",
+			"name": "Monthly churn",
+			"unit": "Percent",
+			"baseline": 12,
+			"direction": "Decrease",
+			"goal": 6,
+			"goalBy": {
+				"type": "date",
+				"start_date": "2027-03-31"
+			},
+			"range": 0.3
+		}
+	]
+}

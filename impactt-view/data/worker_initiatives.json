@@ -1,0 +1,353 @@
+{
+	"type": "worker",
+	"key": "worker_initiatives",
+	"name": "Initiatives",
+	"icon": "🚀",
+	"schema": {
+		"name": {
+			"name": "Name",
+			"type": "title"
+		},
+		"plan": {
+			"name": "Plan",
+			"type": "date"
+		},
+		"start": {
+			"name": "Started",
+			"type": "date"
+		},
+		"done": {
+			"name": "Done",
+			"type": "date"
+		},
+		"timing": {
+			"name": "If off plan",
+			"type": "select"
+		},
+		"growth": {
+			"name": "Growth",
+			"type": "select"
+		},
+		"note": {
+			"name": "Note",
+			"type": "rich_text"
+		},
+		"team": {
+			"name": "Team",
+			"type": "select"
+		},
+		"status": {
+			"name": "Status",
+			"type": "status"
+		},
+		"owner": {
+			"name": "Owner",
+			"type": "people"
+		},
+		"tags": {
+			"name": "Tags",
+			"type": "multi_select"
+		},
+		"budget": {
+			"name": "Budget (k€)",
+			"type": "number"
+		},
+		"priority": {
+			"name": "Priority",
+			"type": "select"
+		},
+		"approved": {
+			"name": "Approved",
+			"type": "checkbox"
+		},
+		"spec": {
+			"name": "Spec",
+			"type": "url"
+		},
+		"depends": {
+			"name": "Depends on",
+			"type": "relation"
+		}
+	},
+	"rows": [
+		{
+			"id": "init-beta",
+			"name": "Private beta",
+			"plan": {
+				"type": "daterange",
+				"start_date": "2026-03-01",
+				"end_date": "2026-05-31"
+			},
+			"done": {
+				"type": "date",
+				"start_date": "2026-06-30"
+			},
+			"team": "Product",
+			"status": "Done",
+			"owner": [
+				{
+					"id": "user-ada-lovelace",
+					"table": "notion_user"
+				}
+			],
+			"tags": [
+				"Launch"
+			],
+			"budget": 40,
+			"priority": "P0",
+			"approved": true,
+			"spec": "https://example.com/specs/beta"
+		},
+		{
+			"id": "init-launch",
+			"name": "Public launch",
+			"plan": {
+				"type": "daterange",
+				"start_date": "2026-06-01",
+				"end_date": "2026-07-31"
+			},
+			"start": {
+				"type": "date",
+				"start_date": "2026-07-01"
+			},
+			"done": {
+				"type": "date",
+				"start_date": "2026-08-31"
+			},
+			"timing": "Impact changes",
+			"team": "Growth",
+			"status": "Done",
+			"owner": [
+				{
+					"id": "user-grace-hopper",
+					"table": "notion_user"
+				}
+			],
+			"tags": [
+				"Launch",
+				"Marketing"
+			],
+			"budget": 120,
+			"priority": "P0",
+			"approved": true,
+			"depends": [
+				{
+					"id": "init-beta",
+					"table": "block"
+				}
+			]
+		},
+		{
+			"id": "init-referral",
+			"name": "Referral programme",
+			"plan": {
+				"type": "daterange",
+				"start_date": "2026-08-01",
+				"end_date": "2026-10-31"
+			},
+			"start": {
+				"type": "date",
+				"start_date": "2026-08-20"
+			},
+			"growth": "Exponential",
+			"note": "Viral loops start slow, so growth is set to exponential.",
+			"team": "Growth",
+			"status": "In progress",
+			"owner": [
+				{
+					"id": "user-grace-hopper",
+					"table": "notion_user"
+				},
+				{
+					"id": "user-alan-turing",
+					"table": "notion_user"
+				}
+			],
+			"tags": [
+				"Acquisition"
+			],
+			"budget": 60,
+			"priority": "P1",
+			"approved": true,
+			"depends": [
+				{
+					"id": "init-launch",
+					"table": "block"
+				}
+			]
+		},
+		{
+			"id": "init-android",
+			"name": "Android app",
+			"plan": {
+				"type": "daterange",
+				"start_date": "2026-09-01",
+				"end_date": "2026-11-30"
+			},
+			"timing": "Impact changes",
+			"note": "Store launch date is fixed, so a slow ramp shows up as lower impact.",
+			"team": "Mobile",
+			"status": "In progress",
+			"owner": [
+				{
+					"id": "user-margaret-hamilton",
+					"table": "notion_user"
+				}
+			],
+			"tags": [
+				"Platform",
+				"Acquisition"
+			],
+			"budget": 180,
+			"priority": "P0",
+			"approved": true,
+			"spec": "https://example.com/specs/android",
+			"depends": [
+				{
+					"id": "init-launch",
+					"table": "block"
+				}
+			]
+		},
+		{
+			"id": "init-onboarding",
+			"name": "Onboarding redesign",
+			"plan": {
+				"type": "daterange",
+				"start_date": "2026-09-01",
+				"end_date": "2026-10-31"
+			},
+			"team": "Product",
+			"status": "In progress",
+			"owner": [
+				{
+					"id": "user-ada-lovelace",
+					"table": "notion_user"
+				}
+			],
+			"tags": [
+				"Retention",
+				"Design"
+			],
+			"budget": 35,
+			"priority": "P1",
+			"approved": true
+		},
+		{
+			"id": "init-premium",
+			"name": "Premium tier",
+			"plan": {
+				"type": "daterange",
+				"start_date": "2026-11-01",
+				"end_date": "2027-01-31"
+			},
+			"team": "Product",
+			"status": "Not started",
+			"owner": [
+				{
+					"id": "user-alan-turing",
+					"table": "notion_user"
+				}
+			],
+			"tags": [
+				"Monetisation"
+			],
+			"budget": 70,
+			"priority": "P1",
+			"approved": false,
+			"depends": [
+				{
+					"id": "init-onboarding",
+					"table": "block"
+				}
+			]
+		},
+		{
+			"id": "init-uni",
+			"name": "University partnerships",
+			"plan": {
+				"type": "daterange",
+				"start_date": "2026-12-01",
+				"end_date": "2027-02-28"
+			},
+			"team": "Partnerships",
+			"status": "Not started",
+			"owner": [
+				{
+					"id": "user-hedy-lamarr",
+					"table": "notion_user"
+				}
+			],
+			"tags": [
+				"Acquisition"
+			],
+			"budget": 25,
+			"priority": "P2",
+			"approved": false
+		},
+		{
+			"id": "init-events",
+			"name": "Sponsored events",
+			"plan": {
+				"type": "daterange",
+				"start_date": "2027-02-01",
+				"end_date": "2027-05-31"
+			},
+			"timing": "Impact changes",
+			"team": "Partnerships",
+			"status": "Not started",
+			"owner": [
+				{
+					"id": "user-hedy-lamarr",
+					"table": "notion_user"
+				}
+			],
+			"tags": [
+				"Monetisation",
+				"Marketing"
+			],
+			"budget": 15,
+			"priority": "P2",
+			"approved": false
+		},
+		{
+			"id": "init-city",
+			"name": "Second city",
+			"plan": {
+				"type": "daterange",
+				"start_date": "2027-03-01",
+				"end_date": "2027-06-30"
+			},
+			"growth": "Exponential",
+			"team": "Growth",
+			"status": "Not started",
+			"owner": [
+				{
+					"id": "user-grace-hopper",
+					"table": "notion_user"
+				},
+				{
+					"id": "user-radia-perlman",
+					"table": "notion_user"
+				}
+			],
+			"tags": [
+				"Expansion"
+			],
+			"budget": 240,
+			"priority": "P1",
+			"approved": false,
+			"spec": "https://example.com/specs/second-city",
+			"depends": [
+				{
+					"id": "init-launch",
+					"table": "block"
+				},
+				{
+					"id": "init-android",
+					"table": "block"
+				}
+			]
+		}
+	]
+}

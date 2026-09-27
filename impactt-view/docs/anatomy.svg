@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="420" viewBox="0 0 1000 420" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif">
+  <rect width="1000" height="420" rx="10" fill="#ffffff"/>
+  <!-- grid and axes -->
+  <g stroke="#efeeec">
+    <line x1="70" y1="90" x2="700" y2="90"/><line x1="70" y1="160" x2="700" y2="160"/>
+    <line x1="70" y1="230" x2="700" y2="230"/><line x1="70" y1="300" x2="700" y2="300"/>
+  </g>
+  <line x1="70" y1="370" x2="700" y2="370" stroke="#c7c6c3"/>
+  <line x1="70" y1="40" x2="70" y2="370" stroke="#c7c6c3"/>
+  <g font-size="12" fill="#9b9a97">
+    <text x="90" y="392">Jan</text><text x="190" y="392">Mar</text><text x="290" y="392">May</text>
+    <text x="390" y="392">Jul</text><text x="490" y="392">Sep</text><text x="590" y="392">Nov</text>
+    <text x="60" y="374" text-anchor="end">0</text><text x="60" y="94" text-anchor="end">30k</text>
+  </g>
+  <!-- goal -->
+  <line x1="70" y1="80" x2="690" y2="80" stroke="#9065b0" stroke-width="1.5" stroke-dasharray="7 4"/>
+  <text x="78" y="72" font-size="12" font-weight="600" fill="#9065b0">Goal 30k by Nov</text>
+  <!-- earlier initiatives (stack) -->
+  <rect x="100" y="330" width="130" height="40" rx="5" fill="#448361"/>
+  <text x="108" y="346" font-size="12" font-weight="500" fill="#fff">Beta</text>
+  <rect x="230" y="290" width="110" height="40" rx="5" fill="#d9730d"/>
+  <text x="238" y="309" font-size="12" font-weight="500" fill="#fff">Launch</text>
+  <!-- the annotated initiative -->
+  <rect x="340" y="170" width="190" height="120" rx="5" fill="#529cca" fill-opacity=".14" stroke="#529cca" stroke-width="1.6"/>
+  <rect x="360" y="250" width="100" height="40" rx="4" fill="#529cca"/>
+  <rect x="340" y="170" width="270" height="120" rx="5" fill="none" stroke="#529cca" stroke-width="1" stroke-dasharray="5 3"/>
+  <text x="348" y="188" font-size="12" font-weight="500" fill="#37352f">Referral programme</text>
+  <text x="348" y="202" font-size="11" fill="#787774">+1.5 mo</text>
+  <!-- totals -->
+  <path d="M100 370 L230 330 L340 290 L460 262" fill="none" stroke="#37352f" stroke-width="2.4"/>
+  <path d="M460 262 L610 170 L690 120" fill="none" stroke="#787774" stroke-width="1.4" stroke-dasharray="5 4"/>
+  <circle cx="460" cy="262" r="5" fill="#37352f" stroke="#fff" stroke-width="2"/>
+  <line x1="460" y1="50" x2="460" y2="370" stroke="#eb5757" stroke-width="1.2"/>
+  <text x="464" y="48" font-size="12" font-weight="600" fill="#eb5757">Today</text>
+  <!-- gap to goal -->
+  <line x1="684" y1="80" x2="684" y2="120" stroke="#d44c47" stroke-width="2"/>
+  <line x1="679" y1="80" x2="689" y2="80" stroke="#d44c47" stroke-width="2"/><line x1="679" y1="120" x2="689" y2="120" stroke="#d44c47" stroke-width="2"/>
+  <!-- dimension markers -->
+  <g stroke="#37352f" stroke-width="1" fill="none">
+    <path d="M340 150 V142 H530 V150"/>
+    <path d="M320 170 H312 V290 H320"/>
+  </g>
+  <g font-size="12" font-weight="600" fill="#37352f">
+    <text x="435" y="136" text-anchor="middle">width = planned time</text>
+    <text x="304" y="234" text-anchor="end">height =</text>
+    <text x="304" y="249" text-anchor="end">planned impact</text>
+  </g>
+  <!-- legend / callouts -->
+  <g font-size="13" fill="#37352f">
+    <g transform="translate(730 70)">
+      <rect width="22" height="12" rx="2" fill="#529cca" fill-opacity=".16" stroke="#529cca" stroke-width="1.4"/>
+      <text x="32" y="11">Outline: the plan</text>
+    </g>
+    <g transform="translate(730 104)">
+      <rect width="22" height="12" rx="2" fill="#529cca"/>
+      <text x="32" y="11">Solid: achieved so far</text>
+    </g>
+    <g transform="translate(730 138)">
+      <rect width="22" height="12" rx="2" fill="none" stroke="#529cca" stroke-dasharray="4 3"/>
+      <text x="32" y="11">Dashed: projected finish</text>
+    </g>
+    <g transform="translate(730 172)">
+      <line x1="0" y1="6" x2="22" y2="6" stroke="#37352f" stroke-width="2.4"/>
+      <text x="32" y="11">Actual total</text>
+    </g>
+    <g transform="translate(730 206)">
+      <line x1="0" y1="6" x2="22" y2="6" stroke="#787774" stroke-width="1.4" stroke-dasharray="5 4"/>
+      <text x="32" y="11">Projected total</text>
+    </g>
+    <g transform="translate(730 240)">
+      <line x1="0" y1="6" x2="22" y2="6" stroke="#9065b0" stroke-width="1.5" stroke-dasharray="7 4"/>
+      <text x="32" y="11">Goal</text>
+    </g>
+    <g transform="translate(730 274)">
+      <line x1="11" y1="0" x2="11" y2="12" stroke="#d44c47" stroke-width="2"/>
+      <text x="32" y="11">Gap: projection vs goal</text>
+    </g>
+    <text x="730" y="330" font-size="12" fill="#787774">Bars stack: each initiative starts</text>
+    <text x="730" y="346" font-size="12" fill="#787774">where the previous ones end, so the</text>
+    <text x="730" y="362" font-size="12" fill="#787774">staircase climbs toward the goal.</text>
+  </g>
+</svg>
