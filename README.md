@@ -17,6 +17,16 @@ export above the board. See its
 [README](./ctc-roadmap-view/README.md) for the database schemas, local dev
 shell workflow, and deploy steps.
 
+### [`impactt-view/`](./impactt-view)
+
+The Impactt chart as a custom block: a Gantt chart where each bar's height
+is the KPI change an initiative delivers, stacked toward the KPI's goal,
+with plan, actual and projected lines. It is fed by three databases
+(Initiatives, KPIs, Impacts). A Notion-style filter bar is generated from
+the Initiatives database, so every property can be filtered, whatever its
+type, including And/Or rules and groups and relative dates. See its
+[README](./impactt-view/README.md).
+
 ## Requirements
 
 - Node >= 22, npm >= 10.9.2
