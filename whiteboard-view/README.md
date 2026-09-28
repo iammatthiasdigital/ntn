@@ -17,7 +17,8 @@ and each with *None*:
 
 - **Group by**: a select, multi-select or relation (the frames).
 - **Written by**: a people property, Created by or Last edited by.
-- **Done**: a checkbox.
+- **Done**: a checkbox. Automatically the one linked as Done in the block's
+  setup in Notion, else one named like Done, else the first.
 - **How it was fixed**: a text property.
 
 *On this board* holds the look and layout.
@@ -91,7 +92,7 @@ Shortcuts:
 | `Done`             | checkbox  | Optional (*Done*): checked-off notes are eaten by the turtle       |
 | `How it was fixed` | rich_text | Optional (*How it was fixed*): asked for when a note is checked off |
 
-Only Title, X and Y are required. The optional ones can have any name; pick
+Only Title, X and Y are required; Done can be linked in the block's setup. The optional ones can have any name; pick
 them in the settings. Nothing else is written.
 
 ## Develop

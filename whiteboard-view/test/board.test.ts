@@ -122,6 +122,12 @@ test("the optional fields are picked in the settings, guessed by name and type",
 	assert.deepEqual(resolveSetup(s, auto), { group: resolveGroupBy(s, "auto"), author: "author", done: "done", fix: "resolution" })
 	assert.deepEqual(resolveSetup(s, { ...auto, author: "created_by", done: "none", fix: "gone" }).author, "created_by")
 	assert.equal(resolveSetup(s, { ...auto, done: "none" }).done, null)
+	// A checkbox under any name is taken as Done.
+	const renamed = { ...s, propertySchemasById: { ...s.propertySchemasById, done: { ...s.propertySchemasById.done, name: "Checked" } } }
+	assert.equal(resolveSetup(renamed, auto).done, "done")
+	// The checkbox linked as Done in the block's setup wins over names.
+	const linked = { ...renamed, propertySchemasById: { ...renamed.propertySchemasById, a: { name: "Archived", type: "checkbox" } }, propertyIdsByKey: { ...renamed.propertyIdsByKey, done: "done" } }
+	assert.equal(resolveSetup(linked, auto).done, "done")
 	const b = readBoard(s, EMPTY_LOCAL, opts({ author: "created_by" }))
 	const n1 = b.items.find((i) => i.id === "n1")!
 	assert.deepEqual(n1.authorIds, [(s.items.find((r) => r.id === "n1")!.propertiesById.created_by as { id: string }[])[0].id])

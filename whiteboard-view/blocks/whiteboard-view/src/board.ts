@@ -277,10 +277,14 @@ function resolveField(src: SourceSnapshot, f: Field, pick: string): string | nul
 	if (pick === "none") return null
 	const all = fieldOptions(src, f)
 	if (all.some((p) => p.id === pick)) return pick
+	// Done can also be linked in the block's setup in Notion; that link is the automatic pick.
+	const linked = f === "done" ? src.propertyIdsByKey.done : undefined
+	if (linked && all.some((p) => p.id === linked)) return linked
 	const named = all.find((p) => GUESS[f].test(p.name))
 	if (named) return named.id
-	// Who wrote it: a people property, else Created by. Done and the fix note are only taken by name.
-	return f === "author" ? (all.find((p) => p.type === "people") ?? all.find((p) => p.type === "created_by"))?.id ?? null : null
+	// Who wrote it: a people property, else Created by. Done: the first checkbox. The fix note is only taken by name.
+	if (f === "author") return (all.find((p) => p.type === "people") ?? all.find((p) => p.type === "created_by"))?.id ?? null
+	return f === "done" ? (all[0]?.id ?? null) : null
 }
 
 export function resolveSetup(src: SourceSnapshot, picks: Picks): Setup {
