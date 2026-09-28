@@ -78,9 +78,14 @@ places are shown as one group.
 ## Drop-in seating
 
 Some places are always up for grabs, like cafeteria tables or a kitchen
-counter. They are **never booked**: they show as open seating with their
-seats ("Cafeteria seat · 24 seats · Always free"), are left out of the free
+counter. Nobody claims them: they show as open seating with their seats
+("Cafeteria seat · 24 seats · Always free"), are left out of the free
 counts, and the day bar adds "· 32 drop-in seats".
+
+**Plans.** Click one to add a plan, like "Team dinner, 18:30–21:00". Plans
+never clash, can be outside opening hours (07:00–midnight; the timeline
+widens to show them), and others can **Join** one with a click. The tile
+shows the next plan.
 
 A place is drop-in when its **Always free** checkbox in the Places database
 is checked, so everyone sees the same open seating.

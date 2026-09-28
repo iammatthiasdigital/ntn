@@ -109,13 +109,21 @@ export function bookingsOn(O: Office, placeId: string, day: string): Booking[] {
 	return O.bookings.filter((b) => b.placeId === placeId && b.day === day).sort((a, b) => a.start - b.start)
 }
 
-/** The booking a new slot would clash with, if any. Bookings marked up for grabs don't block. */
+/** Whether plans at a place may overlap: drop-in seating is shared, so bookings there are plans, not claims. */
+const shared = (O: Office, placeId: string) => {
+	const p = O.places.find((x) => x.id === placeId)
+	return !!p && isDropIn(p)
+}
+
+/** The booking a new slot would clash with, if any. Bookings marked up for grabs, and plans at drop-in seating, don't block. */
 export function clash(O: Office, placeId: string, day: string, start: number, end: number, except?: string): Booking | undefined {
+	if (shared(O, placeId)) return undefined
 	return bookingsOn(O, placeId, day).find((b) => b.id !== except && !b.open && overlaps(b, { start, end }))
 }
 
 /** Up-for-grabs bookings a new slot would take over. */
 export function takesOver(O: Office, placeId: string, day: string, start: number, end: number): Booking[] {
+	if (shared(O, placeId)) return []
 	return bookingsOn(O, placeId, day).filter((b) => b.open && overlaps(b, { start, end }))
 }
 

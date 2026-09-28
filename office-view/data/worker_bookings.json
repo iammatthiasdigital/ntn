@@ -865,6 +865,30 @@
 				"type": "date",
 				"start_date": "2026-10-02"
 			}
+		},
+		{
+			"id": "bk-lunch",
+			"name": "Long tables · Grace Hopper",
+			"place": [
+				{
+					"id": "pl-cafe-1",
+					"table": "block"
+				}
+			],
+			"who": [
+				{
+					"id": "user-grace-hopper",
+					"table": "notion_user"
+				}
+			],
+			"when": {
+				"type": "datetimerange",
+				"start_date": "2026-09-28",
+				"start_time": "12:00",
+				"end_date": "2026-09-28",
+				"end_time": "13:00"
+			},
+			"note": "Team lunch, all welcome"
 		}
 	]
 }

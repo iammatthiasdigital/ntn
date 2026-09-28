@@ -3,7 +3,7 @@ import { dayIso, EMPTY_FILTERS } from "./kit/filters/core"
 import { Plus } from "./kit/filters/icons"
 import { Popover, useAnchor } from "./kit/filters/popover"
 import { ClockIcon, ColumnIcon, LayersIcon, NavRow, Note, NumberRow, PersonIcon, PickRow, Sep, SettingsShell, TargetIcon, ToggleRow } from "./kit/settings"
-import { W, type BlockData, type SourceSnapshot } from "./kit/sources"
+import { W, type BlockData, type PropertyWrite, type SourceSnapshot } from "./kit/sources"
 import { oneOf, within } from "./kit/share"
 import { Loading, Setup, Toolbar, useFiltered, usePersistentView, type WithFilters } from "./kit/toolbar"
 import { addDay, bookingsOn, clash, dayLabel, firstFree, hhmm, isDropIn, readOffice, stateOf, takesOver, usualPlace, type Booking, type Office, type Place, type State } from "./office"
@@ -118,9 +118,26 @@ function Ready({ data }: { data: Ready }) {
 	const [day, setDay] = useState(today)
 	const [toast, setToast] = useState<Toast | null>(null)
 	const [target, setTarget] = useState<Target | null>(null)
-	const { rooms, places, bookings } = data.sources
+	// Cancelled bookings disappear right away; the host's rows can lag behind an archive.
+	const [gone, setGone] = useState<ReadonlySet<string>>(new Set())
+	const sources = useMemo(
+		() => (gone.size ? { ...data.sources, bookings: { ...data.sources.bookings, items: data.sources.bookings.items.filter((r) => !gone.has(r.id)) } } : data.sources),
+		[data.sources, gone]
+	)
+	const archive = async (id: string, m = data.mutations) => {
+		setGone((g) => new Set(g).add(id))
+		const err = await m.archive("bookings", id)
+		if (err)
+			setGone((g) => {
+				const n = new Set(g)
+				n.delete(id)
+				return n
+			})
+		return err
+	}
+	const { rooms, places, bookings } = sources
 	const { properties, visible, filtering } = useFiltered(places, view.filters, data.resolvers, today)
-	const O = useMemo(() => readOffice(data.sources, data.resolvers, visible), [data.sources, data.resolvers, visible])
+	const O = useMemo(() => readOffice(sources, data.resolvers, visible), [sources, data.resolvers, visible])
 	const me = data.resolvers.meId
 	const myName = me ? data.resolvers.userName(me) : undefined
 	const nowMin = useNow()
@@ -130,7 +147,7 @@ function Ready({ data }: { data: Ready }) {
 	const drop = (p: Place) => isDropIn(p)
 	// "Always free" lives in the Places database, so everyone sees the same open seating.
 	const canFree = places.propertyIdsByKey.free !== undefined
-	const allPlaces = useMemo(() => readOffice(data.sources, data.resolvers, null).places, [data.sources, data.resolvers])
+	const allPlaces = useMemo(() => readOffice(sources, data.resolvers, null).places, [sources, data.resolvers])
 	const placeTypes = useMemo(() => [...new Set(allPlaces.map((p) => p.type))].sort(), [allPlaces])
 	const [saving, setSaving] = useState(false)
 	const setFree = async (type: string, on: boolean) => {
@@ -151,7 +168,7 @@ function Ready({ data }: { data: Ready }) {
 	}, [toast])
 
 	const fail = (err: string | null) => (err ? (setToast({ text: `Couldn't save: ${err}` }), true) : false)
-	const newBooking = (place: Place, when: object) => ({
+	const newBooking = (place: Place, when: ReturnType<typeof W.date>) => ({
 		name: W.title(`${place.name}${myName ? ` · ${myName}` : ""}`),
 		place: W.relation([place.id]),
 		...(me ? { who: W.people([me]) } : {}),
@@ -164,7 +181,7 @@ function Ready({ data }: { data: Ready }) {
 		const now = latest.current
 		const all = readOffice(now.sources, now.resolvers, null).bookings
 		const b = all.find((x) => x.placeId === place.id && x.day === d && !!me && x.who.includes(me) && x.allDay)
-		if (b) await now.mutations.archive("bookings", b.id)
+		if (b) await archive(b.id, now.mutations)
 		if (restore) await now.mutations.create("bookings", newBooking(restore, W.date(d)))
 	}
 
@@ -172,17 +189,18 @@ function Ready({ data }: { data: Ready }) {
 	const claimDay = async (place: Place) => {
 		if (!me) return setToast({ text: "Sign in to Notion to claim a place." })
 		const old = O.bookings.find((b) => b.day === day && b.allDay && b.who.includes(me) && b.placeId !== place.id && O.places.find((p) => p.id === b.placeId)?.type === place.type)
-		if (old && fail(await data.mutations.archive("bookings", old.id))) return
+		if (old && fail(await archive(old.id))) return
 		if (fail(await data.mutations.create("bookings", newBooking(place, W.date(day))))) return
 		const from = old ? O.places.find((p) => p.id === old.placeId) : undefined
 		setToast({ text: from ? T.moved(from.name, place.name) : T.claimed(place.name), undo: undoClaim(place, day, from) })
 	}
-	const book = async (place: Place, start: number, end: number) => {
-		if (fail(await data.mutations.create("bookings", newBooking(place, W.date(`${day}T${hhmm(start)}`, `${day}T${hhmm(end)}`))))) return
-		setToast({ text: `Booked ${place.name}, ${hhmm(start)}–${hhmm(end)}.` })
+	const book = async (place: Place, start: number, end: number, note = "") => {
+		const plan: PropertyWrite = note.trim() && canNote ? { note: W.text(note.trim()) } : {}
+		if (fail(await data.mutations.create("bookings", { ...newBooking(place, W.date(`${day}T${hhmm(start)}`, `${day}T${hhmm(end)}`)), ...plan }))) return
+		setToast({ text: `${drop(place) ? `Plan at ${place.name}` : `Booked ${place.name}`}, ${hhmm(start)}–${hhmm(end)}${note.trim() ? `: ${note.trim()}` : ""}.` })
 	}
 	const cancel = async (b: Booking) => {
-		if (!fail(await data.mutations.archive("bookings", b.id))) setToast({ text: "Booking cancelled." })
+		if (!fail(await archive(b.id))) setToast({ text: "Booking cancelled." })
 	}
 	const setNote = async (b: Booking, note: string) => {
 		if (note.trim() !== b.note) fail(await data.mutations.update("bookings", b.id, { note: W.text(note.trim()) }))
@@ -192,6 +210,8 @@ function Ready({ data }: { data: Ready }) {
 	}
 
 	const pick = (place: Place, anchor: HTMLElement) => {
+		// Drop-in seating is never claimed; clicking it adds a plan.
+		if (drop(place)) return setTarget({ place, anchor })
 		const st = stateOf(O, place.id, day, view.open, view.close, me)
 		const wholeDayFree = !clash(O, place.id, day, view.open, view.close)
 		if (view.quick && (st === "free" || st === "offered") && wholeDayFree && !(at != null && at >= view.close)) void claimDay(place)
@@ -333,8 +353,8 @@ function Ready({ data }: { data: Ready }) {
 						void claimDay(target.place)
 						setTarget(null)
 					}}
-					onBook={(s, e) => {
-						void book(target.place, s, e)
+					onBook={(s, e, n) => {
+						void book(target.place, s, e, n)
 						setTarget(null)
 					}}
 					onCancel={(b) => void cancel(b)}
@@ -471,7 +491,7 @@ function RoomsLayout(props: TileProps) {
 										</div>
 										<div className="tiles">
 											{r.places.map((p, i) => (
-												isDrop[i] ? <DropTile key={p.id} p={p} /> : <Tile key={p.id} {...props} p={p} st={states[i]} />
+												isDrop[i] ? <DropTile key={p.id} {...props} p={p} /> : <Tile key={p.id} {...props} p={p} st={states[i]} />
 											))}
 										</div>
 									</div>
@@ -527,19 +547,33 @@ function Tile({ O, p, st, day, view, T, me, at, onPick, onDetails }: TileProps &
 	)
 }
 
-/** Open seating: always free, nothing to book. */
-function DropTile({ p }: { p: Place }) {
+/** Open seating: always free, nobody claims it; plans (lunch, dinner…) can be added and joined. */
+function DropTile({ O, p, day, view, me, at, onPick }: TileProps & { p: Place }) {
 	const seats = p.capacity ?? 1
+	const plans = bookingsOn(O, p.id, day).filter((b) => at == null || b.end > at)
+	const next = plans[0]
+	const mine = !!me && plans.some((b) => b.who.includes(me))
+	const who = (b: Booking) => (view.names ? b.whoNames.map(first).join(", ") : "")
 	return (
-		<div className="tile drop" title={`${p.name}: always free, no booking needed${p.features.length ? `\n${p.features.join(", ")}` : ""}`}>
-			<div className="tile-main">
+		<div className={"tile drop" + (mine ? " planned" : "")}>
+			<button
+				type="button"
+				className="tile-main"
+				onClick={(e) => onPick(p, e.currentTarget)}
+				title={[`${p.name}: always free, no booking needed`, ...plans.map((b) => [timeOf(b), b.note, who(b)].filter(Boolean).join(" · ")), "Click to add a plan others can join"].join("\n")}
+			>
 				<span className="tile-t">
 					<TypeGlyph type={p.type} />
 					{p.name}
 				</span>
-				<span className="tile-s">{`${p.type} · ${seats} seat${seats === 1 ? "" : "s"}`}</span>
+				{next ? (
+					<span className="tile-s">{`${hhmm(next.start)} ${next.note || who(next) || "Plan"}${plans.length > 1 ? ` +${plans.length - 1}` : ""}`}</span>
+				) : (
+					<span className="tile-s">{`${p.type} · ${seats} seat${seats === 1 ? "" : "s"}`}</span>
+				)}
 				<span className="drop-l">Always free</span>
-			</div>
+				<span className="tile-claim">Add a plan</span>
+			</button>
 		</div>
 	)
 }
@@ -567,17 +601,21 @@ function TypeGlyph({ type }: { type: string }) {
 /* ---------- timeline layout ---------- */
 
 function TimelineLayout({ O, day, view, me, now, userName, onPick }: { O: Office; day: string; view: View; me?: string; now: number | null; userName: (id: string) => string | undefined; onPick: (p: Place, el: HTMLElement, start: number) => void }) {
-	const span = view.close - view.open
-	const pct = (m: number) => `${((Math.min(Math.max(m, view.open), view.close) - view.open) / span) * 100}%`
+	// Plans at drop-in seating (an early breakfast, a team dinner) widen the day beyond opening hours.
+	const plans = O.bookings.filter((b) => b.day === day && !b.allDay && O.places.some((p) => p.id === b.placeId && isDropIn(p)))
+	const lo = Math.floor(Math.min(view.open, ...plans.map((b) => b.start)) / 60) * 60
+	const hi = Math.ceil(Math.max(view.close, ...plans.map((b) => b.end)) / 60) * 60
+	const span = hi - lo
+	const pct = (m: number) => `${((Math.min(Math.max(m, lo), hi) - lo) / span) * 100}%`
 	const hours: number[] = []
-	for (let h = Math.ceil(view.open / 60) * 60; h <= view.close; h += 60) hours.push(h)
+	for (let h = Math.ceil(lo / 60) * 60; h <= hi; h += 60) hours.push(h)
 	return (
 		<div className="tl">
 			<div className="tl-row tl-head">
 				<span className="tl-name" />
 				<span className="tl-track">
 					{hours.map((h) => (
-						<span key={h} className="tl-hour" style={{ left: pct(h), transform: h === view.close ? "translateX(-100%)" : undefined }}>
+						<span key={h} className="tl-hour" style={{ left: pct(h), transform: h === hi ? "translateX(-100%)" : undefined }}>
 							{h / 60}
 						</span>
 					))}
@@ -588,32 +626,25 @@ function TimelineLayout({ O, day, view, me, now, userName, onPick }: { O: Office
 				.map((r) => (
 					<div key={r.id}>
 						<div className="tl-room">{r.name}</div>
-						{r.places.map((p) => isDropIn(p) ? (
-							<div key={p.id} className="tl-row">
-								<span className="tl-name" title={p.type}>
-									<TypeGlyph type={p.type} />
-									{p.name}
-								</span>
-								<span className="tl-track tl-drop">{`Always free · ${p.capacity ?? 1} seat${(p.capacity ?? 1) === 1 ? "" : "s"}`}</span>
-							</div>
-						) : (
+						{r.places.map((p) => (
 							<div key={p.id} className="tl-row">
 								<span className="tl-name" title={p.type}>
 									<TypeGlyph type={p.type} />
 									{p.name}
 								</span>
 								<span
-									className="tl-track"
+									className={"tl-track" + (isDropIn(p) ? " tl-drop" : "")}
 									role="button"
 									tabIndex={0}
-									aria-label={`Book ${p.name}`}
+									aria-label={isDropIn(p) ? `Add a plan at ${p.name}` : `Book ${p.name}`}
 									onClick={(e) => {
 										const r = e.currentTarget.getBoundingClientRect()
-										const m = view.open + Math.floor((((e.clientX - r.left) / r.width) * span) / 30) * 30
+										const m = lo + Math.floor((((e.clientX - r.left) / r.width) * span) / 30) * 30
 										onPick(p, e.currentTarget, m)
 									}}
-									onKeyDown={(e) => e.key === "Enter" && onPick(p, e.currentTarget, view.open)}
+									onKeyDown={(e) => e.key === "Enter" && onPick(p, e.currentTarget, lo)}
 								>
+									{isDropIn(p) && !bookingsOn(O, p.id, day).length ? <span className="tl-drop-l">{`Always free · ${p.capacity ?? 1} seat${(p.capacity ?? 1) === 1 ? "" : "s"}`}</span> : null}
 									{hours.map((h) => (
 										<span key={h} className="tl-grid" style={{ left: pct(h) }} />
 									))}
@@ -624,11 +655,11 @@ function TimelineLayout({ O, day, view, me, now, userName, onPick }: { O: Office
 											style={{ left: pct(b.start), width: `calc(${pct(b.end)} - ${pct(b.start)})` }}
 											title={`${timeOf(b)} ${b.who.map((id) => userName(id) ?? "").join(", ")}${b.note ? ` — ${b.note}` : ""}${b.open ? " (up for grabs)" : ""}`}
 										>
-											{view.names && b.whoNames.length ? first(b.whoNames[0]) : timeOf(b)}
-											{b.note ? ` · ${b.note}` : ""}
+											{isDropIn(p) && b.note ? b.note : view.names && b.whoNames.length ? first(b.whoNames[0]) : timeOf(b)}
+											{b.note && !isDropIn(p) ? ` · ${b.note}` : ""}
 										</span>
 									))}
-									{now != null && now >= view.open && now <= view.close ? <span className="tl-now" style={{ left: pct(now) }} /> : null}
+									{now != null && now >= lo && now <= hi ? <span className="tl-now" style={{ left: pct(now) }} /> : null}
 								</span>
 							</div>
 						))}
@@ -658,7 +689,7 @@ type PopProps = {
 	canNote: boolean
 	canOffer: boolean
 	onClaimDay: () => void
-	onBook: (s: number, e: number) => void
+	onBook: (s: number, e: number, note?: string) => void
 	onCancel: (b: Booking) => void
 	onNote: (b: Booking, n: string) => void
 	onOffer: (b: Booking, v: boolean) => void
@@ -675,9 +706,12 @@ function BookPopover({ target, O, day, view, T, me, now, room, canNote, canOffer
 	const hit = clash(O, p.id, day, start, end)
 	const over = takesOver(O, p.id, day, start, end)
 	const past = now != null && end <= now
-	const dayFree = !clash(O, p.id, day, view.open, view.close) && !(now != null && now >= view.close)
+	// Drop-in seating takes plans (lunch, dinner…), also outside opening hours, and is never claimed for the day.
+	const drop = isDropIn(p)
+	const [plan, setPlan] = useState("")
+	const dayFree = !drop && !clash(O, p.id, day, view.open, view.close) && !(now != null && now >= view.close)
 	const dayOver = takesOver(O, p.id, day, view.open, view.close)
-	const all = slots(view.open, view.close)
+	const all = drop ? slots(Math.min(view.open, 7 * 60), 23 * 60 + 45) : slots(view.open, view.close)
 	return (
 		<Popover anchor={target.anchor} onClose={onClose} width={320} className="settings book">
 			<div className="shead">
@@ -695,7 +729,14 @@ function BookPopover({ target, O, day, view, T, me, now, room, canNote, canOffer
 						{dayOver.length ? <p className="snote">Takes over from {dayOver.map((b) => b.whoNames[0] ?? "someone").join(", ")}, who marked it up for grabs.</p> : null}
 					</div>
 				) : null}
-				<DayStrip bs={bs} open={view.open} close={view.close} pick={{ start, end }} now={now} me={me} />
+				<DayStrip
+					bs={bs}
+					open={drop ? Math.floor(Math.min(view.open, start, ...bs.map((b) => b.start)) / 60) * 60 : view.open}
+					close={drop ? Math.ceil(Math.max(view.close, end, ...bs.map((b) => b.end)) / 60) * 60 : view.close}
+					pick={{ start, end }}
+					now={now}
+					me={me}
+				/>
 				{bs.length ? (
 					<div className="blist">
 						{bs.map((b) => {
@@ -712,12 +753,16 @@ function BookPopover({ target, O, day, view, T, me, now, room, canNote, canOffer
 											<button type="button" className="ghost sm" onClick={() => onCancel(b)}>
 												Cancel
 											</button>
+										) : drop && me && !(now != null && b.end <= now) && !bs.some((x) => x.who.includes(me) && x.start === b.start && x.end === b.end) ? (
+											<button type="button" className="ghost sm" title="Add yourself to this plan" onClick={() => onBook(b.start, b.end, b.note)}>
+												Join
+											</button>
 										) : null}
 									</div>
-									{mine && (canNote || canOffer) ? (
+									{mine && (canNote || (canOffer && !drop)) ? (
 										<div className="brow-edit">
 											{canNote ? <NoteInput b={b} onNote={onNote} /> : null}
-											{canOffer ? (
+											{canOffer && !drop ? (
 												<label className="offer">
 													<input type="checkbox" aria-label={T.grabs} checked={b.open} onChange={(e) => onOffer(b, e.target.checked)} />
 													{T.grabs}
@@ -732,10 +777,11 @@ function BookPopover({ target, O, day, view, T, me, now, room, canNote, canOffer
 						})}
 					</div>
 				) : (
-					<p className="snote">No bookings on this day.</p>
+					<p className="snote">{drop ? "Always free: just drop by. Add a plan, like lunch or dinner, so others can join." : "No bookings on this day."}</p>
 				)}
 				<div className="msep" />
-				<p className="snote">Or pick times</p>
+				<p className="snote">{drop ? "Add a plan" : "Or pick times"}</p>
+				{drop && canNote ? <input className="field plan-in" maxLength={200} placeholder="What's the plan? e.g. Team dinner" value={plan} onChange={(e) => setPlan(e.target.value)} /> : null}
 				<div className="bform">
 					<Field label="From">
 						<select
@@ -765,8 +811,8 @@ function BookPopover({ target, O, day, view, T, me, now, room, canNote, canOffer
 								))}
 						</select>
 					</Field>
-					<button type="button" className="btn" disabled={!!hit || past} onClick={() => onBook(start, end)}>
-						Book
+					<button type="button" className={"btn" + (drop ? " primary" : "")} disabled={!!hit || past} onClick={() => onBook(start, end, plan)}>
+						{drop ? "Add" : "Book"}
 					</button>
 				</div>
 				{hit ? (

@@ -520,30 +520,45 @@
 	font-weight: 600;
 }
 
-/* Drop-in seating (cafeteria, kitchen…): always free, not bookable. */
+/* Drop-in seating (cafeteria, kitchen…): always free, never claimed; plans can be added. */
 .tile.drop,
 .tile.drop:hover {
 	border: 1px dashed var(--fieldline);
 	border-left: 3px solid var(--free);
 	background: transparent;
 }
-.tile.drop .tile-main {
-	cursor: default;
+.tile.drop:hover {
+	border-color: var(--blue-line);
+	border-left-color: var(--free);
+}
+.tile.drop.planned {
+	border-left-color: var(--blue);
 }
 .drop-l {
 	font-size: 11px;
 	font-weight: 600;
 	color: var(--free);
 }
+.tile-main:hover > .drop-l {
+	display: none;
+}
 .tl-drop {
+	border: 1px dashed var(--fieldline);
+	border-radius: 4px;
+}
+.tl-drop-l {
+	position: absolute;
+	inset: 0;
 	display: flex;
 	align-items: center;
 	padding-left: 8px;
-	border: 1px dashed var(--fieldline);
-	border-radius: 4px;
 	color: var(--free);
 	font-size: 11px;
-	cursor: default;
+	pointer-events: none;
+}
+.plan-in {
+	width: 100%;
+	margin-bottom: 6px;
 }
 .ncheck {
 	display: flex;

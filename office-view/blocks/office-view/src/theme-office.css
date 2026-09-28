@@ -231,6 +231,14 @@
 	background: var(--desk) repeating-linear-gradient(-45deg, transparent 0 10px, rgba(111, 212, 78, 0.07) 10px 11px);
 	box-shadow: none;
 }
+.theme-office .tile.drop:hover {
+	border-color: var(--blue-line);
+	border-bottom-color: var(--edge-free);
+}
+.theme-office .tile.drop.planned,
+.theme-office .tile.drop.planned:hover {
+	border-bottom-color: var(--edge-mine);
+}
 .theme-office .drop-l {
 	font-family: var(--type);
 	color: #3e9a2a;

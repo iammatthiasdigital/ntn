@@ -76,3 +76,11 @@ test("drop-in seating: the Always free checkbox, or cafeteria-like types without
 	assert.deepEqual(readOffice(withFree, res, null).places.map((p) => p.free), [true, false])
 	assert.equal(readOffice(sources, res, null).places[0].free, null)
 })
+
+test("plans at drop-in seating never clash", () => {
+	const cafe = { ...src([{ id: "c1", name: "Long tables", type: "Cafeteria seat" }]) }
+	const O = readOffice({ ...sources, places: cafe, bookings: src([{ id: "d1", name: "Dinner", place: rel("c1"), when: at("2026-09-28", "18:00", "20:00") }]) }, res, null)
+	assert.equal(clash(O, "c1", "2026-09-28", 18 * 60, 19 * 60), undefined)
+	assert.deepEqual(takesOver(O, "c1", "2026-09-28", 18 * 60, 19 * 60), [])
+	assert.equal(firstFree(O, "c1", "2026-09-28", 18 * 60, 60, 8 * 60, 22 * 60), 18 * 60)
+})
