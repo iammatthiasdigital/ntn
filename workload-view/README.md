@@ -30,10 +30,11 @@ are guessed from names and types to start with.
 | Workload | number, e.g. 50 or 50%               | Share of full time (or hours, see below)        |
 | Dates    | date                                 | Optional: rows without dates are ongoing        |
 
-**People** (optional) lists everyone, also those without allocations. Pick
-its team column (select or relation) and a working-time column (hours per
-week, or %). Rows are matched to the Workload by relation, by person or by
-name.
+Only people with allocations in the Workload get a lane. **People**
+(optional) adds their team column (select or relation) and a working-time
+column (hours per week, or %); rows are matched to the Workload by
+relation, by person or by name. *Settings → People shown* adds people from
+it who have no allocations (tick them one by one) or shows everyone.
 
 **Working time** is 100% unless the People database provides it. You can also
 click "works …" on a person to set it locally. It's saved in the view, so it

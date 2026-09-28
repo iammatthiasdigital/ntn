@@ -5,9 +5,10 @@
  * property, or a relation to a person page) to a project (select or
  * relation) with a workload (%, or hours), optionally over dates — rows
  * without dates are ongoing. Teams come from a select or relation on the
- * row or on the person. An optional People database adds everyone (also
- * those without allocations), their team and their working time; without
- * it, working time is 100% unless set locally per person.
+ * row or on the person. Only people with allocations get a lane, unless more
+ * are picked. An optional People database adds their team and working time,
+ * and people to pick (or everyone); without it, working time is 100% unless
+ * set locally per person.
  */
 import { asStrings, dateOf, numberOf, pointerIds, textOf, type Resolvers } from "./kit/filters/core"
 import type { SourceRow, SourceSnapshot } from "./kit/sources"
@@ -40,6 +41,10 @@ export type Options = Setup & {
 	dayHours: number
 	/** Local working time per lane key, % of full time. */
 	caps: Record<string, number>
+	/** Lanes for everyone in the People database, not only those with allocations. */
+	everyone: boolean
+	/** People rows shown even without allocations. */
+	extra: string[]
 	workdays: boolean
 	bucket: Bucket
 	from: string | null
@@ -228,7 +233,7 @@ export function workload(work: SourceSnapshot, people: SourceSnapshot | undefine
 	for (let t = start; t <= endDay && buckets.length < 400; t = nextBucket(t, o.bucket)) buckets.push(t)
 	const end = buckets.length ? nextBucket(buckets[buckets.length - 1], o.bucket) : start + 1
 
-	/* Lanes: people rows first (so everyone shows), then whoever else is allocated. */
+	/* Lanes: whoever is allocated, plus People rows picked in the settings (or everyone). */
 	type LaneAcc = { key: string; label: string; row?: SourceRow; items: Allocation[]; teams: Map<string, { v: Val; n: number }> }
 	const lanes = new Map<string, LaneAcc>()
 	const laneFor = (v: Val): LaneAcc => {
@@ -241,7 +246,7 @@ export function workload(work: SourceSnapshot, people: SourceSnapshot | undefine
 		}
 		return l
 	}
-	if (!visible) for (const r of pRows) laneFor({ key: r.id, label: titleOf(people!, r) })
+	if (!visible) for (const r of pRows) if (o.everyone || o.extra.includes(r.id)) laneFor({ key: r.id, label: titleOf(people!, r) })
 	for (const x of raws) {
 		const who = x.lanes.length ? x.lanes : [{ key: NONE, label: "Unassigned" }]
 		const s = x.start ?? start

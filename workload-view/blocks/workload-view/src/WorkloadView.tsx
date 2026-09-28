@@ -1,5 +1,5 @@
 import { Fragment, useLayoutEffect, useMemo, useRef, useState } from "react"
-import { dayIso, EMPTY_FILTERS } from "./kit/filters/core"
+import { dayIso, EMPTY_FILTERS, textOf } from "./kit/filters/core"
 import { PropIcon } from "./kit/filters/icons"
 import { ClockIcon, ColumnIcon, HashIcon, LayersIcon, NavRow, Note, NumberRow, PersonIcon, PickRow, Sep, SettingsShell, TargetIcon, ToggleRow } from "./kit/settings"
 import type { BlockData } from "./kit/sources"
@@ -25,6 +25,10 @@ type View = WithFilters & {
 	dayHours: number
 	/** Working time per person (lane key), % of full time; local to this browser and the view code. */
 	caps: Record<string, number>
+	/** Everyone in the People database gets a lane, not only people with allocations. */
+	everyone: boolean
+	/** People rows added by hand (shown without allocations). */
+	extra: string[]
 	workdays: boolean
 	bucket: Bucket
 	from: string
@@ -43,6 +47,8 @@ const DEFAULT: View = {
 	mode: null,
 	dayHours: 8,
 	caps: {},
+	everyone: false,
+	extra: [],
 	workdays: true,
 	bucket: "week",
 	from: "",
@@ -62,6 +68,8 @@ const sanitize = (v: View): View => {
 		bucket: oneOf(v.bucket, ["day", "week", "month"] as const, DEFAULT.bucket),
 		dayHours: within(v.dayHours, 0.5, 24, DEFAULT.dayHours),
 		caps,
+		everyone: v.everyone === true,
+		extra: Array.isArray(v.extra) ? v.extra.filter((x) => typeof x === "string" && x.length < 100).slice(0, 500) : [],
 		from: isoDay(v.from),
 		to: isoDay(v.to),
 	}
@@ -93,7 +101,7 @@ export function WorkloadView({ data, theme }: { data: BlockData<Keys>; theme: "l
 	)
 }
 
-type Page = "root" | "person" | "project" | "team" | "effort" | "dates" | "pPerson" | "pCap" | "mode" | "bucket"
+type Page = "root" | "person" | "project" | "team" | "effort" | "dates" | "pPerson" | "pCap" | "mode" | "bucket" | "shown"
 
 function Ready({ data }: { data: Ready }) {
 	const [view, setView] = usePersistentView(data.storageKey, DEFAULT)
@@ -107,9 +115,19 @@ function Ready({ data }: { data: Ready }) {
 	const effortName = setup.effort ? src.propertySchemasById[setup.effort]?.name : undefined
 	const mode: EffortMode = view.mode ?? (/hour|stunde/i.test(effortName ?? "") && !looksLikePercent(effortName) ? "total" : "percent")
 	const WL = useMemo(
-		() => workload(src, ppl, filtering ? visible : null, data.resolvers, { ...setup, mode, dayHours: view.dayHours, caps: view.caps, workdays: view.workdays, bucket: view.bucket, from: view.from || null, to: view.to || null, today }),
-		[src, ppl, visible, filtering, data.resolvers, setup, mode, view.dayHours, view.caps, view.workdays, view.bucket, view.from, view.to, today]
+		() => workload(src, ppl, filtering ? visible : null, data.resolvers, { ...setup, mode, dayHours: view.dayHours, caps: view.caps, everyone: view.everyone, extra: view.extra, workdays: view.workdays, bucket: view.bucket, from: view.from || null, to: view.to || null, today }),
+		[src, ppl, visible, filtering, data.resolvers, setup, mode, view.dayHours, view.caps, view.everyone, view.extra, view.workdays, view.bucket, view.from, view.to, today]
 	)
+	// People rows with allocations always have a lane; the others can be added.
+	const allocated = useMemo(() => new Set(WL.lanes.filter((l) => l.items.length && l.key.startsWith("p:")).map((l) => l.key.slice(2))), [WL])
+	const others = useMemo(() => {
+		const t = ppl ? Object.entries(ppl.propertySchemasById).find(([, c]) => c.type === "title")?.[0] : undefined
+		return (ppl?.items ?? [])
+			.filter((r) => !allocated.has(r.id))
+			.map((r) => ({ id: r.id, name: textOf(t ? r.propertiesById[t] : "").trim() || "Untitled" }))
+			.sort((a, b) => a.name.localeCompare(b.name))
+	}, [ppl, allocated])
+	const extraShown = view.extra.filter((id) => others.some((o) => o.id === id)).length
 	const nameOf = (id: string | null, list: Column[]) => (id ? (list.find((c) => c.id === id)?.name ?? "—") : "None")
 	const [page, setPage] = useState<Page>("root")
 
@@ -154,6 +172,29 @@ function Ready({ data }: { data: Ready }) {
 						<PickRow label="Hours in total" sub="40 h spread over the allocation's days" selected={mode === "total"} onClick={() => setUi({ mode: "total" })} />
 					</SettingsShell>
 				)
+			case "shown":
+				return (
+					<SettingsShell anchor={anchor} onClose={shut} title="People shown" onBack={back}>
+						<PickRow label="People in the workload" sub="Everyone with an allocation, plus the people ticked below" selected={!view.everyone} onClick={() => setUi({ everyone: false })} />
+						<PickRow label="Everyone in People" sub="Also people without allocations" selected={view.everyone} onClick={() => setUi({ everyone: true })} />
+						{!view.everyone && others.length ? (
+							<>
+								<Sep />
+								{others.map((o) => (
+									<PickRow
+										key={o.id}
+										icon={<PersonIcon />}
+										label={o.name}
+										checkbox
+										selected={view.extra.includes(o.id)}
+										onClick={() => setUi({ extra: view.extra.includes(o.id) ? view.extra.filter((x) => x !== o.id) : [...view.extra, o.id] })}
+									/>
+								))}
+							</>
+						) : null}
+						<Note>People with allocations always show. Tick others from the People database to see their free time too.</Note>
+					</SettingsShell>
+				)
 			case "bucket":
 				return (
 					<SettingsShell anchor={anchor} onClose={shut} title="Time scale" onBack={back}>
@@ -173,6 +214,7 @@ function Ready({ data }: { data: Ready }) {
 				{ppl ? (
 					<>
 						<NavRow icon={<PersonIcon />} label="Match people by" value={nameOf(setup.pPerson, cols.pPerson)} onClick={() => setPage("pPerson")} />
+						<NavRow icon={<PersonIcon />} label="People shown" value={view.everyone ? "Everyone" : extraShown ? `In the workload + ${extraShown}` : "In the workload"} onClick={() => setPage("shown")} />
 						<NavRow icon={<TargetIcon />} label="Working time" value={setup.pCap ? nameOf(setup.pCap, cols.pCap) : "On the board"} onClick={() => setPage("pCap")} />
 					</>
 				) : null}
@@ -192,7 +234,7 @@ function Ready({ data }: { data: Ready }) {
 					<input className="field" style={{ width: 150, flex: "none" }} type="date" value={view.to} onChange={(e) => setUi({ to: e.target.value })} />
 				</label>
 				<Note>
-					{ppl ? "A People database adds everyone, their team and working time." : "Connect a People database to list everyone, even without allocations."} Click “works …” on a person to set their working time
+					{ppl ? "The People database adds teams, working time and people to show." : "Only people with allocations are shown; connect a People database to add others."} Click “works …” on a person to set their working time
 					locally.
 				</Note>
 			</SettingsShell>

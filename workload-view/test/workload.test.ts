@@ -10,7 +10,7 @@ function snap(schema: Record<string, { name: string; type: string }>, rows: Reco
 	return { bound: true, truncated: false, propertySchemasById: schema, propertyIdsByKey: { name: "name" }, items: rows.map((v, i) => ({ id: (v.id as string) ?? `a${i}`, propertiesById: v, propertiesByKey: v })) }
 }
 const res = { userName: (id: string) => ({ u1: "Ada", u2: "Alan" })[id], pageTitle: (id: string) => ({ pa: "Ada", pb: "Alan", t1: "Platform", prj: "Checkout" })[id] }
-const opts = (o: Partial<Options>): Options => ({ person: null, project: null, team: null, effort: null, dates: null, pPerson: null, pCap: null, mode: "percent", dayHours: 8, caps: {}, workdays: true, bucket: "day", from: "2026-09-07", to: "2026-09-11", today: "2026-09-08", ...o })
+const opts = (o: Partial<Options>): Options => ({ person: null, project: null, team: null, effort: null, dates: null, pPerson: null, pCap: null, mode: "percent", dayHours: 8, caps: {}, everyone: false, extra: [], workdays: true, bucket: "day", from: "2026-09-07", to: "2026-09-11", today: "2026-09-08", ...o })
 
 // One database: person as people, project as select, team as select, workload in Notion's percent format.
 const ONE = snap(
@@ -54,7 +54,7 @@ test("person and project as relations; local working time", () => {
 	assert.equal(W.series[0].label, "Checkout")
 })
 
-test("a People database lists everyone, sets team (relation) and working time", () => {
+test("a People database sets team (relation) and working time; people without allocations only when picked", () => {
 	const PEOPLE = snap(
 		{ title: { name: "Name", type: "title" }, user: { name: "Person", type: "people" }, team: { name: "Team", type: "relation" }, hours: { name: "Hours per week", type: "number" } },
 		[
@@ -64,7 +64,9 @@ test("a People database lists everyone, sets team (relation) and working time", 
 	)
 	const s = resolveSetup({}, ONE, PEOPLE)
 	assert.deepEqual([s.team, s.pPerson, s.pCap], ["p:team", "user", "hours"])
-	const W = workload(ONE, PEOPLE, null, res, opts(s))
+	assert.deepEqual(workload(ONE, PEOPLE, null, res, opts(s)).lanes.map((l) => l.label).sort(), ["Ada Lovelace", "Alan"])
+	assert.deepEqual(workload(ONE, PEOPLE, null, res, opts({ ...s, extra: ["p2"] })).lanes.map((l) => l.label).sort(), ["Ada Lovelace", "Alan", "Grace Hopper"])
+	const W = workload(ONE, PEOPLE, null, res, opts({ ...s, everyone: true }))
 	const byName = Object.fromEntries(W.lanes.map((l) => [l.label, l]))
 	assert.deepEqual(Object.keys(byName).sort(), ["Ada Lovelace", "Alan", "Grace Hopper"])
 	assert.equal(byName["Ada Lovelace"].team, "Platform")
