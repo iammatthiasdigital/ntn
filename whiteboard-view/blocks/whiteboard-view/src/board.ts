@@ -63,6 +63,9 @@ export type Item = {
 	done: boolean
 	/** How it was fixed: asked for when the note is checked off. */
 	resolution: string
+	/** The X/Y stored in the database (relative to the frame), before layout. */
+	sx?: number | null
+	sy?: number | null
 }
 
 export type Group = {
@@ -235,20 +238,53 @@ export type ReadOptions = {
 	/** Pack notes in frames into free slots, ignoring stored positions (while filtering). */
 	compact?: boolean
 	pageTitle: (id: string) => string | undefined
-	/** Property for "who wrote it": a people, Created by or Last edited by property id; null = Author, else Created by. */
-	authorBy?: string | null
+	/** Property ids of the optional fields (see resolveSetup); null = not used. */
+	author?: string | null
+	done?: string | null
+	fix?: string | null
 }
 
-/** Properties that can say who wrote a note. */
-export const AUTHOR_TYPES = ["people", "created_by", "last_edited_by"]
+/*
+ * Setup. The database only needs Title, X and Y. Everything else is an
+ * optional field picked once in the block's settings: "auto" guesses it from
+ * the property names and types, "none" turns it off, anything else is a
+ * property id. There are no other fallbacks.
+ */
+export type Field = "author" | "done" | "fix"
+export type Picks = { groupBy: string; author: string; done: string; fix: string }
+export type Setup = { group: GroupProp | null; author: string | null; done: string | null; fix: string | null }
 
-/** The people who wrote a note: the chosen property, else Author, else Created by. */
-function authorsOf(src: SourceSnapshot, r: SourceRow, by?: string | null): string[] {
-	if (by && src.propertySchemasById[by]) return pointerIds(r.propertiesById[by])
-	const own = pointerIds(prop(src, r, "author"))
-	if (own.length) return own
-	const createdBy = Object.entries(src.propertySchemasById).find(([, s]) => s.type === "created_by")?.[0]
-	return createdBy ? pointerIds(r.propertiesById[createdBy]) : []
+/** Property types each field can use. */
+export const FIELD_TYPES: Record<Field, string[]> = {
+	author: ["people", "created_by", "last_edited_by"],
+	done: ["checkbox"],
+	fix: ["rich_text"],
+}
+const GUESS: Record<Field, RegExp> = {
+	author: /author|written|writer|owner|creator|who|person/i,
+	done: /done|fixed|resolved|closed|complete|erledigt/i,
+	fix: /fix|resolution|solution|solved|how/i,
+}
+
+/** The properties a field can use, in schema order. */
+export function fieldOptions(src: SourceSnapshot, f: Field): { id: string; name: string; type: string }[] {
+	return Object.entries(src.propertySchemasById)
+		.filter(([, p]) => FIELD_TYPES[f].includes(p.type))
+		.map(([id, p]) => ({ id, name: p.name ?? id, type: p.type }))
+}
+
+function resolveField(src: SourceSnapshot, f: Field, pick: string): string | null {
+	if (pick === "none") return null
+	const all = fieldOptions(src, f)
+	if (all.some((p) => p.id === pick)) return pick
+	const named = all.find((p) => GUESS[f].test(p.name))
+	if (named) return named.id
+	// Who wrote it: a people property, else Created by. Done and the fix note are only taken by name.
+	return f === "author" ? (all.find((p) => p.type === "people") ?? all.find((p) => p.type === "created_by"))?.id ?? null : null
+}
+
+export function resolveSetup(src: SourceSnapshot, picks: Picks): Setup {
+	return { group: resolveGroupBy(src, picks.groupBy), author: resolveField(src, "author", picks.author), done: resolveField(src, "done", picks.done), fix: resolveField(src, "fix", picks.fix) }
 }
 
 export function readBoard(src: SourceSnapshot, local: LocalLayer, opts: ReadOptions): Board {
@@ -259,7 +295,7 @@ export function readBoard(src: SourceSnapshot, local: LocalLayer, opts: ReadOpti
 	type Raw = { r: SourceRow; x: number | null; y: number | null; values: string[]; home: string | null; done: boolean }
 	const raws: Raw[] = []
 	for (const r of src.items) {
-		const done = checkboxOf(prop(src, r, "done"))
+		const done = opts.done ? checkboxOf(r.propertiesById[opts.done]) : false
 		if ((done && !opts.showDone) || (opts.visible && !opts.visible.has(r.id))) continue
 		const values = g ? groupValues(g, r.propertiesById[g.id]) : []
 		// A note with several values sits in the first frame (frame order).
@@ -332,9 +368,11 @@ export function readBoard(src: SourceSnapshot, local: LocalLayer, opts: ReadOpti
 			z: local.z[w.r.id] ?? 0,
 			groupId: o ? w.home : null,
 			groupValues: w.values,
-			authorIds: authorsOf(src, w.r, opts.authorBy),
+			authorIds: opts.author ? pointerIds(w.r.propertiesById[opts.author]) : [],
 			done: w.done,
-			resolution: textOf(prop(src, w.r, "resolution")).trim(),
+			resolution: opts.fix ? textOf(w.r.propertiesById[opts.fix]).trim() : "",
+			sx: w.x,
+			sy: w.y,
 		}
 		items.push(item)
 		if (!o && !kept.has(w)) unplaced.push(item)

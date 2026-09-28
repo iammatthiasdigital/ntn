@@ -2,12 +2,11 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import { dayIso, EMPTY_FILTERS } from "./kit/filters/core"
 import { Plus } from "./kit/filters/icons"
 import { PropIcon } from "./kit/filters/icons"
-import { ColumnIcon, LayersIcon, NavRow, Note, NumberRow, PersonIcon, PickRow, Sep, SettingsShell, TargetIcon, ToggleRow } from "./kit/settings"
+import { ColumnIcon, LayersIcon, LineIcon, NavRow, Note, NumberRow, PersonIcon, PickRow, Sep, SettingsShell, TargetIcon, ToggleRow } from "./kit/settings"
 import { W, type BlockData, type PropertyWrite } from "./kit/sources"
 import { oneOf, within } from "./kit/share"
 import { Loading, Setup, Toolbar, useFiltered, usePersistentView, type WithFilters } from "./kit/toolbar"
 import {
-	AUTHOR_TYPES,
 	EMPTY_LOCAL,
 	firstName,
 	frameAt,
@@ -22,7 +21,9 @@ import {
 	nextSlot,
 	readBoard,
 	readLocal,
-	resolveGroupBy,
+	fieldOptions,
+	resolveSetup,
+	type Field,
 	STICKY,
 	storedPos,
 	tidy,
@@ -41,28 +42,42 @@ export type Keys = "items"
 type Ready = Extract<BlockData<Keys>, { status: "ready" }>
 
 type View = WithFilters & {
-	/** Property id the frames come from; "auto" = the first select / multi-select / relation, "none" = no frames. */
+	/**
+	 * The database fields, each picked in the settings: a property id, "auto"
+	 * (guessed from names and types) or "none". Frames (a select, multi-select
+	 * or relation), who wrote a note (people, Created by, Last edited by), the
+	 * Done checkbox and the "How it was fixed" text.
+	 */
 	groupBy: string
-	/** Who wrote a note: a people / Created by / Last edited by property id; "auto" = Author, else Created by. */
-	authorBy: string
+	author: string
+	done: string
+	fix: string
 	/** The block's title; "" = "Whiteboard". */
 	title: string
 	/** Leave out frames without notes. */
 	hideEmpty: boolean
 	/** Stickies in a frame take the group's color. */
 	byTopic: boolean
-	authors: boolean
 	showDone: boolean
 	perRow: number
 	height: number
 	look: "whiteboard" | "cork"
 }
 
-const DEFAULT: View = { title: "", authorBy: "auto", groupBy: "auto", hideEmpty: false, byTopic: true, authors: true, showDone: false, perRow: 0, height: 0, look: "whiteboard", filters: EMPTY_FILTERS, filterBar: true }
+const DEFAULT: View = { title: "", groupBy: "auto", author: "auto", done: "auto", fix: "auto", hideEmpty: false, byTopic: true, showDone: false, perRow: 0, height: 0, look: "whiteboard", filters: EMPTY_FILTERS, filterBar: true }
 /** Imported views stay within what the settings allow. */
-const sanitize = (v: View): View => ({ ...v, title: String(v.title ?? "").slice(0, 80), perRow: Math.round(within(v.perRow, 0, 12, DEFAULT.perRow)), height: v.height === 0 ? 0 : Math.round(within(v.height, 320, 4000, 600)), look: oneOf(v.look, ["whiteboard", "cork"] as const, DEFAULT.look) })
+const pickOf = (v: unknown) => (typeof v === "string" && v.length < 200 ? v : "auto")
+const sanitize = (v: View): View => ({ ...v, groupBy: pickOf(v.groupBy), author: pickOf(v.author), done: pickOf(v.done), fix: pickOf(v.fix), title: String(v.title ?? "").slice(0, 80), perRow: Math.round(within(v.perRow, 0, 12, DEFAULT.perRow)), height: v.height === 0 ? 0 : Math.round(within(v.height, 320, 4000, 600)), look: oneOf(v.look, ["whiteboard", "cork"] as const, DEFAULT.look) })
 const ZOOMS = [0.3, 0.4, 0.55, 0.7, 0.85, 1, 1.2, 1.5] as const
 const FLY_MS = 820
+
+const FIELD_LABEL: Record<Field, string> = { author: "Written by", done: "Done", fix: "How it was fixed" }
+const FIELD_NONE: Record<Field, string> = { author: "No name tags", done: "Notes can't be checked off", fix: "Checking off doesn't ask" }
+const FIELD_NOTE: Record<Field, string> = {
+	author: "A person property (the block fills it in with you for new notes), Created by or Last edited by.",
+	done: "A checkbox. Checked notes are eaten by the turtle.",
+	fix: "A text property. Asked for, prefilled, when a note is checked off.",
+}
 
 export function BoardView({ data, theme }: { data: BlockData<Keys>; theme: "light" | "dark" }) {
 	return (
@@ -72,8 +87,8 @@ export function BoardView({ data, theme }: { data: BlockData<Keys>; theme: "ligh
 			) : data.status === "unbound" ? (
 				<Setup title="Connect a database to start drawing." missing={data.missing}>
 					<li>
-						<b>Notes</b>: Title, X and Y (numbers), and optionally Author (people), Done (checkbox) and How it was fixed (text). Any select, multi-select or
-						relation of the database can group the notes into frames.
+						<b>Notes</b>: Title, X and Y (numbers). Everything else (frames, who wrote it, Done, How it was fixed) is picked from your own properties in the
+						block's settings.
 					</li>
 				</Setup>
 			) : (
@@ -140,6 +155,13 @@ function Ready({ data }: { data: Ready }) {
 	// Views saved with the old fixed defaults (600px, 4 per row) switch to fitting the block.
 	useEffect(() => {
 		if (view.height === 600 && view.perRow === 4) setView((v) => ({ ...v, height: 0, perRow: 0 }))
+		// Views from before the fields moved into the settings: "Show who wrote it" off, or a chosen "Written by".
+		const old = view as View & { authors?: boolean; authorBy?: string }
+		if (old.authors !== undefined || old.authorBy !== undefined)
+			setView((v) => {
+				const { authors, authorBy, ...rest } = v as typeof old
+				return { ...rest, author: authors === false ? "none" : authorBy && authorBy !== "auto" ? authorBy : rest.author }
+			})
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [])
 	const setUi = (f: Partial<View>) => setView((v) => ({ ...v, ...f }))
@@ -153,20 +175,23 @@ function Ready({ data }: { data: Ready }) {
 	const { properties: allProps, visible, filtering } = useFiltered(itemsSrc, view.filters, data.resolvers, today)
 	const hidden = useMemo(() => new Set(HIDDEN_PROPS.map((k) => itemsSrc.propertyIdsByKey[k]).filter(Boolean)), [itemsSrc.propertyIdsByKey])
 	const properties = useMemo(() => allProps.filter((p) => !hidden.has(p.id)), [allProps, hidden])
-	const groupProp = useMemo(() => resolveGroupBy(itemsSrc, view.groupBy), [itemsSrc, view.groupBy])
+	const setup = useMemo(() => resolveSetup(itemsSrc, view), [itemsSrc, view.groupBy, view.author, view.done, view.fix])
+	const groupProp = setup.group
 	const base = useMemo(
-		() => readBoard(itemsSrc, local, { perRow, showDone: view.showDone, compact: filtering, visible: filtering ? visible : null, groupBy: groupProp, hideEmpty: view.hideEmpty || filtering, pageTitle: data.resolvers.pageTitle, authorBy: view.authorBy === "auto" ? null : view.authorBy }),
-		[itemsSrc, local, perRow, visible, filtering, view.showDone, groupProp, view.hideEmpty, data.resolvers.pageTitle, view.authorBy]
+		() => readBoard(itemsSrc, local, { perRow, showDone: view.showDone, compact: filtering, visible: filtering ? visible : null, groupBy: groupProp, hideEmpty: view.hideEmpty || filtering, pageTitle: data.resolvers.pageTitle, author: setup.author, done: setup.done, fix: setup.fix }),
+		[itemsSrc, local, perRow, visible, filtering, view.showDone, groupProp, view.hideEmpty, data.resolvers.pageTitle, setup]
 	)
 	const me = data.resolvers.meId
-	const has = (k: string) => itemsSrc.propertyIdsByKey[k] !== undefined
 	const canGroup = !!groupProp
-	const canDone = has("done")
+	const canDone = !!setup.done
 
 	/* ---- optimistic layer: local edits over the rows until the host catches up ---- */
 	const [over, setOver] = useState<Record<string, Partial<Item> & { t: number }>>({})
 	const [gone, setGone] = useState<ReadonlySet<string>>(new Set())
-	const [pending, setPending] = useState<(Item & { sent?: number })[]>([])
+	/** Notes being created; `from` is where one was created when it's moved before the host has it. */
+	const [pending, setPending] = useState<(Item & { sent?: number; from?: { x: number; y: number; groupId: string | null } })[]>([])
+	const [tick, setTick] = useState(0)
+	const moveArrived = useRef<(it: Item, p: Partial<Item>) => void>(() => {})
 	useEffect(() => {
 		const now = Date.now()
 		setOver((o) => {
@@ -174,17 +199,35 @@ function Ready({ data }: { data: Ready }) {
 			const next: typeof o = {}
 			for (const [id, patch] of Object.entries(o)) {
 				const cur = base.items.find((it) => it.id === id)
-				const caught = cur && Object.entries(patch).every(([k, v]) => k === "t" || (typeof v === "number" ? Math.abs((cur[k as keyof Item] as number) - v) < 1.5 : JSON.stringify(cur[k as keyof Item]) === JSON.stringify(v)))
+				// A move is caught up once the stored X/Y (and group) arrive; where the layout then shows the note can differ (packing, frames hidden by a filter).
+				const skip = (k: string) => k === "t" || ("sx" in patch && (k === "x" || k === "y"))
+				const caught = cur && Object.entries(patch).every(([k, v]) => skip(k) || (typeof v === "number" ? Math.abs((cur[k as keyof Item] as number) - v) < 1.5 : JSON.stringify(cur[k as keyof Item]) === JSON.stringify(v)))
 				if (caught || now - patch.t > 8000) changed = true
 				else next[id] = patch
 			}
 			return changed ? next : o
 		})
+		const at = (p: { x: number; y: number }) => (it: Item) => Math.abs(it.x - p.x) < 2 && Math.abs(it.y - p.y) < 2
+		const arrived = new Set<string>()
+		for (const p of pending) {
+			if (!p.sent) continue
+			const row = base.items.find((it) => it.type === p.type && it.title === p.title && at(p.from ?? p)(it))
+			if (!row) continue
+			arrived.add(p.id)
+			// Moved while it was being created: now that it exists, save the move (and its new frame).
+			if (p.from) moveArrived.current(row, { x: p.x, y: p.y, groupId: p.groupId })
+		}
 		setPending((ps) => {
-			const next = ps.filter((p) => !p.sent || (now - p.sent < 10000 && !base.items.some((it) => it.type === p.type && it.title === p.title && Math.abs(it.x - p.x) < 2 && Math.abs(it.y - p.y) < 2)))
+			const next = ps.filter((p) => !p.sent || (!arrived.has(p.id) && now - p.sent < 10000))
 			return next.length === ps.length ? ps : next
 		})
-	}, [base])
+	}, [base, tick])
+	// Local edits never outlive 8 s, even when nothing else changes.
+	useEffect(() => {
+		if (!Object.keys(over).length && !pending.length) return
+		const t = window.setTimeout(() => setTick((n) => n + 1), 8500)
+		return () => window.clearTimeout(t)
+	}, [over, pending])
 
 	const items = useMemo(() => {
 		const merged = base.items.filter((it) => !gone.has(it.id)).map((it) => (over[it.id] ? { ...it, ...over[it.id] } : it))
@@ -201,7 +244,6 @@ function Ready({ data }: { data: Ready }) {
 		return () => window.clearTimeout(t)
 	}, [toast])
 	const fail = (err: string | null) => (err ? (setToast({ text: `Couldn't save: ${err}` }), true) : false)
-	const only = (w: PropertyWrite): PropertyWrite => Object.fromEntries(Object.entries(w).filter(([k]) => has(k)))
 
 	const patch = (id: string, p: Partial<Item>) => setOver((o) => ({ ...o, [id]: { ...o[id], ...p, t: Date.now() } }))
 	/** The group-property write for a note's values. */
@@ -222,22 +264,25 @@ function Ready({ data }: { data: Ready }) {
 		}
 		const next = { ...it, ...p }
 		if ("groupId" in p) next.groupValues = moveValues(groupProp?.kind ?? "select", it.groupValues, it.groupId, next.groupId)
-		patch(it.id, { ...p, ...("groupId" in p ? { groupValues: next.groupValues } : {}) })
+		const moved = "x" in p || "y" in p || "groupId" in p
+		const stored = moved ? storedPos(groups, next.groupId, next.x, next.y) : null
+		patch(it.id, { ...p, ...("groupId" in p ? { groupValues: next.groupValues } : {}), ...(stored ? { sx: stored.x, sy: stored.y } : {}) })
 		if ("color" in p || "z" in p)
 			setLocal((l) => ({ ...l, colors: "color" in p ? { ...l.colors, [it.id]: next.color } : l.colors, z: "z" in p ? { ...l.z, [it.id]: next.z } : l.z }))
 		const w: PropertyWrite = {}
-		if ("x" in p || "y" in p || "groupId" in p) {
-			const pos = storedPos(groups, next.groupId, next.x, next.y)
-			w.x = W.number(pos.x)
-			w.y = W.number(pos.y)
-			if ("groupId" in p && next.groupId !== it.groupId) Object.assign(w, groupWrite(next.groupValues))
+		if (stored) {
+			w.x = W.number(stored.x)
+			w.y = W.number(stored.y)
 		}
 		if ("title" in p) w.title = W.title(next.title)
-		if ("done" in p) w.done = W.checkbox(next.done)
-		if ("resolution" in p) w.resolution = longText(next.resolution)
-		const out = only(w)
+		if ("done" in p && setup.done) w[setup.done] = W.checkbox(next.done)
+		if ("resolution" in p && setup.fix) w[setup.fix] = longText(next.resolution)
+		// Fields picked in the settings are written by their property ids.
+		if ("groupId" in p && next.groupId !== it.groupId) Object.assign(w, groupWrite(next.groupValues))
+		const out = w
 		if (Object.keys(out).length) fail(await data.mutations.update("items", it.id, out))
 	}
+	moveArrived.current = (it, p) => void save(it, p)
 	const create = async (it: Item) => {
 		if (it.type !== "sticky") {
 			const r = Math.round
@@ -250,10 +295,12 @@ function Ready({ data }: { data: Ready }) {
 			title: W.title(it.title),
 			x: W.number(pos.x),
 			y: W.number(pos.y),
-			...(me ? { author: W.people([me]) } : {}),
+			// Who wrote it, when that's a people property (Created by is set by Notion).
+			...(me && setup.author && itemsSrc.propertySchemasById[setup.author]?.type === "people" ? { [setup.author]: W.people([me]) } : {}),
+			...(it.groupId ? groupWrite([it.groupId]) : {}),
 		}
 		setPending((ps) => [...ps.filter((p) => p.id !== it.id), { ...it, sent: Date.now() }])
-		if (fail(await data.mutations.create("items", { ...only(w), ...(it.groupId ? groupWrite([it.groupId]) : {}) }))) setPending((ps) => ps.filter((p) => p.id !== it.id))
+		if (fail(await data.mutations.create("items", w))) setPending((ps) => ps.filter((p) => p.id !== it.id))
 		else if (it.color !== "yellow" && !(view.byTopic && it.groupId)) rememberColor.current = { title: it.title, color: it.color }
 	}
 	const remove = async (it: Item) => {
@@ -479,10 +526,10 @@ function Ready({ data }: { data: Ready }) {
 	const [party, setParty] = useState<{ it: Item; text: string } | null>(null)
 	const [eating, setEating] = useState(0)
 	const [doneToday, setDoneToday] = useState(0)
-	const canFix = has("resolution")
+	const canFix = !!setup.fix
 	const undoDone = (it: Item) => () => void save(it, { done: false })
 	const markDone = (it: Item, done: boolean) => {
-		if (!canDone) return setToast({ text: "Map the Done checkbox in the block's data settings to check notes off." })
+		if (!canDone) return setToast({ text: "Pick a Done checkbox in the settings to check notes off." })
 		if (!done) return void save(it, { done: false })
 		setSelectedId(null)
 		if (canFix) setAsk(it)
@@ -633,7 +680,7 @@ function Ready({ data }: { data: Ready }) {
 				// Dropping a sticky into a topic frame files it under that topic.
 				const g = it.type === "sticky" && canGroup ? frameAt(groups, it.x + it.width / 2, it.y + it.height / 2) : undefined
 				const groupId = it.type === "sticky" ? (g?.id ?? null) : null
-				if (pending.some((p) => p.id === it.id)) setPending((ps) => ps.map((p) => (p.id === it.id ? { ...p, x: it.x, y: it.y, groupId } : p)))
+				if (pending.some((p) => p.id === it.id)) setPending((ps) => ps.map((p) => (p.id === it.id ? { ...p, from: p.from ?? { x: p.x, y: p.y, groupId: p.groupId }, x: it.x, y: it.y, groupId } : p)))
 				else void save(it, { x: it.x, y: it.y, groupId, z: maxZ + 1 })
 			}
 		}
@@ -730,9 +777,8 @@ function Ready({ data }: { data: Ready }) {
 	}, [drag, items, groups])
 
 	/* ---- settings ---- */
-	const [page, setPage] = useState<"root" | "look" | "group" | "author">("root")
-	const authorProps = useMemo(() => Object.entries(itemsSrc.propertySchemasById).filter(([, p]) => AUTHOR_TYPES.includes(p.type)).map(([id, p]) => ({ id, name: p.name ?? id, type: p.type })), [itemsSrc])
-	const authorName = view.authorBy === "auto" ? "Automatic" : (authorProps.find((p) => p.id === view.authorBy)?.name ?? "Automatic")
+	const [page, setPage] = useState<"root" | "look" | "group" | Field>("root")
+	const propName = (id: string | null) => (id ? (itemsSrc.propertySchemasById[id]?.name ?? id) : "None")
 	const groupable = useMemo(() => groupableProps(itemsSrc), [itemsSrc])
 	const settings = (anchor: HTMLElement | null, close: () => void) => {
 		const shut = () => {
@@ -746,17 +792,20 @@ function Ready({ data }: { data: Ready }) {
 					<PickRow label="Cork board" sub="Pinned notes and paper topics" selected={view.look === "cork"} onClick={() => setUi({ look: "cork" })} />
 				</SettingsShell>
 			)
-		if (page === "author")
+		if (page === "author" || page === "done" || page === "fix") {
+			const f = page
+			const opts = fieldOptions(itemsSrc, f)
+			const cur = setup[f]
 			return (
-				<SettingsShell anchor={anchor} onClose={shut} title="Written by" onBack={() => setPage("root")}>
-					<PickRow label="Automatic" sub="Author when set, else Created by" selected={view.authorBy === "auto"} onClick={() => setUi({ authorBy: "auto" })} />
-					<Sep />
-					{authorProps.map((p) => (
-						<PickRow key={p.id} icon={<PropIcon type={p.type} />} label={p.name} selected={view.authorBy === p.id} onClick={() => setUi({ authorBy: p.id })} />
+				<SettingsShell anchor={anchor} onClose={shut} title={FIELD_LABEL[f]} onBack={() => setPage("root")}>
+					<PickRow label="None" sub={FIELD_NONE[f]} selected={view[f] === "none"} onClick={() => setUi({ [f]: "none" })} />
+					{opts.map((p) => (
+						<PickRow key={p.id} icon={<PropIcon type={p.type} />} label={p.name} selected={view[f] !== "none" && cur === p.id} onClick={() => setUi({ [f]: p.id })} />
 					))}
-					<Note>A person property, Created by or Last edited by. Add Created by / Last edited by to the database to pick them.</Note>
+					<Note>{FIELD_NOTE[f]}</Note>
 				</SettingsShell>
 			)
+		}
 		if (page === "group")
 			return (
 				<SettingsShell anchor={anchor} onClose={shut} title="Group by" onBack={() => setPage("root")}>
@@ -779,14 +828,16 @@ function Ready({ data }: { data: Ready }) {
 			)
 		return (
 			<SettingsShell anchor={anchor} onClose={shut} title="Whiteboard settings">
-				<NavRow icon={<LayersIcon />} label="Look" value={view.look === "cork" ? "Cork board" : "Whiteboard"} onClick={() => setPage("look")} />
+				<p className="ssec">From the database</p>
 				<NavRow icon={<ColumnIcon />} label="Group by" value={groupProp?.name ?? "None"} onClick={() => setPage("group")} />
+				<NavRow icon={<PersonIcon />} label={FIELD_LABEL.author} value={propName(setup.author)} onClick={() => setPage("author")} />
+				<NavRow icon={<TargetIcon />} label={FIELD_LABEL.done} value={propName(setup.done)} onClick={() => setPage("done")} />
+				<NavRow icon={<LineIcon />} label={FIELD_LABEL.fix} value={propName(setup.fix)} onClick={() => setPage("fix")} />
 				<Sep />
-				<ToggleRow icon={<TargetIcon />} label="Color notes by group" sub="Notes in a frame use the frame's color" on={view.byTopic} onChange={(v) => setUi({ byTopic: v })} />
-				<ToggleRow icon={<PersonIcon />} label="Show who wrote it" on={view.authors} onChange={(v) => setUi({ authors: v })} />
-				{view.authors ? <NavRow icon={<PersonIcon />} label="Written by" value={authorName} onClick={() => setPage("author")} /> : null}
-				<ToggleRow label="Show done notes" sub="Faded, with a check. The bin shows them too." on={view.showDone} onChange={(v) => setUi({ showDone: v })} />
-				<Sep />
+				<p className="ssec">On this board</p>
+				<NavRow icon={<LayersIcon />} label="Look" value={view.look === "cork" ? "Cork board" : "Whiteboard"} onClick={() => setPage("look")} />
+				{groupProp ? <ToggleRow label="Color notes by group" sub="Notes in a frame use the frame's color" on={view.byTopic} onChange={(v) => setUi({ byTopic: v })} /> : null}
+				{canDone ? <ToggleRow label="Show done notes" sub="Faded, with a check. The turtle shows them too." on={view.showDone} onChange={(v) => setUi({ showDone: v })} /> : null}
 				<NumberRow label="Frames per row (0 = fit)" value={view.perRow} min={0} onChange={(v) => setUi({ perRow: Math.max(0, Math.min(12, Math.round(v))) })} />
 				<ToggleRow label="Fit height to the board" sub="Shows the whole board, up to 640px tall" on={autoH} onChange={(v) => setUi({ height: v ? 0 : boardH })} />
 				{autoH ? null : <NumberRow label="Board height" value={view.height} min={320} step={40} onChange={(v) => setUi({ height: Math.max(320, Math.min(4000, Math.round(v))) })} suffix="px" />}
@@ -797,7 +848,11 @@ function Ready({ data }: { data: Ready }) {
 	const stickies = items.filter((it) => it.type === "sticky" && !it.done).length
 	const sub = `${stickies} note${stickies === 1 ? "" : "s"}${groupProp ? ` · by ${groupProp.name}` : ""}`
 	const empty = items.length === 0 && groups.length === 0 && !draft
-	const name = (id: string) => data.resolvers.userName(id) ?? "Someone"
+	// Only people Notion can name; an unknown id (a bot, someone who left) shows no tag rather than "Someone".
+	const authorsOf = (it: Item) => {
+		const names = it.authorIds.map((id) => data.resolvers.userName(id)).filter((n): n is string => !!n)
+		return names.length ? names : null
+	}
 
 	return (
 		<div className={"wb-wrap look-" + view.look}>
@@ -869,7 +924,7 @@ function Ready({ data }: { data: Ready }) {
 									editing={editingId === it.id}
 									dragging={drag?.id === it.id && drag.moved}
 									hidden={flying.some((f) => f.item.id === it.id) || party?.it.id === it.id}
-									author={view.authors && it.authorIds.length ? it.authorIds.map(name) : null}
+									author={authorsOf(it)}
 									pin={view.look === "cork"}
 									onDown={onItemDown}
 									onEdit={() => {

@@ -1,12 +1,12 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
-import { EMPTY_LOCAL, frameAt, FRAME_HEAD, FRAME_MIN_H, groupableProps, moveValues, readBoard, readLocal, resolveGroupBy, storedPos, tidy, toColor, type ReadOptions } from "../blocks/whiteboard-view/src/board.ts"
+import { EMPTY_LOCAL, frameAt, FRAME_HEAD, FRAME_MIN_H, groupableProps, moveValues, readBoard, readLocal, resolveGroupBy, resolveSetup, storedPos, tidy, toColor, type ReadOptions } from "../blocks/whiteboard-view/src/board.ts"
 import { seedSnapshot, type Seed } from "../blocks/whiteboard-view/src/kit/mock.ts"
 import itemsSeed from "../data/worker_items.json" with { type: "json" }
 
 const PAGES: Record<string, string> = { "ep-rt": "Release train", "ep-map": "Mapping rules v2", "ep-ci": "CI stability" }
 const src = () => seedSnapshot(itemsSeed as Seed)
-const opts = (o: Partial<ReadOptions> = {}): ReadOptions => ({ perRow: 4, showDone: true, visible: null, groupBy: resolveGroupBy(src(), "topic"), hideEmpty: false, pageTitle: (id) => PAGES[id], ...o })
+const opts = (o: Partial<ReadOptions> = {}): ReadOptions => ({ perRow: 4, showDone: true, visible: null, groupBy: resolveGroupBy(src(), "topic"), hideEmpty: false, pageTitle: (id) => PAGES[id], author: "author", done: "done", fix: "resolution", ...o })
 
 test("select, multi-select and relation properties can group; auto picks the first", () => {
 	const s = src()
@@ -116,12 +116,18 @@ test("frames fit their notes plus one free row; hand-set sizes win but never hid
 	assert.ok(sized.groups[1].x > b.groups[1].x)
 })
 
-test("who wrote it can come from Created by or any people property", () => {
+test("the optional fields are picked in the settings, guessed by name and type", () => {
 	const s = seedSnapshot(itemsSeed as Seed, true)
-	const b = readBoard(s, EMPTY_LOCAL, opts({ authorBy: "created_by" }))
+	const auto = { groupBy: "auto", author: "auto", done: "auto", fix: "auto" }
+	assert.deepEqual(resolveSetup(s, auto), { group: resolveGroupBy(s, "auto"), author: "author", done: "done", fix: "resolution" })
+	assert.deepEqual(resolveSetup(s, { ...auto, author: "created_by", done: "none", fix: "gone" }).author, "created_by")
+	assert.equal(resolveSetup(s, { ...auto, done: "none" }).done, null)
+	const b = readBoard(s, EMPTY_LOCAL, opts({ author: "created_by" }))
 	const n1 = b.items.find((i) => i.id === "n1")!
 	assert.deepEqual(n1.authorIds, [(s.items.find((r) => r.id === "n1")!.propertiesById.created_by as { id: string }[])[0].id])
 	assert.deepEqual(readBoard(s, EMPTY_LOCAL, opts()).items.find((i) => i.id === "n1")!.authorIds, ["user-ada-lovelace"])
+	// Without a Done field nothing counts as done, and nothing is hidden for it.
+	assert.equal(readBoard(s, EMPTY_LOCAL, opts({ done: null, showDone: false })).items.filter((i) => i.type === "sticky").length, s.items.length)
 })
 
 test("filtered boards pack their notes and shrink the frames", () => {

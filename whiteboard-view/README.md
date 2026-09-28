@@ -11,8 +11,19 @@ position. Everything else is local to each viewer's browser: note colors,
 stacking order, and all pen strokes, lines and arrows. Share them along with
 the view code (see below) when others should see them too.
 
-- **Frames from a property.** *Settings → Group by* picks a select,
-  multi-select or relation (the first one by default, or *No frames*). Every
+**One place for setup.** *Settings → From the database* picks which of your
+properties the board uses, each guessed automatically from names and types
+and each with *None*:
+
+- **Group by**: a select, multi-select or relation (the frames).
+- **Written by**: a people property, Created by or Last edited by.
+- **Done**: a checkbox.
+- **How it was fixed**: a text property.
+
+*On this board* holds the look and layout.
+
+- **Frames from a property.** *Group by* picks a select, multi-select or
+  relation (the first one by default, or *No frames*). Every
   option (or linked page) becomes a colored frame. Dropping a note into a
   frame sets that value in Notion, and dropping it outside clears it. A
   multi-select or relation note sits in its first frame, and moving it only
@@ -36,9 +47,12 @@ the view code (see below) when others should see them too.
   to their frame. Notes without a position, or whose position no longer fits
   (for example after switching the grouping), are laid out in the frame's
   next free slot. Loose notes line up below the frames.
-- **Who wrote it.** Every note shows a name tag. *Settings → Written by*
-  picks a people property, Created by or Last edited by. The automatic
-  default is `Author` (set to you when you create a note), then Created by.
+- **Who wrote it.** Every note shows a name tag from *Written by*. The
+  automatic pick is a people property named like Author, Owner or Written
+  by, then any people property, then Created by. The block fills a people
+  property with you for new notes, so it's the better choice: Created by
+  may not resolve to a name for notes made in the block. People Notion
+  can't name get no tag.
 - **Done, with a fix note.** The round check on a note asks *How was it
   fixed?*, prefilled with the note's `How it was fixed` text so it can be
   edited. Press **Done** (or ⌘/Ctrl+Enter) for a full-screen celebration in
@@ -73,12 +87,12 @@ Shortcuts:
 | ------------------ | --------- | ------------------------------------------------------------------ |
 | `Title`            | title     | The note's text                                                    |
 | `X`, `Y`           | number    | Position; relative to the note's frame when it sits in one         |
-| `Author`           | people    | Optional: who wrote it (falls back to Created by)                  |
-| `Done`             | checkbox  | Optional: checked-off notes are eaten by the turtle                |
-| `How it was fixed` | rich_text | Optional: asked for (and prefilled) when a note is checked off     |
+| `Author`           | people    | Optional (*Written by*): who wrote it                              |
+| `Done`             | checkbox  | Optional (*Done*): checked-off notes are eaten by the turtle       |
+| `How it was fixed` | rich_text | Optional (*How it was fixed*): asked for when a note is checked off |
 
-Any other select, multi-select or relation can group the board. Nothing else
-is written.
+Only Title, X and Y are required. The optional ones can have any name; pick
+them in the settings. Nothing else is written.
 
 ## Develop
 
