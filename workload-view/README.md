@@ -43,26 +43,29 @@ not when connecting it, and are guessed from names and types to start with.
 **From / To** are never empty: without your own dates, half a year back and
 half a year ahead.
 
-**Nothing loads until a project or person is picked.** Task databases can
-be huge, so the block starts with just the schema and a picker (*Project:
-pick…*, *Person: pick…*). Then it loads only that scope's tasks:
+**Nothing loads until the filter bar names a project or a person.** Task
+databases can be huge, so the block starts with just the schema and asks
+for a Project or Person filter (the filter button is highlighted, with a
+tooltip). Then it loads only those tasks; every other filter applies on top.
 
-- **Projects database** (optional, recommended for a Project relation):
-  the block lists its projects and, for the picked one, loads the tasks its
+- **A select, status or multi-select of the tasks** (e.g. Project,
+  Discipline, a person select): the task query is filtered in Notion
+  ("is"/"contains" with one or more values). Over 999 matches are read page
+  by page.
+- **Projects database** (optional): its projects appear as a *Project*
+  filter even before anything is loaded. Picking some loads the tasks their
   relation to the tasks points to, a few at a time (up to 1,500), with
-  *Refresh* to load them again. Notion can't filter a query by relation or
-  by person, so this goes through the project instead.
-- **People database** with a relation to the tasks: the same for a person,
-  who then shows alone.
-- **A select, status or multi-select of the tasks** (e.g. Project): the
-  task query is filtered in Notion. Over 999 matches are read page by page.
+  *Refresh*. Notion can't filter a query by relation or person, so this goes
+  through the project instead.
+- **People database** with a relation to the tasks: the same as a *Person*
+  filter; the picked people then show alone.
 
-*Settings → Projects from / People from* pick where the lists come from.
-Tasks loaded one by one don't carry formulas, rollups or Created by (Notion
-doesn't return them for single pages).
+*Settings → Projects → tasks / People → tasks* pick the relation (or
+*None*). Tasks loaded one by one don't carry formulas, rollups or Created by
+(Notion doesn't return them for single pages).
 
-**Task counts** share a 0–25 scale so people can be compared; a lane with
-more than 25 tasks at once gets its own scale, marked in red. Effort lanes
+**Task counts** share a 0–20 scale so people can be compared; a lane with
+more than 20 tasks at once gets its own scale, marked in red. Effort lanes
 share one scale as before. **Task bars** are off by default and locked off
 above 1,000 tasks.
 

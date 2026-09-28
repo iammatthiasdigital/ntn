@@ -2,9 +2,8 @@ import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from 
 import { dayIso, EMPTY_FILTERS, textOf } from "./kit/filters/core"
 import { PropIcon } from "./kit/filters/icons"
 import { ClockIcon, ColumnIcon, HashIcon, LayersIcon, NavRow, Note, NumberRow, PersonIcon, PickRow, Sep, SettingsShell, TargetIcon, ToggleRow } from "./kit/settings"
-import { Popover, useAnchor } from "./kit/filters/popover"
 import type { BlockData, SourceRow, SourceSnapshot } from "./kit/sources"
-import { choices, inOption, linkedIds, optionFilter, resolveVia, viaOptions, type Scope, type ScopeKind } from "./scope"
+import { linkChoices, linkProps, optionProps, planLoad, reverseLinks, withLinkOptions } from "./scope"
 import { isoDay, oneOf, within } from "./kit/share"
 import { Loading, Setup, Toolbar, useFiltered, usePersistentView, type WithFilters } from "./kit/toolbar"
 import { bucketStart, columns, fmtBucket, fmtDay, fmtNum, isoOf, nextBucket, resolveSetup, TITLE, toDay, workload, type Bucket, type Column, type EffortMode, type Lane, type Workload } from "./workload"
@@ -40,9 +39,7 @@ bucket: Bucket
 	bars: boolean
 	/** What bars say: property ids, TITLE = the title. At least one. */
 	labels: string[]
-	/** The project or person whose tasks are loaded; nothing loads without one. */
-	scope: Scope | null
-	/** Where projects / people are listed from ("link:<relation>" or "opt:<property>"); null = automatic, "" = none. */
+	/** The Projects / People relation that points to their tasks; null = automatic, "" = none. */
 	projectVia: string | null
 	personVia: string | null
 }
@@ -66,7 +63,6 @@ bucket: "week",
 	to: "",
 	bars: false,
 	labels: [TITLE],
-	scope: null,
 	projectVia: null,
 	personVia: null,
 	filters: EMPTY_FILTERS,
@@ -88,19 +84,15 @@ const sanitize = (v: View): View => {
 		extra: Array.isArray(v.extra) ? v.extra.filter((x) => typeof x === "string" && x.length < 100).slice(0, 500) : [],
 		from: isoDay(v.from),
 		to: isoDay(v.to),
-		scope:
-			v.scope && (v.scope.kind === "project" || v.scope.kind === "person") && typeof v.scope.id === "string" && v.scope.id.length < 200
-				? { kind: v.scope.kind, id: v.scope.id, label: String(v.scope.label ?? "").slice(0, 200) }
-				: null,
-	}
+}
 }
 
 /** Linked tasks are loaded one page at a time; a project with more than this many is cut short. */
 const MAX_LINKED = 1500
 /** Task bars are off (and locked) above this many tasks: too many to draw. */
 const MAX_BARS = 1000
-/** Task counts: lanes share a 0–25 scale; a lane with more at once gets its own. */
-const COUNT_SCALE = 25
+/** Task counts: lanes share a 0–20 scale; a lane with more at once gets its own. */
+const COUNT_SCALE = 20
 
 const PALETTE = ["blue", "orange", "green", "purple", "pink", "yellow", "brown", "red", "gray"]
 const color = (i: number) => `var(--d-${PALETTE[i % PALETTE.length]})`
@@ -141,30 +133,28 @@ function Ready({ data }: { data: Ready }) {
 	const cols = useMemo(() => columns(base, ppl), [base, ppl])
 	const setup = useMemo(() => resolveSetup(view, base, ppl), [view, base, ppl])
 
-	/* ---- scope: only a picked project's or person's tasks are loaded ---- */
-	const projectVia = useMemo(() => resolveVia("project", view.projectVia, base, prj), [view.projectVia, base, prj])
-	const personVia = useMemo(() => resolveVia("person", view.personVia, base, ppl), [view.personVia, base, ppl])
-	const scope = view.scope
-	const via = scope ? (scope.kind === "project" ? projectVia : personVia) : null
+	/* ---- what loads: named by the filter bar (a project or a person), nothing otherwise ---- */
+	const dbs = useMemo(() => ({ projects: prj, people: ppl }), [prj, ppl])
+	const links = useMemo(() => linkProps(base, dbs, { project: view.projectVia, person: view.personVia }), [base, dbs, view.projectVia, view.personVia])
+	const plan = useMemo(() => planLoad(view.filters.rules, base, links, dbs, MAX_LINKED), [view.filters.rules, base, links, dbs])
 	const { setQuery, fetchRow } = data
-	// A task property (e.g. a Project select) filters the query in Notion; otherwise only the schema is read.
-	const optFilter = scope && via ? optionFilter(via.via, scope.id) : null
-	const optKey = JSON.stringify(optFilter)
+	// Option rules (select, status, multi-select) filter the query in Notion; otherwise only the schema is read.
+	const qFilter = plan.kind === "query" ? plan.filter : null
+	const qKey = JSON.stringify(qFilter)
 	useEffect(
-		() => setQuery?.("assignments", optFilter ? { limit: 999, filter: optFilter, sortBy: setup.dates, empty: view.undated } : { limit: 1 }),
+		() => setQuery?.("assignments", qFilter ? { limit: 999, filter: qFilter, sortBy: setup.dates, empty: view.undated } : { limit: 1 }),
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-		[setQuery, optKey, setup.dates, view.undated]
+		[setQuery, qKey, setup.dates, view.undated]
 	)
-	// A Projects (or People) row links to its tasks: those are loaded one by one, a few at a time.
-	const own = via?.via.via === "link" ? (via.via.source === "projects" ? prj : ppl) : undefined
-	const ids = useMemo(() => (scope && via?.via.via === "link" ? linkedIds(via.via, own, scope.id) : null), [scope, via, own])
+	// Projects/People rows link to their tasks: those are loaded one by one, a few at a time.
+	const ids = plan.kind === "link" ? plan.ids : null
 	const idsKey = ids ? ids.join(",") : ""
 	const [linked, setLinked] = useState<{ key: string; rows: SourceRow[]; done: number } | null>(null)
 	const [reload, setReload] = useState(0)
 	useEffect(() => {
 		if (!ids || !fetchRow) return setLinked(null)
 		let stop = false
-		const queue = ids.slice(0, MAX_LINKED)
+		const queue = [...ids]
 		const rows: SourceRow[] = []
 		let done = 0
 		setLinked({ key: idsKey, rows: [], done: 0 })
@@ -183,17 +173,20 @@ function Ready({ data }: { data: Ready }) {
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [idsKey, reload, fetchRow])
-	const loadingLinked = !!ids && !!fetchRow && (!linked || linked.key !== idsKey || linked.done < Math.min(ids.length, MAX_LINKED))
+	const loadingLinked = !!ids && !!fetchRow && ids.length > 0 && (!linked || linked.key !== idsKey || linked.done < ids.length)
+	// Virtual Project/Person values: the Projects/People rows that link to each task.
+	const virtual = useMemo(() => links.filter((l) => l.virtual).map((l) => ({ id: l.id, name: l.name, rev: reverseLinks(dbs[l.source], l.link) })), [links, dbs])
 	const src: SourceSnapshot = useMemo(() => {
-		if (!scope || !via) return { ...base, items: [], truncated: false }
-		if (via.via.via === "link") {
-			const rows = fetchRow ? (linked?.key === idsKey ? linked.rows : []) : base.items.filter((r) => ids?.includes(r.id))
-			return { ...base, items: rows, truncated: (ids?.length ?? 0) > MAX_LINKED, loading: loadingLinked }
-		}
-		// The query is filtered in Notion; filtering here too covers the mock and the moment a new scope is loading.
-		return { ...base, items: base.items.filter((r) => inOption(via.via, r, scope.id)) }
-	}, [scope, via, base, fetchRow, linked, idsKey, ids, loadingLinked])
-	const { properties, visible, filtering } = useFiltered(src, view.filters, data.resolvers, today)
+		const items =
+			plan.kind === "none" ? [] : plan.kind === "link" ? (fetchRow ? (linked?.key === idsKey ? linked.rows : []) : base.items.filter((r) => ids!.includes(r.id))) : base.items
+		const schemas = { ...base.propertySchemasById }
+		for (const v of virtual) schemas[v.id] = { name: v.name, type: "relation" }
+		const rows = virtual.length ? items.map((r) => ({ ...r, propertiesById: { ...r.propertiesById, ...Object.fromEntries(virtual.map((v) => [v.id, (v.rev.get(r.id) ?? []).map((id) => ({ id, table: "block" }))])) } })) : items
+		return { ...base, propertySchemasById: schemas, items: rows, truncated: plan.kind === "link" ? plan.more > 0 : plan.kind === "query" && base.truncated, loading: plan.kind === "query" ? base.loading : loadingLinked }
+	}, [plan, base, fetchRow, linked, idsKey, ids, virtual, loadingLinked])
+	const filtered = useFiltered(src, view.filters, data.resolvers, today)
+	const properties = useMemo(() => withLinkOptions(filtered.properties, links, dbs), [filtered.properties, links, dbs])
+	const { visible, filtering } = filtered
 	// Views saved before task counts had mode null (automatic effort); every view now says what it measures.
 	const mode: EffortMode = view.mode ?? "count"
 	const count = mode === "count"
@@ -204,9 +197,13 @@ const all = useMemo(
 		() => workload(src, ppl, filtering ? visible : null, data.resolvers, { ...setup, mode, dayHours: view.dayHours, caps: view.caps, everyone: view.everyone, extra: view.extra, workdays: view.workdays, bucket: view.bucket, from, to, labels: view.labels, undated: view.undated, today }),
 	[src, ppl, visible, filtering, data.resolvers, setup, mode, view.dayHours, view.caps, view.everyone, view.extra, view.workdays, view.bucket, from, to, view.labels, view.undated, today]
 )
-// A picked person shows alone (their shared tasks name others too).
-const only = scope?.kind === "person" && via?.via.via === "link" ? `p:${scope.id}` : null
-const WL = useMemo(() => (only ? { ...all, lanes: all.lanes.filter((l) => l.person === only) } : all), [all, only])
+// People picked in a Person filter (from the People database) show alone: their shared tasks name others too.
+const personLink = links.find((l) => l.kind === "person")
+const only = useMemo(() => {
+	const r = personLink ? view.filters.rules.find((x) => x.propertyId === personLink.id && Array.isArray(x.value) && x.value.length) : undefined
+	return r ? new Set((r.value as string[]).map((id) => `p:${id}`)) : null
+}, [personLink, view.filters.rules])
+const WL = useMemo(() => (only ? { ...all, lanes: all.lanes.filter((l) => only.has(l.person)) } : all), [all, only])
 	// People rows with allocations always have a lane; the others can be added.
 	const allocated = useMemo(() => new Set(WL.lanes.filter((l) => l.items.length && l.key.startsWith("p:")).map((l) => l.key.slice(2))), [WL])
 	const others = useMemo(() => {
@@ -241,22 +238,17 @@ const WL = useMemo(() => (only ? { ...all, lanes: all.lanes.filter((l) => l.pers
 		switch (page) {
 			case "projectVia":
 			case "personVia": {
-				const kind: ScopeKind = page === "projectVia" ? "project" : "person"
-				const opts = viaOptions(kind, base, kind === "project" ? prj : ppl)
-				const cur = kind === "project" ? projectVia : personVia
+				const own = page === "projectVia" ? prj : ppl
+				const cur = links.find((l) => l.source === (page === "projectVia" ? "projects" : "people"))
 				return (
-					<SettingsShell anchor={anchor} onClose={shut} title={kind === "project" ? "Projects from" : "People from"} onBack={back}>
-						<PickRow label="Automatic" sub="A relation named like tasks, else a property named like the kind" selected={view[page] === null} onClick={() => setUi({ [page]: null })} />
-						<PickRow label="None" selected={view[page] === ""} onClick={() => setUi({ [page]: "" })} />
+					<SettingsShell anchor={anchor} onClose={shut} title={page === "projectVia" ? "Projects → tasks" : "People → tasks"} onBack={back}>
+						<PickRow label="Automatic" sub="A relation named like tasks" selected={view[page] === null} onClick={() => setUi({ [page]: null })} />
+						<PickRow label="None" sub="No filter from this database" selected={view[page] === ""} onClick={() => setUi({ [page]: "" })} />
 						<Sep />
-						{opts.map((o) => (
-							<PickRow key={o.key} icon={<PropIcon type={o.via.via === "link" ? "relation" : o.via.type} />} label={o.label} sub={o.via.via === "link" ? "Loads the linked tasks one by one" : "Filters the task query in Notion"} selected={view[page] !== null && cur?.key === o.key} onClick={() => setUi({ [page]: o.key })} />
+						{linkChoices(own).map((c) => (
+							<PickRow key={c.id} icon={<PropIcon type="relation" />} label={c.name} selected={view[page] !== null && cur?.link === c.id} onClick={() => setUi({ [page]: c.id })} />
 						))}
-						<Note>
-							{kind === "project"
-								? "Link a Projects database whose projects relate to their tasks, or use a select, status or multi-select of the tasks."
-								: "Use a People database whose people relate to their tasks, or a select of the tasks. Notion can't filter a query by a person property."}
-						</Note>
+						<Note>The relation from each {page === "projectVia" ? "project" : "person"} to their tasks. Its rows become a filter; picking some loads just their tasks.</Note>
 					</SettingsShell>
 				)
 			}
@@ -338,9 +330,9 @@ const WL = useMemo(() => (only ? { ...all, lanes: all.lanes.filter((l) => l.pers
 		}
 		return (
 			<SettingsShell anchor={anchor} onClose={shut} title="Workload settings">
-				<NavRow icon={<LayersIcon />} label="Projects from" value={projectVia?.label ?? "None"} onClick={() => setPage("projectVia")} />
-				<NavRow icon={<PersonIcon />} label="People from" value={personVia?.label ?? "None"} onClick={() => setPage("personVia")} />
-				<Sep />
+				{prj ? <NavRow icon={<LayersIcon />} label="Projects → tasks" value={links.find((l) => l.source === "projects") ? (linkChoices(prj).find((c) => c.id === links.find((l) => l.source === "projects")!.link)?.name ?? "—") : "None"} onClick={() => setPage("projectVia")} /> : null}
+				{ppl ? <NavRow icon={<PersonIcon />} label="People → tasks" value={links.find((l) => l.source === "people") ? (linkChoices(ppl).find((c) => c.id === links.find((l) => l.source === "people")!.link)?.name ?? "—") : "None"} onClick={() => setPage("personVia")} /> : null}
+				{prj || ppl ? <Sep /> : null}
 				<NavRow icon={<PersonIcon />} label="Person" value={nameOf(setup.person, cols.person)} onClick={() => setPage("person")} />
 				<NavRow icon={<ClockIcon />} label="Dates" value={nameOf(setup.dates, cols.dates)} onClick={() => setPage("dates")} />
 				<NavRow icon={<ColumnIcon />} label="Group by" value={nameOf(setup.team, cols.team)} onClick={() => setPage("team")} />
@@ -381,14 +373,19 @@ const WL = useMemo(() => (only ? { ...all, lanes: all.lanes.filter((l) => l.pers
 		)
 	}
 
-	const pick = (kind: ScopeKind, c: { id: string; label: string } | null) => setUi({ scope: c ? { kind, id: c.id, label: c.label } : null })
-	const setCap = (key: string, share: number | null) =>
+const setCap = (key: string, share: number | null) =>
 		setView((v) => {
 			const caps = { ...v.caps }
 			if (share == null || share === 100) delete caps[key]
 			else caps[key] = within(share, 0, 200, 100)
 			return { ...v, caps }
 		})
+	// What the filter bar has to name to load anything.
+	const optNames = optionProps(base).map((id) => base.propertySchemasById[id]?.name ?? "")
+	const hasKind = (kind: "project" | "person", re: RegExp) => links.some((l) => l.kind === kind) || optNames.some((n) => re.test(n))
+	const scopeNames =
+		[hasKind("project", /project|projekt|client|kunde|epic/i) ? "a Project" : "", hasKind("person", /person|owner|assignee|who|member/i) ? "a Person" : ""].filter(Boolean).join(" or ") ||
+		"a select, status or multi-select"
 	// Too many tasks to draw as bars: the switch is locked off.
 	const tooMany = src.items.length > MAX_BARS || src.truncated
 	const over = new Set(WL.lanes.filter((l) => l.overBuckets > 0).map((l) => l.person)).size
@@ -406,36 +403,25 @@ const WL = useMemo(() => (only ? { ...all, lanes: all.lanes.filter((l) => l.pers
 				filtering={filtering}
 				today={today}
 				settings={settings}
+				filterHint={plan.kind === "none" ? `Add ${scopeNames} filter to load tasks` : undefined}
 				share={{ block: "workload", defaults: DEFAULT, schemas: { ...ppl?.propertySchemasById, ...src.propertySchemasById }, sanitize }}
 			/>
-			<div className="tlbar scopebar">
-				{projectVia ? <ScopePicker kind="project" label="Project" scope={scope} list={choices(projectVia, base, prj)} onPick={pick} /> : null}
-				{personVia ? <ScopePicker kind="person" label="Person" scope={scope} list={choices(personVia, base, ppl)} onPick={pick} /> : null}
-				{scope ? (
-					<button type="button" className="ghost sm" onClick={() => pick(scope.kind, null)}>
-						Clear
-					</button>
-				) : null}
-				<span className="spacer" />
-				{src.loading || loadingLinked ? (
-					<span className="daystat">{ids && fetchRow ? `Loading tasks ${Math.min(linked?.key === idsKey ? linked.done : 0, ids.length)} / ${Math.min(ids.length, MAX_LINKED)}…` : "Loading tasks…"}</span>
-				) : ids && fetchRow ? (
-					<button type="button" className="ghost sm" title="Load this project's tasks again" onClick={() => setReload((n) => n + 1)}>
-						Refresh
-					</button>
-				) : null}
-			</div>
-			{!scope ? (
+			{plan.kind === "none" ? (
 				<div className="state">
-					{projectVia || personVia ? (
-						"Pick a project or a person to load their tasks. The whole task database is never loaded at once."
-					) : (
-						<>Link a Projects database (projects relating to their tasks), or pick where projects or people come from in the settings, to load a workload.</>
-					)}
+					Add {scopeNames} filter (filter button) to load a workload. Nothing is loaded until then, so even a huge task database stays quick.
 				</div>
-			) : null}
-			{scope ? (
-			<>
+			) : (
+				<>
+				{src.loading || loadingLinked ? (
+					<div className="loadline">{ids && fetchRow ? `Loading tasks ${Math.min(linked?.key === idsKey ? linked.done : 0, ids.length)} / ${ids.length}…` : "Loading tasks…"}</div>
+				) : ids && fetchRow ? (
+					<div className="loadline">
+						{ids.length} linked task{ids.length === 1 ? "" : "s"} loaded.{" "}
+						<button type="button" className="ghost sm" title="Load these tasks again" onClick={() => setReload((n) => n + 1)}>
+							Refresh
+						</button>
+					</div>
+				) : null}
 			<div className="stats">
 				<Stat l="People" v={String(people)} sub={teams ? `in ${teams} ${teams === 1 ? "group" : "groups"}` : ""} />
 				{WL.capacity ? <Stat l="Over capacity" v={String(over)} sub={over ? "at some point" : ""} tone={over ? "bad" : undefined} /> : <Stat l="Tasks" v={String(new Set(WL.lanes.flatMap((l) => l.items.map((i) => i.id))).size)} />}
@@ -471,50 +457,11 @@ const WL = useMemo(() => (only ? { ...all, lanes: all.lanes.filter((l) => l.pers
 				) : null}
 				{WL.skipped ? <span>{WL.skipped} rows have no effort and are left out.</span> : null}
 				{WL.undated ? <span>{WL.undated} tasks without a date are left out.</span> : null}
-			{src.truncated ? <span>{ids ? `Only the first ${MAX_LINKED} of ${ids.length} tasks are loaded.` : "Some tasks could not be read (Notion returns 999 per query, and more than that share one date)."}</span> : null}
-		</div>
-		</>
-		) : null}
+		{src.truncated ? <span>{plan.kind === "link" ? `Only the first ${MAX_LINKED} of ${ids!.length + plan.more} linked tasks are loaded.` : "Some tasks could not be read (Notion returns 999 per query, and more than that share one date)."}</span> : null}
+	</div>
 	</>
-	)
-}
-
-/** Picks a project or a person from a (searchable) list. */
-function ScopePicker({ kind, label, scope, list, onPick }: { kind: ScopeKind; label: string; scope: Scope | null; list: { id: string; label: string; count?: number }[]; onPick: (kind: ScopeKind, c: { id: string; label: string }) => void }) {
-	const a = useAnchor()
-	const [q, setQ] = useState("")
-	const cur = scope?.kind === kind ? scope : null
-	const hits = useMemo(() => {
-		const t = q.trim().toLowerCase()
-		return (t ? list.filter((c) => c.label.toLowerCase().includes(t)) : list).slice(0, 150)
-	}, [list, q])
-	return (
-		<>
-			<button type="button" ref={a.ref} className={"ghost scopebtn" + (cur ? " on" : "")} onClick={a.toggle}>
-				{label}: <b>{cur ? cur.label : "pick…"}</b>
-			</button>
-			{a.open ? (
-				<Popover anchor={a.el} onClose={a.close} width={300} className="settings">
-					<div className="sbody">
-						<input className="field scope-q" autoFocus placeholder={`Search ${list.length} ${kind === "project" ? "projects" : "people"}`} maxLength={100} value={q} onChange={(e) => setQ(e.target.value)} />
-						{hits.map((c) => (
-							<PickRow
-								key={c.id}
-								label={c.label}
-								sub={c.count != null ? `${c.count} task${c.count === 1 ? "" : "s"}` : undefined}
-								selected={cur?.id === c.id}
-								onClick={() => {
-									onPick(kind, c)
-									a.close()
-								}}
-							/>
-						))}
-						{hits.length === 0 ? <Note>Nothing found.</Note> : null}
-						{list.length > hits.length && !q ? <Note>Type to find more.</Note> : null}
-					</div>
-				</Popover>
-			) : null}
-		</>
+	)}
+	</>
 	)
 }
 

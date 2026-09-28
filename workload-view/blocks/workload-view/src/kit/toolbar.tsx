@@ -66,9 +66,11 @@ type ToolbarProps<T extends WithFilters> = {
 	actions?: ReactNode
 	/** View codes: copy this view for others, or load theirs. */
 	share?: ShareConfig<T>
+	/** A filter is needed: the filter button says what to add, and stands out. */
+	filterHint?: string
 }
 
-export function Toolbar<T extends WithFilters>({ title, sub, view, setView, properties, filtering, today, settings, actions, share }: ToolbarProps<T>) {
+export function Toolbar<T extends WithFilters>({ title, sub, view, setView, properties, filtering, today, settings, actions, share, filterHint }: ToolbarProps<T>) {
 	const [openRuleId, setOpenRuleId] = useState<string | null>(null)
 	const [openAdvanced, setOpenAdvanced] = useState(false)
 	const fbtn = useAnchor()
@@ -88,7 +90,7 @@ export function Toolbar<T extends WithFilters>({ title, sub, view, setView, prop
 				<span className="spacer" />
 				<div className="tools">
 					{actions}
-					<button type="button" ref={fbtn.ref} className={"tool" + (filtering ? " blue" : "")} onClick={onFilterButton} aria-label="Filter" aria-pressed={anyFilter && view.filterBar} title="Filter">
+					<button type="button" ref={fbtn.ref} className={"tool" + (filtering ? " blue" : "") + (filterHint ? " hint" : "")} onClick={onFilterButton} aria-label={filterHint ?? "Filter"} aria-pressed={anyFilter && view.filterBar} title={filterHint ?? "Filter"}>
 						<FilterIcon />
 					</button>
 					{fbtn.open ? (

@@ -1,6 +1,6 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
-import { choices, inOption, linkedIds, optionFilter, resolveVia } from "../blocks/workload-view/src/scope.ts"
+import { linkProps, planLoad, reverseLinks } from "../blocks/workload-view/src/scope.ts"
 import { flatValue, pageToRow } from "../blocks/workload-view/src/kit/pageRow.ts"
 import type { SourceSnapshot } from "../blocks/workload-view/src/kit/sources.ts"
 
@@ -15,20 +15,36 @@ const PROJECTS = snap({ n: { name: "Name", type: "title" }, lead: { name: "Lead"
 	{ id: "p1", n: "Checkout", tasks: [{ id: "t1", table: "block" }] },
 ])
 
-test("projects come from a linked Projects database first, else a select of the tasks", () => {
-	const linked = resolveVia("project", null, TASKS, PROJECTS)!
-	assert.deepEqual(linked.via, { via: "link", source: "projects", prop: "tasks" })
-	assert.deepEqual(choices(linked, TASKS, PROJECTS), [{ id: "p1", label: "Checkout", count: 1 }])
-	assert.deepEqual(linkedIds(linked.via, PROJECTS, "p1"), ["t1"])
-	const opt = resolveVia("project", null, TASKS, undefined)!
-	assert.deepEqual(opt.via, { via: "option", prop: "proj", type: "select" })
-	assert.deepEqual(choices(opt, TASKS, undefined).map((c) => c.id), ["Checkout", "Infra"])
-	assert.deepEqual(optionFilter(opt.via, "Checkout"), { propertyId: "proj", select: { equals: "Checkout" } })
-	assert.equal(inOption(opt.via, TASKS.items[0], "Checkout"), true)
-	assert.equal(inOption(opt.via, TASKS.items[1], "Checkout"), false)
-	assert.equal(resolveVia("project", "", TASKS, PROJECTS), null)
-	// People by a select of the tasks named like a person.
-	assert.equal(resolveVia("person", null, TASKS, undefined)?.key, "opt:who")
+const rule = (propertyId: string, operator: string, value: string[]) => ({ kind: "rule" as const, id: propertyId, propertyId, operator: operator as never, value })
+const PEOPLE = snap({ n: { name: "Name", type: "title" }, team: { name: "Team", type: "relation" }, work: { name: "Assigned tasks", type: "relation" } }, [{ id: "pe1", n: "Ada", work: [{ id: "t2", table: "block" }] }])
+
+test("nothing loads without a project or person filter", () => {
+	assert.deepEqual(planLoad([], TASKS, [], {}, 100), { kind: "none" })
+	// A rule without values doesn't count either.
+	assert.deepEqual(planLoad([rule("proj", "is", [])], TASKS, [], {}, 100), { kind: "none" })
+})
+
+test("select and multi-select rules filter the query in Notion", () => {
+	assert.deepEqual(planLoad([rule("proj", "is", ["Checkout"])], TASKS, [], {}, 100), { kind: "query", filter: { propertyId: "proj", select: { equals: "Checkout" } } })
+	const M = snap({ n: { name: "Name", type: "title" }, tags: { name: "Projects", type: "multi_select" } }, [])
+	assert.deepEqual(planLoad([rule("tags", "contains", ["A", "B"])], M, [], {}, 100), { kind: "query", filter: { propertyId: "tags", multi_select: { contains: ["A", "B"] } } })
+})
+
+test("Projects and People databases become filters that load their linked tasks", () => {
+	const dbs = { projects: PROJECTS, people: PEOPLE }
+	const links = linkProps(TASKS, dbs, { project: null, person: null })
+	assert.deepEqual(
+		links.map((l) => [l.id, l.name, l.link, l.virtual]),
+		[
+			["__project", "Project (Projects database)", "tasks", true],
+			["__person", "Person", "work", true],
+		]
+	)
+	assert.deepEqual(planLoad([rule("__project", "contains", ["p1"])], TASKS, links, dbs, 100), { kind: "link", ids: ["t1"], more: 0 })
+	assert.deepEqual(planLoad([rule("__person", "contains", ["pe1"])], TASKS, links, dbs, 100), { kind: "link", ids: ["t2"], more: 0 })
+	assert.deepEqual([...reverseLinks(PROJECTS, "tasks")], [["t1", ["p1"]]])
+	// "None" turns a database's filter off.
+	assert.equal(linkProps(TASKS, dbs, { project: "", person: null }).length, 1)
 })
 
 test("a page from pages.get reads like a query row", () => {
