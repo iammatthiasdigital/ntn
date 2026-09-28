@@ -6,7 +6,7 @@ import { ClockIcon, ColumnIcon, LayersIcon, NavRow, Note, NumberRow, PersonIcon,
 import { W, type BlockData, type SourceSnapshot } from "./kit/sources"
 import { oneOf, within } from "./kit/share"
 import { Loading, Setup, Toolbar, useFiltered, usePersistentView, type WithFilters } from "./kit/toolbar"
-import { addDay, bookingsOn, clash, dayLabel, firstFree, hhmm, readOffice, stateOf, takesOver, usualPlace, type Booking, type Office, type Place, type State } from "./office"
+import { addDay, bookingsOn, clash, dayLabel, firstFree, hhmm, isDropIn, readOffice, stateOf, takesOver, usualPlace, type Booking, type Office, type Place, type State } from "./office"
 
 export type Keys = "rooms" | "places" | "bookings"
 type Ready = Extract<BlockData<Keys>, { status: "ready" }>
@@ -21,9 +21,11 @@ type View = WithFilters & {
 	theme: "office" | "notion"
 	/** One click on a free place claims it for the whole day. */
 	quick: boolean
+	/** Place types that are always free and never booked; null = by name (Cafeteria, Kitchen…). */
+	dropIn: string[] | null
 }
 
-const DEFAULT: View = { layout: "rooms", open: 8 * 60, close: 19 * 60, length: 60, names: true, theme: "office", quick: true, filters: EMPTY_FILTERS, filterBar: true }
+const DEFAULT: View = { layout: "rooms", open: 8 * 60, close: 19 * 60, length: 60, names: true, theme: "office", quick: true, dropIn: null, filters: EMPTY_FILTERS, filterBar: true }
 
 /** Imported views stay within what the settings allow. */
 function sanitize(v: View): View {
@@ -35,6 +37,7 @@ function sanitize(v: View): View {
 		open,
 		close: Math.round(within(v.close, open + 60, 24 * 60, DEFAULT.close) / 30) * 30,
 		length: Math.round(within(v.length, 15, 12 * 60, DEFAULT.length)),
+		dropIn: Array.isArray(v.dropIn) ? v.dropIn.filter((t) => typeof t === "string" && t.length < 100).slice(0, 50) : null,
 	}
 }
 
@@ -126,7 +129,10 @@ function Ready({ data }: { data: Ready }) {
 	const nowMin = useNow()
 	const at = day === today ? nowMin : undefined
 	const T = COPY[view.theme]
-	const [page, setPage] = useState<"root" | "layout" | "hours" | "theme">("root")
+	const [page, setPage] = useState<"root" | "layout" | "hours" | "theme" | "dropin">("root")
+	const drop = (p: Place) => isDropIn(p.type, view.dropIn)
+	const placeTypes = useMemo(() => [...new Set(O.places.map((p) => p.type))].sort(), [O.places])
+	const addDropIn = (type: string) => setView((v) => ({ ...v, dropIn: [...new Set([...(v.dropIn ?? placeTypes.filter((t) => isDropIn(t, null))), type])] }))
 	const canNote = bookings.propertyIdsByKey.note !== undefined
 	const canOffer = bookings.propertyIdsByKey.open !== undefined
 
@@ -204,6 +210,19 @@ function Ready({ data }: { data: Ready }) {
 					<PickRow label="Notion" sub="Plain and quiet" selected={view.theme === "notion"} onClick={() => setUi({ theme: "notion" })} />
 				</SettingsShell>
 			)
+		if (page === "dropin") {
+			const cur = placeTypes.filter((t) => isDropIn(t, view.dropIn))
+			return (
+				<SettingsShell anchor={anchor} onClose={shut} title="Always free" onBack={back}>
+					<PickRow label="Automatic" sub="Types named like Cafeteria, Canteen, Kitchen, Break area, Drop-in" selected={view.dropIn === null} onClick={() => setUi({ dropIn: null })} />
+					<Sep />
+					{placeTypes.map((t) => (
+						<PickRow key={t} label={t} checkbox selected={cur.includes(t)} onClick={() => setUi({ dropIn: cur.includes(t) ? cur.filter((x) => x !== t) : [...cur, t] })} />
+					))}
+					<Note>Places of these types are open seating: always free, never booked, shown with their seats.</Note>
+				</SettingsShell>
+			)
+		}
 		if (page === "hours")
 			return (
 				<SettingsShell anchor={anchor} onClose={shut} title="Opening hours" onBack={back}>
@@ -216,6 +235,7 @@ function Ready({ data }: { data: Ready }) {
 			<SettingsShell anchor={anchor} onClose={shut} title="Office settings">
 				<NavRow icon={<LayersIcon />} label="Theme" value={view.theme === "office" ? "The Office" : "Notion"} onClick={() => setPage("theme")} />
 				<NavRow icon={<ColumnIcon />} label="Layout" value={view.layout === "rooms" ? "Rooms" : "Timeline"} onClick={() => setPage("layout")} />
+				<NavRow icon={<TargetIcon />} label="Always free" value={view.dropIn === null ? "Automatic" : `${view.dropIn.length} type${view.dropIn.length === 1 ? "" : "s"}`} onClick={() => setPage("dropin")} />
 				<NavRow icon={<ClockIcon />} label="Opening hours" value={`${hhmm(view.open)}–${hhmm(view.close)}`} onClick={() => setPage("hours")} />
 				<Sep />
 				<ToggleRow icon={<TargetIcon />} label="One click claims the day" sub="Click a free place to book it all day; the clock button picks times" on={view.quick} onChange={(v) => setUi({ quick: v })} />
@@ -226,7 +246,9 @@ function Ready({ data }: { data: Ready }) {
 	}
 
 	const mine = O.bookings.filter((b) => me && b.who.includes(me) && (b.day > today || (b.day === today && b.end > nowMin))).sort((a, b) => a.day.localeCompare(b.day) || a.start - b.start)
-	const freeCount = O.places.filter((p) => ["free", "offered"].includes(stateOf(O, p.id, day, view.open, view.close, undefined, at))).length
+	const bookable = O.places.filter((p) => !drop(p))
+	const freeCount = bookable.filter((p) => ["free", "offered"].includes(stateOf(O, p.id, day, view.open, view.close, undefined, at))).length
+	const dropSeats = O.places.filter(drop).reduce((n, p) => n + (p.capacity ?? 1), 0)
 	const usual = usualPlace(O, me)
 	const usualP = usual ? O.places.find((p) => p.id === usual.placeId) : undefined
 	// Where you sit today: your whole-day claim (meetings don't count).
@@ -236,7 +258,7 @@ function Ready({ data }: { data: Ready }) {
 	return (
 		<div className={view.theme === "office" ? "theme-office" : undefined}>
 			<Toolbar title={T.title} sub={dayLabel(day, today)} view={view} setView={setView} properties={properties} filtering={filtering} today={today} settings={settings}
-				actions={<NewMenu data={data} onDone={(t) => setToast(t ? { text: t } : null)} />}
+				actions={<NewMenu data={data} isDropIn={(t) => isDropIn(t, view.dropIn)} onDropIn={addDropIn} onDone={(t) => setToast(t ? { text: t } : null)} />}
 				share={{ block: "office", defaults: DEFAULT, schemas: places.propertySchemasById, sanitize }}
 			/>
 			<div className="tlbar daybar">
@@ -252,7 +274,8 @@ function Ready({ data }: { data: Ready }) {
 				<input className="field" type="date" aria-label="Day" value={day} onChange={(e) => e.target.value && setDay(e.target.value)} style={{ width: 150 }} />
 				<span className="spacer" />
 				<span className="daystat">
-					{freeCount} of {O.places.length} {day === today ? "free now" : "free all day"}
+					{freeCount} of {bookable.length} {day === today ? "free now" : "free all day"}
+					{dropSeats ? ` · ${dropSeats} drop-in seat${dropSeats === 1 ? "" : "s"}` : ""}
 				</span>
 			</div>
 
@@ -415,19 +438,22 @@ function RoomsLayout(props: TileProps) {
 							.filter((r) => r.floor === f && r.places.length)
 							.map((r) => {
 								const states = r.places.map((p) => stateOf(O, p.id, day, view.open, view.close, me, at))
-								const free = states.filter((s) => s === "free" || s === "offered").length
+								const isDrop = r.places.map((p) => isDropIn(p.type, view.dropIn))
+								const booked = r.places.filter((_, i) => !isDrop[i])
+								const free = states.filter((s, i) => !isDrop[i] && (s === "free" || s === "offered")).length
+								const seats = r.places.filter((_, i) => isDrop[i]).reduce((n, p) => n + (p.capacity ?? 1), 0)
 								return (
 									<div key={r.id} className="room">
 										<div className="room-h">
 											<b>{r.name}</b>
 											<span>
 												{r.type ? `${r.type} · ` : ""}
-												{free}/{r.places.length} free
+												{booked.length ? `${free}/${booked.length} free` : `${seats} seat${seats === 1 ? "" : "s"}, always free`}
 											</span>
 										</div>
 										<div className="tiles">
 											{r.places.map((p, i) => (
-												<Tile key={p.id} {...props} p={p} st={states[i]} />
+												isDrop[i] ? <DropTile key={p.id} p={p} /> : <Tile key={p.id} {...props} p={p} st={states[i]} />
 											))}
 										</div>
 									</div>
@@ -483,9 +509,28 @@ function Tile({ O, p, st, day, view, T, me, at, onPick, onDetails }: TileProps &
 	)
 }
 
+/** Open seating: always free, nothing to book. */
+function DropTile({ p }: { p: Place }) {
+	const seats = p.capacity ?? 1
+	return (
+		<div className="tile drop" title={`${p.name}: always free, no booking needed${p.features.length ? `\n${p.features.join(", ")}` : ""}`}>
+			<div className="tile-main">
+				<span className="tile-t">
+					<TypeGlyph type={p.type} />
+					{p.name}
+				</span>
+				<span className="tile-s">{`${p.type} · ${seats} seat${seats === 1 ? "" : "s"}`}</span>
+				<span className="drop-l">Always free</span>
+			</div>
+		</div>
+	)
+}
+
 function TypeGlyph({ type }: { type: string }) {
 	const t = type.toLowerCase()
-	const d = /meet|conf/.test(t)
+	const d = /caf|canteen|kantine|mensa|kitchen|küche|break|pause/.test(t)
+		? "M3.5 6.5h7v3.5a3 3 0 0 1-3 3h-1a3 3 0 0 1-3-3zM10.5 7.5h1a1.5 1.5 0 0 1 0 3h-1M5.5 2.5v2M8 2.5v2"
+		: /meet|conf/.test(t)
 		? "M3 5.5h10v6H3zM5 11.5v2M11 11.5v2M5.5 3.5h5"
 		: /phone|booth|call/.test(t)
 			? "M5.5 2.5h5v11h-5zM7.5 11h1"
@@ -525,7 +570,15 @@ function TimelineLayout({ O, day, view, me, now, userName, onPick }: { O: Office
 				.map((r) => (
 					<div key={r.id}>
 						<div className="tl-room">{r.name}</div>
-						{r.places.map((p) => (
+						{r.places.map((p) => isDropIn(p.type, view.dropIn) ? (
+							<div key={p.id} className="tl-row">
+								<span className="tl-name" title={p.type}>
+									<TypeGlyph type={p.type} />
+									{p.name}
+								</span>
+								<span className="tl-track tl-drop">Always free · {p.capacity ?? 1} seats</span>
+							</div>
+						) : (
 							<div key={p.id} className="tl-row">
 								<span className="tl-name" title={p.type}>
 									<TypeGlyph type={p.type} />
@@ -743,7 +796,7 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 
 /* ---------- add rooms and places ---------- */
 
-function NewMenu({ data, onDone }: { data: Ready; onDone: (m: string | null) => void }) {
+function NewMenu({ data, onDone, isDropIn: dropType, onDropIn }: { data: Ready; onDone: (m: string | null) => void; isDropIn: (type: string) => boolean; onDropIn: (type: string) => void }) {
 	const a = useAnchor()
 	const [kind, setKind] = useState<"menu" | "room" | "place">("menu")
 	const close = () => {
@@ -792,9 +845,10 @@ function NewMenu({ data, onDone }: { data: Ready; onDone: (m: string | null) => 
 							title="New place"
 							fields={[
 								{ key: "name", label: "Name", type: "text" },
-								{ key: "type", label: "Type", type: "choice", options: optionsOf(places, "type").length ? optionsOf(places, "type") : ["Desk", "Meeting room", "Phone booth", "Parking"] },
+								{ key: "type", label: "Type", type: "choice", options: [...new Set([...optionsOf(places, "type"), "Desk", "Meeting room", "Phone booth", "Parking", "Cafeteria seat"])] },
 								...(rooms.bound ? [{ key: "room", label: "Room", type: "pick" as const, options: rooms.items.map((r) => ({ value: r.id, label: String(r.propertiesByKey.name ?? "Untitled") })) }] : []),
 								{ key: "capacity", label: "Seats", type: "number" },
+								{ key: "drop", label: "Always free: open seating, nobody books it (e.g. cafeteria)", type: "check" },
 							]}
 							onBack={() => setKind("menu")}
 							onSave={async (v) => {
@@ -804,7 +858,8 @@ function NewMenu({ data, onDone }: { data: Ready; onDone: (m: string | null) => 
 									...(v.room && places.propertyIdsByKey.room ? { room: W.relation([v.room]) } : {}),
 									...(v.capacity && places.propertyIdsByKey.capacity ? { capacity: W.number(Number(v.capacity)) } : {}),
 								})
-								onDone(err ? `Couldn't add the place: ${err}` : `Added ${v.name}.`)
+								if (!err && v.drop === "1" && v.type && !dropType(v.type)) onDropIn(v.type)
+								onDone(err ? `Couldn't add the place: ${err}` : `Added ${v.name}${v.drop === "1" ? ", always free" : ""}.`)
 								close()
 							}}
 						/>
@@ -816,7 +871,7 @@ function NewMenu({ data, onDone }: { data: Ready; onDone: (m: string | null) => 
 }
 
 type FieldSpec =
-	| { key: string; label: string; type: "text" | "number" }
+	| { key: string; label: string; type: "text" | "number" | "check" }
 	| { key: string; label: string; type: "choice"; options: string[] }
 	| { key: string; label: string; type: "pick"; options: { value: string; label: string }[] }
 
@@ -840,8 +895,12 @@ function NewForm({ title, fields, onBack, onSave }: { title: string; fields: Fie
 			>
 				{fields.map((f) => (
 					<label key={f.key} className="bfield wide">
-						<span>{f.label}</span>
-						{f.type === "text" || f.type === "number" ? (
+						{f.type === "check" ? null : <span>{f.label}</span>}
+						{f.type === "check" ? (
+							<span className="ncheck">
+								<input type="checkbox" checked={v[f.key] === "1"} onChange={(e) => set(f.key, e.target.checked ? "1" : "")} /> {f.label}
+							</span>
+						) : f.type === "text" || f.type === "number" ? (
 							<input className="field" type={f.type} maxLength={200} autoFocus={f.key === "name"} min={f.type === "number" ? 1 : undefined} value={v[f.key]} onChange={(e) => set(f.key, e.target.value)} />
 						) : f.type === "choice" ? (
 							<>

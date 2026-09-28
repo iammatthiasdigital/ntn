@@ -74,6 +74,20 @@ Notion-style filter bar, settings panel and light/dark palette.
 **Rooms** (optional): Name, Floor (select) and Type (select). Without it,
 places are shown as one group.
 
+## Drop-in seating
+
+Some places are always up for grabs, like cafeteria tables or a kitchen
+counter. They are **never booked**: they show as open seating with their
+seats ("Cafeteria seat · 24 seats · Always free"), are left out of the free
+counts, and the day bar adds "· 32 drop-in seats". A place is drop-in by its
+**Type**:
+
+- By default, types named like Cafeteria, Canteen, Kantine, Kitchen, Break
+  area or Drop-in.
+- *Settings → Always free* picks the exact types instead.
+- Adding a place from the **+** menu has an "Always free" box that marks its
+  type as drop-in.
+
 ## Settings (sliders icon)
 
 - **Theme:** The Office (ecosio colors: blue #0054FF for you and your actions, navy #002268 for headings and plaques, green #6FD44E for free, white and pale blue #F2F6FF for the rest) or Notion.

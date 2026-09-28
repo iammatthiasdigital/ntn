@@ -239,6 +239,34 @@
 			"type": "Parking",
 			"capacity": 1,
 			"features": []
+		},
+		{
+			"id": "pl-cafe-1",
+			"name": "Long tables",
+			"room": [
+				{
+					"id": "room-cafe",
+					"table": "block"
+				}
+			],
+			"type": "Cafeteria seat",
+			"capacity": 24,
+			"features": [
+				"Power outlets"
+			]
+		},
+		{
+			"id": "pl-cafe-2",
+			"name": "Window bar",
+			"room": [
+				{
+					"id": "room-cafe",
+					"table": "block"
+				}
+			],
+			"type": "Cafeteria seat",
+			"capacity": 8,
+			"features": []
 		}
 	]
 }

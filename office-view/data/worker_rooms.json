@@ -21,6 +21,12 @@
 			"type": "Common"
 		},
 		{
+			"id": "room-cafe",
+			"name": "Cafeteria",
+			"floor": "Ground floor",
+			"type": "Common"
+		},
+		{
 			"id": "room-open",
 			"name": "Open space North",
 			"floor": "1st floor",

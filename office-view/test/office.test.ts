@@ -64,3 +64,12 @@ test("up-for-grabs bookings don't block; whole-day claims make the usual spot", 
 	// Two whole-day claims on the booth beat one timed meeting.
 	assert.deepEqual(usualPlace(O, "u1"), { placeId: "p2", count: 2 })
 })
+
+test("drop-in seating is recognized by type, or by the chosen types", async () => {
+	const { isDropIn } = await import("../blocks/office-view/src/office.ts")
+	assert.equal(isDropIn("Cafeteria seat", null), true)
+	assert.equal(isDropIn("Kantine", null), true)
+	assert.equal(isDropIn("Desk", null), false)
+	assert.equal(isDropIn("Lounge", ["lounge"]), true)
+	assert.equal(isDropIn("Cafeteria seat", ["Lounge"]), false)
+})

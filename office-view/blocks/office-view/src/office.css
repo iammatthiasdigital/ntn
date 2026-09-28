@@ -519,3 +519,57 @@
 	font-size: 14px;
 	font-weight: 600;
 }
+
+/* Drop-in seating (cafeteria, kitchen…): always free, not bookable. */
+.tile.drop,
+.tile.drop:hover {
+	border: 1px dashed var(--fieldline);
+	border-left: 3px solid var(--free);
+	background: transparent;
+}
+.tile.drop .tile-main {
+	cursor: default;
+}
+.drop-l {
+	font-size: 11px;
+	font-weight: 600;
+	color: var(--free);
+}
+.tl-drop {
+	display: flex;
+	align-items: center;
+	padding-left: 8px;
+	border: 1px dashed var(--fieldline);
+	border-radius: 4px;
+	color: var(--free);
+	font-size: 11px;
+	cursor: default;
+}
+.ncheck {
+	display: flex;
+	align-items: flex-start;
+	gap: 6px;
+	font-size: 12px;
+	color: var(--ink2);
+}
+.ncheck input {
+	margin-top: 2px;
+}
+
+/* A big block title, like a Notion page heading. */
+.nb .ctitle {
+	font-size: 30px !important;
+	font-weight: 700 !important;
+	line-height: 1.2;
+	letter-spacing: -0.01em;
+	margin-bottom: 8px;
+}
+.nb .ctitle .csub {
+	font-size: 14px;
+	letter-spacing: 0;
+}
+@media (max-width: 480px) {
+	.nb .ctitle {
+		font-size: 24px !important;
+	}
+}

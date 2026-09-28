@@ -120,6 +120,14 @@ export function usualPlace(O: Office, me: string | undefined): { placeId: string
 
 export type State = "free" | "partial" | "busy" | "mine" | "offered"
 
+/** Place types that are always free by default: shared seating nobody books (cafeteria, kitchen…). */
+const DROP_IN = /caf[eé]|canteen|kantine|mensa|kitchen|küche|break|pause|drop.?in|walk.?in|open seat|free seat|hot seat/i
+
+/** Whether a place type is drop-in seating: the chosen types, or by name when none are chosen (null). */
+export function isDropIn(type: string, chosen: string[] | null): boolean {
+	return chosen ? chosen.some((t) => t.trim().toLowerCase() === type.trim().toLowerCase()) : DROP_IN.test(type)
+}
+
 /** How taken a place is within the day's opening hours (or right now). */
 export function stateOf(O: Office, placeId: string, day: string, open: number, close: number, me?: string, at?: number): State {
 	const bs = bookingsOn(O, placeId, day)
