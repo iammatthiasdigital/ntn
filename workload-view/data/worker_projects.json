@@ -1,0 +1,106 @@
+{
+	"schema": {
+		"name": {
+			"name": "Name",
+			"type": "title"
+		},
+		"tasks": {
+			"name": "Tasks",
+			"type": "relation"
+		},
+		"lead": {
+			"name": "Lead",
+			"type": "people"
+		}
+	},
+	"rows": [
+		{
+			"id": "prj-checkout",
+			"name": "Checkout",
+			"tasks": [
+				{
+					"id": "as-1",
+					"table": "block"
+				},
+				{
+					"id": "as-2",
+					"table": "block"
+				}
+			]
+		},
+		{
+			"id": "prj-mobile-app",
+			"name": "Mobile app",
+			"tasks": [
+				{
+					"id": "as-3",
+					"table": "block"
+				},
+				{
+					"id": "as-4",
+					"table": "block"
+				},
+				{
+					"id": "as-5",
+					"table": "block"
+				},
+				{
+					"id": "as-12",
+					"table": "block"
+				}
+			]
+		},
+		{
+			"id": "prj-analytics",
+			"name": "Analytics",
+			"tasks": [
+				{
+					"id": "as-6",
+					"table": "block"
+				},
+				{
+					"id": "as-7",
+					"table": "block"
+				}
+			]
+		},
+		{
+			"id": "prj-team",
+			"name": "Team",
+			"tasks": [
+				{
+					"id": "as-8",
+					"table": "block"
+				},
+				{
+					"id": "as-9",
+					"table": "block"
+				}
+			]
+		},
+		{
+			"id": "prj-platform",
+			"name": "Platform",
+			"tasks": [
+				{
+					"id": "as-10",
+					"table": "block"
+				},
+				{
+					"id": "as-11",
+					"table": "block"
+				}
+			]
+		},
+		{
+			"id": "prj-support",
+			"name": "Support",
+			"tasks": [
+				{
+					"id": "as-ongoing",
+					"table": "block"
+				}
+			]
+		}
+	]
+}

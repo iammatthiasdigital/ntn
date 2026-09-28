@@ -14,7 +14,8 @@ Notion-style filter bar, settings panel and light/dark palette.
   drawn and periods over capacity are tinted red.
 - **Tasks** under each lane, labelled with the properties picked in *Bar
   label* (Title by default, e.g. "Checkout API · Backend · In progress").
-  Rows without dates are ongoing and span the whole range.
+  Tasks without a date are left out (the footer counts them); *Tasks
+  without a date* in the settings shows them as ongoing instead.
 
 ## Settings
 
@@ -24,7 +25,7 @@ not when connecting it, and are guessed from names and types to start with.
 | Setting    | Property type                        | Meaning                                                                  |
 | ---------- | ------------------------------------ | ------------------------------------------------------------------------ |
 | Person     | people, or relation to person pages  | Whose task it is                                                         |
-| Dates      | date                                 | Optional: rows without dates are ongoing                                 |
+| Dates      | date                                 | Tasks without one are left out (or shown as ongoing, see settings)       |
 | Group by   | select, multi-select, status, relation | Optional headings. On the tasks, a person shows in each group they have tasks in; on People, in their own |
 | Bar label  | any (at least one)                   | What the task bars say                                                   |
 | Measure    |                                      | **Task count** (default), or effort (below)                              |
@@ -42,12 +43,28 @@ not when connecting it, and are guessed from names and types to start with.
 **From / To** are never empty: without your own dates, half a year back and
 half a year ahead.
 
-**Large databases.** Notion gives a block at most 999 rows per query and no
-paging. When the database has more, the block reads it one week of From–To
-per query (by start date, via the Dates property), plus the latest tasks
-that started before From and the tasks without a date, and merges them.
-All queries stay live. A week with more than 999 tasks starting in it is
-the only thing that can still be cut short (the footer says so).
+**Nothing loads until a project or person is picked.** Task databases can
+be huge, so the block starts with just the schema and a picker (*Project:
+pick…*, *Person: pick…*). Then it loads only that scope's tasks:
+
+- **Projects database** (optional, recommended for a Project relation):
+  the block lists its projects and, for the picked one, loads the tasks its
+  relation to the tasks points to, a few at a time (up to 1,500), with
+  *Refresh* to load them again. Notion can't filter a query by relation or
+  by person, so this goes through the project instead.
+- **People database** with a relation to the tasks: the same for a person,
+  who then shows alone.
+- **A select, status or multi-select of the tasks** (e.g. Project): the
+  task query is filtered in Notion. Over 999 matches are read page by page.
+
+*Settings → Projects from / People from* pick where the lists come from.
+Tasks loaded one by one don't carry formulas, rollups or Created by (Notion
+doesn't return them for single pages).
+
+**Task counts** share a 0–25 scale so people can be compared; a lane with
+more than 25 tasks at once gets its own scale, marked in red. Effort lanes
+share one scale as before. **Task bars** are off by default and locked off
+above 1,000 tasks.
 
 **People** (optional database) adds a group column, a working-time column
 (hours per week, or %) and people to show. Only people with tasks get a

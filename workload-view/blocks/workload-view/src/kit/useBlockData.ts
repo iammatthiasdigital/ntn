@@ -8,7 +8,8 @@ import { pages, users } from "@notionhq/custom-blocks"
 import { useBlockId, useCurrentUser, useDataSource } from "@notionhq/custom-blocks/react"
 import { useAllRows } from "./allRows"
 import { pointerIds, textOf } from "./filters/core"
-import type { BlockData, Mutations, SourceSnapshot, Window } from "./sources"
+import { pageToRow } from "./pageRow"
+import type { BlockData, Mutations, RowQuery, SourceSnapshot } from "./sources"
 
 const LIMIT = 999
 const CONCURRENCY = 5
@@ -27,6 +28,7 @@ function toSnapshot(q: QueryResult): SourceSnapshot {
 		propertySchemasById: q.propertySchemasById as SourceSnapshot["propertySchemasById"],
 		propertyIdsByKey: q.propertyIdsByKey,
 		truncated: q.hasMore,
+		loading: q.isLoading,
 	}
 }
 
@@ -75,18 +77,24 @@ function referencedIds(snaps: SourceSnapshot[], types: string[]): string[] {
  * `keys` must be a constant list (hooks are called once per key, in order).
  * `required` are the keys the block can't work without.
  * `complete` are keys read in full past the 999-row cap (see allRows).
+ * `initial` sets what a key reads at first (e.g. `{ limit: 1 }`: just the
+ * schema, until the block asks for rows with `setQuery`).
  */
-export function useBlockData<K extends string>(keys: readonly K[], required: readonly K[], storagePrefix: string, complete: readonly K[] = []): BlockData<K> {
-	const queries = keys.map((k) => useDataSource(k, { limit: LIMIT }))
-	const [windows, setWindows] = useState<Partial<Record<K, Window | null>>>({})
-	const full = keys.map((k, i) => useAllRows(k, queries[i], complete.includes(k), windows[k] ?? null))
-	const setWindow = useMemo(
-		() => (key: K, w: Window | null) =>
-			setWindows((prev) => {
-				const cur = prev[key]
-				if (cur === w || (cur && w && cur.dateProp === w.dateProp && cur.from === w.from && cur.to === w.to)) return prev
-				return { ...prev, [key]: w }
-			}),
+export function useBlockData<K extends string>(keys: readonly K[], required: readonly K[], storagePrefix: string, complete: readonly K[] = [], initial: Partial<Record<K, RowQuery>> = {}): BlockData<K> {
+	const [rq, setRq] = useState<Partial<Record<K, RowQuery>>>(initial)
+	const optsOf = (k: K) => {
+		const q = rq[k]
+		return q ? { limit: Math.max(1, Math.min(LIMIT, q.limit)), ...(q.filter ? { filter: q.filter as never } : {}) } : { limit: LIMIT }
+	}
+	// Stable options per query, so a subscription is only replaced when its query really changes.
+	const optJson = keys.map((k) => JSON.stringify(optsOf(k)))
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	const opts = useMemo(() => keys.map(optsOf), optJson)
+	const queries = keys.map((k, i) => useDataSource(k, opts[i]))
+	const full = keys.map((k, i) => useAllRows(k, queries[i], complete.includes(k) && opts[i].limit >= LIMIT, { filter: rq[k]?.filter, sortBy: rq[k]?.sortBy, empty: rq[k]?.empty }))
+	const setQuery = useMemo(
+		() => (key: K, q: RowQuery) =>
+			setRq((prev) => (JSON.stringify(prev[key] ?? null) === JSON.stringify(q) ? prev : { ...prev, [key]: q })),
 		[]
 	)
 	const me = useCurrentUser()
@@ -95,10 +103,10 @@ export function useBlockData<K extends string>(keys: readonly K[], required: rea
 		() =>
 			queries.map((q, i) => {
 				const f = full[i]
-				return f ? toSnapshot({ ...q, items: f.items, hasMore: f.truncated }) : toSnapshot(q)
+				return f ? toSnapshot({ ...q, items: f.items, hasMore: f.truncated, isLoading: q.isLoading || f.loading }) : toSnapshot(q)
 			}),
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-		[...queries.flatMap((q) => [q.items, q.propertySchemasById, q.propertyIdsByKey, q.hasMore, q.error, q.collectionSchema]), ...full.flatMap((f) => [f?.items, f?.truncated])]
+		[...queries.flatMap((q) => [q.items, q.propertySchemasById, q.propertyIdsByKey, q.hasMore, q.error, q.collectionSchema, q.isLoading]), ...full.flatMap((f) => [f?.items, f?.truncated, f?.loading])]
 	)
 	const sources = useMemo(() => Object.fromEntries(keys.map((k, i) => [k, snaps[i]])) as Record<K, SourceSnapshot>, [snaps, keys])
 	const latest = useRef(queries)
@@ -196,7 +204,17 @@ export function useBlockData<K extends string>(keys: readonly K[], required: rea
 		}
 	}, [keys])
 
-	const loading = queries.some((q) => q.isLoading && q.items.length === 0 && !q.error)
+	// Only the first load (no schema yet) blocks the view; later query changes load in place.
+	const loading = queries.some((q) => q.isLoading && q.items.length === 0 && !q.error && q.collectionSchema === undefined)
+	const fetchRow = useMemo(
+		() => async (key: K, id: string) => {
+			const res = await pages.get(id as Parameters<typeof pages.get>[0]).catch(() => null)
+			if (!res || res.status !== "success") return null
+			const schemas = latest.current[keys.indexOf(key)]?.propertySchemasById ?? {}
+			return pageToRow(res.page as never, schemas as never)
+		},
+		[keys]
+	)
 	return useMemo<BlockData<K>>(() => {
 		const missing = keys.filter((k) => !sources[k].bound)
 		if (loading && missing.length === 0) return { status: "loading" }
@@ -207,12 +225,13 @@ export function useBlockData<K extends string>(keys: readonly K[], required: rea
 			sources,
 			mutations,
 			storageKey: `${storagePrefix}:${blockId}`,
-			setWindow: complete.length ? setWindow : undefined,
+			setQuery,
+			fetchRow,
 			resolvers: {
 				userName: (id) => userNames.get(id) ?? (id === me.id ? me.name : undefined),
 				pageTitle: (id) => knownTitles.get(id) ?? fetchedTitles.get(id),
 				meId: me.id,
 			},
 		}
-	}, [keys, required, sources, loading, mutations, storagePrefix, blockId, userNames, me, knownTitles, fetchedTitles, setWindow, complete.length])
+	}, [keys, required, sources, loading, mutations, storagePrefix, blockId, userNames, me, knownTitles, fetchedTitles, setQuery, fetchRow])
 }

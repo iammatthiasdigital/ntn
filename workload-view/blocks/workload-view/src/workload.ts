@@ -49,6 +49,8 @@ export type Options = Setup & {
 	extra: string[]
 	/** What a bar says: property ids joined with " · "; TITLE = the row's title. */
 	labels: string[]
+	/** Rows without a date count as ongoing; otherwise they're left out (with a Dates property set). */
+	undated: boolean
 	workdays: boolean
 	bucket: Bucket
 	from: string | null
@@ -85,6 +87,8 @@ export type Workload = {
 	today: number
 	unit: string
 	skipped: number
+	/** Rows left out for having no date. */
+	undated: number
 	fractions: boolean
 	/** Whether lanes have a capacity (effort); task counts don't. */
 	capacity: boolean
@@ -232,14 +236,19 @@ export function workload(work: SourceSnapshot, people: SourceSnapshot | undefine
 	}
 	const raws: Raw[] = []
 	let skipped = 0
+	let undated = 0
 	for (const r of work.items) {
 		if (visible && !visible.has(r.id)) continue
+		const d = o.dates ? dateOf(r.propertiesById[o.dates]) : null
+		if (o.dates && !d && !o.undated) {
+			undated++
+			continue
+		}
 		const raw = count ? 1 : o.effort ? numberOf(r.propertiesById[o.effort]) : null
 		if (raw == null) {
 			skipped++
 			continue
 		}
-		const d = o.dates ? dateOf(r.propertiesById[o.dates]) : null
 		const lanes = o.person ? valuesOf(r.propertiesById[o.person], ws[o.person]?.type ?? "", res) : []
 		const groups = team?.db === "w" ? valuesOf(r.propertiesById[team.id], ws[team.id]?.type ?? "", res) : []
 		const start = d ? toDay(d.start) : null
@@ -343,7 +352,7 @@ export function workload(work: SourceSnapshot, people: SourceSnapshot | undefine
 		}
 	})
 	out.sort((a, b) => (a.team ?? "￿").localeCompare(b.team ?? "￿") || (a.person === NONE ? 1 : b.person === NONE ? -1 : a.label.localeCompare(b.label)))
-	return { lanes: out, series, buckets, start, end, today, unit: count ? "tasks" : pct ? "%" : "h", skipped, fractions, capacity: !count }
+	return { lanes: out, series, buckets, start, end, today, unit: count ? "tasks" : pct ? "%" : "h", skipped, undated, fractions, capacity: !count }
 }
 
 export function fmtNum(n: number): string {

@@ -18,6 +18,8 @@ export type SourceSnapshot = {
 	propertyIdsByKey: Record<string, string | undefined>
 	/** More rows exist beyond the 999-row read limit. */
 	truncated: boolean
+	/** Rows are (re)loading, e.g. after the query changed. */
+	loading?: boolean
 }
 
 export const EMPTY_SOURCE: SourceSnapshot = { bound: false, items: [], propertySchemasById: {}, propertyIdsByKey: {}, truncated: false }
@@ -50,15 +52,19 @@ export type BlockData<K extends string> =
 			resolvers: Resolvers
 			mutations: Mutations
 			storageKey: string
-			/**
-			 * Large databases: which date property and range to read in weekly
-			 * queries (see allRows). Only on keys read in full.
-			 */
-			setWindow?: (key: K, w: Window | null) => void
+			/** Changes which rows a data source reads (hosted only; the mock has everything). */
+			setQuery?: (key: K, q: RowQuery) => void
+			/** Loads one page of a data source by id, outside its query (hosted only). */
+			fetchRow?: (key: K, id: string) => Promise<SourceRow | null>
 	  }
 
-/** Rows whose date starts in [from, to] are read one week per query. */
-export type Window = { dateProp: string; from: string; to: string }
+/**
+ * What a data source reads: up to `limit` rows (1 = just the schema)
+ * matching `filter` (the SDK's filter shape). With more than 999 matching
+ * rows, keys read in full page on by `sortBy` (a date property), leaving out
+ * rows without one when `empty` is false.
+ */
+export type RowQuery = { limit: number; filter?: object; sortBy?: string | null; empty?: boolean }
 
 /* ---- write helpers (Notion public API property shapes) ---- */
 

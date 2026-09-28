@@ -10,7 +10,7 @@ function snap(schema: Record<string, { name: string; type: string }>, rows: Reco
 	return { bound: true, truncated: false, propertySchemasById: schema, propertyIdsByKey: { name: "name" }, items: rows.map((v, i) => ({ id: (v.id as string) ?? `a${i}`, propertiesById: v, propertiesByKey: v })) }
 }
 const res = { userName: (id: string) => ({ u1: "Ada", u2: "Alan" })[id], pageTitle: (id: string) => ({ pa: "Ada", pb: "Alan", t1: "Platform", prj: "Checkout" })[id] }
-const opts = (o: Partial<Options>): Options => ({ person: null, team: null, effort: null, dates: null, pPerson: null, pCap: null, mode: "percent", dayHours: 8, caps: {}, everyone: false, extra: [], labels: [TITLE], workdays: true, bucket: "day", from: "2026-09-07", to: "2026-09-11", today: "2026-09-08", ...o })
+const opts = (o: Partial<Options>): Options => ({ person: null, team: null, effort: null, dates: null, pPerson: null, pCap: null, mode: "percent", dayHours: 8, caps: {}, everyone: false, extra: [], labels: [TITLE], undated: true, workdays: true, bucket: "day", from: "2026-09-07", to: "2026-09-11", today: "2026-09-08", ...o })
 
 // One database: person as people, project and team as selects, workload in Notion's percent format.
 const ONE = snap(
@@ -50,6 +50,14 @@ test("effort: undated rows are ongoing, fractions are %, lanes grouped by a prop
 	assert.equal(ada.overBuckets, 5)
 	assert.equal(W.lanes[0].total[2], 40)
 	assert.equal(W.skipped, 1)
+})
+
+test("tasks without a date are left out unless shown as ongoing", () => {
+	const W = workload(ONE, undefined, null, res, opts({ ...resolveSetup({}, ONE), team: null, mode: "count", undated: false }))
+	assert.equal(W.undated, 2)
+	assert.deepEqual(W.lanes.map((l) => [l.label, l.items.map((i) => i.name)]), [["Ada", ["Checkout"]], ["Alan", ["Infra"]]])
+	// Without a Dates property nothing counts as undated.
+	assert.equal(workload(ONE, undefined, null, res, opts({ ...resolveSetup({}, ONE), dates: null, mode: "count", undated: false })).undated, 0)
 })
 
 test("grouped by project, a person shows in each group with only its tasks", () => {

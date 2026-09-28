@@ -2,12 +2,14 @@ import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from 
 import { dayIso, EMPTY_FILTERS, textOf } from "./kit/filters/core"
 import { PropIcon } from "./kit/filters/icons"
 import { ClockIcon, ColumnIcon, HashIcon, LayersIcon, NavRow, Note, NumberRow, PersonIcon, PickRow, Sep, SettingsShell, TargetIcon, ToggleRow } from "./kit/settings"
-import type { BlockData } from "./kit/sources"
+import { Popover, useAnchor } from "./kit/filters/popover"
+import type { BlockData, SourceRow, SourceSnapshot } from "./kit/sources"
+import { choices, inOption, linkedIds, optionFilter, resolveVia, viaOptions, type Scope, type ScopeKind } from "./scope"
 import { isoDay, oneOf, within } from "./kit/share"
 import { Loading, Setup, Toolbar, useFiltered, usePersistentView, type WithFilters } from "./kit/toolbar"
 import { bucketStart, columns, fmtBucket, fmtDay, fmtNum, isoOf, nextBucket, resolveSetup, TITLE, toDay, workload, type Bucket, type Column, type EffortMode, type Lane, type Workload } from "./workload"
 
-export type Keys = "assignments" | "people"
+export type Keys = "assignments" | "people" | "projects"
 type Ready = Extract<BlockData<Keys>, { status: "ready" }>
 
 /** Column choices: null = automatic (by name and type), "" = none. */
@@ -30,12 +32,19 @@ type View = WithFilters & {
 	/** People rows added by hand (shown without allocations). */
 	extra: string[]
 	workdays: boolean
-	bucket: Bucket
+	/** Show tasks without a date as ongoing (off: they're left out). */
+	undated: boolean
+bucket: Bucket
 	from: string
 	to: string
 	bars: boolean
 	/** What bars say: property ids, TITLE = the title. At least one. */
 	labels: string[]
+	/** The project or person whose tasks are loaded; nothing loads without one. */
+	scope: Scope | null
+	/** Where projects / people are listed from ("link:<relation>" or "opt:<property>"); null = automatic, "" = none. */
+	projectVia: string | null
+	personVia: string | null
 }
 
 const DEFAULT: View = {
@@ -51,11 +60,15 @@ const DEFAULT: View = {
 	everyone: false,
 	extra: [],
 	workdays: true,
-	bucket: "week",
+	undated: false,
+bucket: "week",
 	from: "",
 	to: "",
-	bars: true,
+	bars: false,
 	labels: [TITLE],
+	scope: null,
+	projectVia: null,
+	personVia: null,
 	filters: EMPTY_FILTERS,
 	filterBar: true,
 }
@@ -75,8 +88,19 @@ const sanitize = (v: View): View => {
 		extra: Array.isArray(v.extra) ? v.extra.filter((x) => typeof x === "string" && x.length < 100).slice(0, 500) : [],
 		from: isoDay(v.from),
 		to: isoDay(v.to),
+		scope:
+			v.scope && (v.scope.kind === "project" || v.scope.kind === "person") && typeof v.scope.id === "string" && v.scope.id.length < 200
+				? { kind: v.scope.kind, id: v.scope.id, label: String(v.scope.label ?? "").slice(0, 200) }
+				: null,
 	}
 }
+
+/** Linked tasks are loaded one page at a time; a project with more than this many is cut short. */
+const MAX_LINKED = 1500
+/** Task bars are off (and locked) above this many tasks: too many to draw. */
+const MAX_BARS = 1000
+/** Task counts: lanes share a 0–25 scale; a lane with more at once gets its own. */
+const COUNT_SCALE = 25
 
 const PALETTE = ["blue", "orange", "green", "purple", "pink", "yellow", "brown", "red", "gray"]
 const color = (i: number) => `var(--d-${PALETTE[i % PALETTE.length]})`
@@ -104,30 +128,85 @@ export function WorkloadView({ data, theme }: { data: BlockData<Keys>; theme: "l
 	)
 }
 
-type Page = "root" | "person" | "labels" | "team" | "effort" | "dates" | "pPerson" | "pCap" | "mode" | "bucket" | "shown"
+type Page = "root" | "projectVia" | "personVia" | "person" | "labels" | "team" | "effort" | "dates" | "pPerson" | "pCap" | "mode" | "bucket" | "shown"
 
 function Ready({ data }: { data: Ready }) {
 	const [view, setView] = usePersistentView(data.storageKey, DEFAULT)
 	const setUi = (f: Partial<View>) => setView((v) => ({ ...v, ...f }))
 	const today = useMemo(() => dayIso(new Date()), [])
-	const src = data.sources.assignments
+	// The task database's schema, and (in the mock, or for a project picked from a select) its rows.
+	const base = data.sources.assignments
 	const ppl = data.sources.people?.bound ? data.sources.people : undefined
+	const prj = data.sources.projects?.bound ? data.sources.projects : undefined
+	const cols = useMemo(() => columns(base, ppl), [base, ppl])
+	const setup = useMemo(() => resolveSetup(view, base, ppl), [view, base, ppl])
+
+	/* ---- scope: only a picked project's or person's tasks are loaded ---- */
+	const projectVia = useMemo(() => resolveVia("project", view.projectVia, base, prj), [view.projectVia, base, prj])
+	const personVia = useMemo(() => resolveVia("person", view.personVia, base, ppl), [view.personVia, base, ppl])
+	const scope = view.scope
+	const via = scope ? (scope.kind === "project" ? projectVia : personVia) : null
+	const { setQuery, fetchRow } = data
+	// A task property (e.g. a Project select) filters the query in Notion; otherwise only the schema is read.
+	const optFilter = scope && via ? optionFilter(via.via, scope.id) : null
+	const optKey = JSON.stringify(optFilter)
+	useEffect(
+		() => setQuery?.("assignments", optFilter ? { limit: 999, filter: optFilter, sortBy: setup.dates, empty: view.undated } : { limit: 1 }),
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+		[setQuery, optKey, setup.dates, view.undated]
+	)
+	// A Projects (or People) row links to its tasks: those are loaded one by one, a few at a time.
+	const own = via?.via.via === "link" ? (via.via.source === "projects" ? prj : ppl) : undefined
+	const ids = useMemo(() => (scope && via?.via.via === "link" ? linkedIds(via.via, own, scope.id) : null), [scope, via, own])
+	const idsKey = ids ? ids.join(",") : ""
+	const [linked, setLinked] = useState<{ key: string; rows: SourceRow[]; done: number } | null>(null)
+	const [reload, setReload] = useState(0)
+	useEffect(() => {
+		if (!ids || !fetchRow) return setLinked(null)
+		let stop = false
+		const queue = ids.slice(0, MAX_LINKED)
+		const rows: SourceRow[] = []
+		let done = 0
+		setLinked({ key: idsKey, rows: [], done: 0 })
+		const next = async (): Promise<void> => {
+			const id = queue.shift()
+			if (!id || stop) return
+			const r = await fetchRow("assignments", id)
+			done++
+			if (r) rows.push(r)
+			if (!stop && (done % 25 === 0 || queue.length === 0)) setLinked({ key: idsKey, rows: [...rows], done })
+			return next()
+		}
+		void Promise.all([next(), next(), next(), next()])
+		return () => {
+			stop = true
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [idsKey, reload, fetchRow])
+	const loadingLinked = !!ids && !!fetchRow && (!linked || linked.key !== idsKey || linked.done < Math.min(ids.length, MAX_LINKED))
+	const src: SourceSnapshot = useMemo(() => {
+		if (!scope || !via) return { ...base, items: [], truncated: false }
+		if (via.via.via === "link") {
+			const rows = fetchRow ? (linked?.key === idsKey ? linked.rows : []) : base.items.filter((r) => ids?.includes(r.id))
+			return { ...base, items: rows, truncated: (ids?.length ?? 0) > MAX_LINKED, loading: loadingLinked }
+		}
+		// The query is filtered in Notion; filtering here too covers the mock and the moment a new scope is loading.
+		return { ...base, items: base.items.filter((r) => inOption(via.via, r, scope.id)) }
+	}, [scope, via, base, fetchRow, linked, idsKey, ids, loadingLinked])
 	const { properties, visible, filtering } = useFiltered(src, view.filters, data.resolvers, today)
-	const cols = useMemo(() => columns(src, ppl), [src, ppl])
-	const setup = useMemo(() => resolveSetup(view, src, ppl), [view, src, ppl])
 	// Views saved before task counts had mode null (automatic effort); every view now says what it measures.
 	const mode: EffortMode = view.mode ?? "count"
 	const count = mode === "count"
 	// From and To are never empty: without dates of your own, half a year back and ahead.
 	const from = view.from || isoOf(toDay(today) - 182)
 	const to = view.to || isoOf(toDay(today) + 182)
-	// Databases over 999 rows are read one week of From–To per query, by the Dates property.
-	const { setWindow } = data
-	useEffect(() => setWindow?.("assignments", setup.dates ? { dateProp: setup.dates, from, to } : null), [setWindow, setup.dates, from, to])
-const WL = useMemo(
-		() => workload(src, ppl, filtering ? visible : null, data.resolvers, { ...setup, mode, dayHours: view.dayHours, caps: view.caps, everyone: view.everyone, extra: view.extra, workdays: view.workdays, bucket: view.bucket, from, to, labels: view.labels, today }),
-		[src, ppl, visible, filtering, data.resolvers, setup, mode, view.dayHours, view.caps, view.everyone, view.extra, view.workdays, view.bucket, from, to, view.labels, today]
-	)
+const all = useMemo(
+		() => workload(src, ppl, filtering ? visible : null, data.resolvers, { ...setup, mode, dayHours: view.dayHours, caps: view.caps, everyone: view.everyone, extra: view.extra, workdays: view.workdays, bucket: view.bucket, from, to, labels: view.labels, undated: view.undated, today }),
+	[src, ppl, visible, filtering, data.resolvers, setup, mode, view.dayHours, view.caps, view.everyone, view.extra, view.workdays, view.bucket, from, to, view.labels, view.undated, today]
+)
+// A picked person shows alone (their shared tasks name others too).
+const only = scope?.kind === "person" && via?.via.via === "link" ? `p:${scope.id}` : null
+const WL = useMemo(() => (only ? { ...all, lanes: all.lanes.filter((l) => l.person === only) } : all), [all, only])
 	// People rows with allocations always have a lane; the others can be added.
 	const allocated = useMemo(() => new Set(WL.lanes.filter((l) => l.items.length && l.key.startsWith("p:")).map((l) => l.key.slice(2))), [WL])
 	const others = useMemo(() => {
@@ -160,6 +239,27 @@ const WL = useMemo(
 			</SettingsShell>
 		)
 		switch (page) {
+			case "projectVia":
+			case "personVia": {
+				const kind: ScopeKind = page === "projectVia" ? "project" : "person"
+				const opts = viaOptions(kind, base, kind === "project" ? prj : ppl)
+				const cur = kind === "project" ? projectVia : personVia
+				return (
+					<SettingsShell anchor={anchor} onClose={shut} title={kind === "project" ? "Projects from" : "People from"} onBack={back}>
+						<PickRow label="Automatic" sub="A relation named like tasks, else a property named like the kind" selected={view[page] === null} onClick={() => setUi({ [page]: null })} />
+						<PickRow label="None" selected={view[page] === ""} onClick={() => setUi({ [page]: "" })} />
+						<Sep />
+						{opts.map((o) => (
+							<PickRow key={o.key} icon={<PropIcon type={o.via.via === "link" ? "relation" : o.via.type} />} label={o.label} sub={o.via.via === "link" ? "Loads the linked tasks one by one" : "Filters the task query in Notion"} selected={view[page] !== null && cur?.key === o.key} onClick={() => setUi({ [page]: o.key })} />
+						))}
+						<Note>
+							{kind === "project"
+								? "Link a Projects database whose projects relate to their tasks, or use a select, status or multi-select of the tasks."
+								: "Use a People database whose people relate to their tasks, or a select of the tasks. Notion can't filter a query by a person property."}
+						</Note>
+					</SettingsShell>
+				)
+			}
 			case "person":
 				return colPage("Person", cols.person, setup.person, "person", "Whose time the row allocates: a people property, or a relation to a person page.")
 			case "team":
@@ -238,6 +338,9 @@ const WL = useMemo(
 		}
 		return (
 			<SettingsShell anchor={anchor} onClose={shut} title="Workload settings">
+				<NavRow icon={<LayersIcon />} label="Projects from" value={projectVia?.label ?? "None"} onClick={() => setPage("projectVia")} />
+				<NavRow icon={<PersonIcon />} label="People from" value={personVia?.label ?? "None"} onClick={() => setPage("personVia")} />
+				<Sep />
 				<NavRow icon={<PersonIcon />} label="Person" value={nameOf(setup.person, cols.person)} onClick={() => setPage("person")} />
 				<NavRow icon={<ClockIcon />} label="Dates" value={nameOf(setup.dates, cols.dates)} onClick={() => setPage("dates")} />
 				<NavRow icon={<ColumnIcon />} label="Group by" value={nameOf(setup.team, cols.team)} onClick={() => setPage("team")} />
@@ -255,7 +358,12 @@ const WL = useMemo(
 				{mode === "perDay" || mode === "total" ? <NumberRow label="Hours in a full day" value={view.dayHours} step={0.5} min={0.5} onChange={(v) => setUi({ dayHours: v })} suffix="h" /> : null}
 				<NavRow icon={<ClockIcon />} label="Time scale" value={view.bucket === "day" ? "Days" : view.bucket === "week" ? "Weeks" : "Months"} onClick={() => setPage("bucket")} />
 				<ToggleRow icon={<TargetIcon />} label="Workdays only" sub="Weekends carry no load or capacity" on={view.workdays} onChange={(v) => setUi({ workdays: v })} />
-				<ToggleRow icon={<LayersIcon />} label="Show tasks" on={view.bars} onChange={(v) => setUi({ bars: v })} />
+				{setup.dates ? <ToggleRow icon={<ClockIcon />} label="Tasks without a date" sub="Show them as ongoing across the whole range" on={view.undated} onChange={(v) => setUi({ undated: v })} /> : null}
+				{tooMany ? (
+					<Note>Task bars are off for more than {MAX_BARS} tasks.</Note>
+				) : (
+					<ToggleRow icon={<LayersIcon />} label="Show tasks" sub="Task bars under each person" on={view.bars} onChange={(v) => setUi({ bars: v })} />
+				)}
 				<Sep />
 				<label className="srow">
 					<span className="srow-l">From</span>
@@ -267,12 +375,13 @@ const WL = useMemo(
 				</label>
 				<Note>
 					{ppl ? "The People database adds groups, working time and people to show." : "Only people with tasks are shown; connect a People database to add others."}
-					{count ? "" : " Click “works …” on a person to set their working time locally."} Databases over 999 rows are read one week of From–To at a time.
+					{count ? "" : " Click “works …” on a person to set their working time locally."} Only the picked project's or person's tasks are loaded.
 				</Note>
 			</SettingsShell>
 		)
 	}
 
+	const pick = (kind: ScopeKind, c: { id: string; label: string } | null) => setUi({ scope: c ? { kind, id: c.id, label: c.label } : null })
 	const setCap = (key: string, share: number | null) =>
 		setView((v) => {
 			const caps = { ...v.caps }
@@ -280,6 +389,8 @@ const WL = useMemo(
 			else caps[key] = within(share, 0, 200, 100)
 			return { ...v, caps }
 		})
+	// Too many tasks to draw as bars: the switch is locked off.
+	const tooMany = src.items.length > MAX_BARS || src.truncated
 	const over = new Set(WL.lanes.filter((l) => l.overBuckets > 0).map((l) => l.person)).size
 	const teams = new Set(WL.lanes.map((l) => l.team).filter(Boolean)).size
 	const people = new Set(WL.lanes.filter((l) => l.person !== "__none").map((l) => l.person)).size
@@ -297,6 +408,34 @@ const WL = useMemo(
 				settings={settings}
 				share={{ block: "workload", defaults: DEFAULT, schemas: { ...ppl?.propertySchemasById, ...src.propertySchemasById }, sanitize }}
 			/>
+			<div className="tlbar scopebar">
+				{projectVia ? <ScopePicker kind="project" label="Project" scope={scope} list={choices(projectVia, base, prj)} onPick={pick} /> : null}
+				{personVia ? <ScopePicker kind="person" label="Person" scope={scope} list={choices(personVia, base, ppl)} onPick={pick} /> : null}
+				{scope ? (
+					<button type="button" className="ghost sm" onClick={() => pick(scope.kind, null)}>
+						Clear
+					</button>
+				) : null}
+				<span className="spacer" />
+				{src.loading || loadingLinked ? (
+					<span className="daystat">{ids && fetchRow ? `Loading tasks ${Math.min(linked?.key === idsKey ? linked.done : 0, ids.length)} / ${Math.min(ids.length, MAX_LINKED)}…` : "Loading tasks…"}</span>
+				) : ids && fetchRow ? (
+					<button type="button" className="ghost sm" title="Load this project's tasks again" onClick={() => setReload((n) => n + 1)}>
+						Refresh
+					</button>
+				) : null}
+			</div>
+			{!scope ? (
+				<div className="state">
+					{projectVia || personVia ? (
+						"Pick a project or a person to load their tasks. The whole task database is never loaded at once."
+					) : (
+						<>Link a Projects database (projects relating to their tasks), or pick where projects or people come from in the settings, to load a workload.</>
+					)}
+				</div>
+			) : null}
+			{scope ? (
+			<>
 			<div className="stats">
 				<Stat l="People" v={String(people)} sub={teams ? `in ${teams} ${teams === 1 ? "group" : "groups"}` : ""} />
 				{WL.capacity ? <Stat l="Over capacity" v={String(over)} sub={over ? "at some point" : ""} tone={over ? "bad" : undefined} /> : <Stat l="Tasks" v={String(new Set(WL.lanes.flatMap((l) => l.items.map((i) => i.id))).size)} />}
@@ -309,7 +448,7 @@ const WL = useMemo(
 			) : WL.lanes.length === 0 ? (
 				<div className="state">No tasks{filtering ? " match the filters" : ""}.</div>
 			) : (
-				<Lanes WL={WL} bucket={view.bucket} bars={view.bars} group={groupName} onCap={setCap} />
+				<Lanes WL={WL} bucket={view.bucket} bars={view.bars && !tooMany} group={groupName} onCap={setCap} />
 			)}
 			{WL.capacity ? (
 				<div className="legend">
@@ -331,8 +470,50 @@ const WL = useMemo(
 					</span>
 				) : null}
 				{WL.skipped ? <span>{WL.skipped} rows have no effort and are left out.</span> : null}
-				{src.truncated ? <span>Some rows could not be read (Notion returns 999 rows per query, and more than that share one date).</span> : null}
-			</div>
+				{WL.undated ? <span>{WL.undated} tasks without a date are left out.</span> : null}
+			{src.truncated ? <span>{ids ? `Only the first ${MAX_LINKED} of ${ids.length} tasks are loaded.` : "Some tasks could not be read (Notion returns 999 per query, and more than that share one date)."}</span> : null}
+		</div>
+		</>
+		) : null}
+	</>
+	)
+}
+
+/** Picks a project or a person from a (searchable) list. */
+function ScopePicker({ kind, label, scope, list, onPick }: { kind: ScopeKind; label: string; scope: Scope | null; list: { id: string; label: string; count?: number }[]; onPick: (kind: ScopeKind, c: { id: string; label: string }) => void }) {
+	const a = useAnchor()
+	const [q, setQ] = useState("")
+	const cur = scope?.kind === kind ? scope : null
+	const hits = useMemo(() => {
+		const t = q.trim().toLowerCase()
+		return (t ? list.filter((c) => c.label.toLowerCase().includes(t)) : list).slice(0, 150)
+	}, [list, q])
+	return (
+		<>
+			<button type="button" ref={a.ref} className={"ghost scopebtn" + (cur ? " on" : "")} onClick={a.toggle}>
+				{label}: <b>{cur ? cur.label : "pick…"}</b>
+			</button>
+			{a.open ? (
+				<Popover anchor={a.el} onClose={a.close} width={300} className="settings">
+					<div className="sbody">
+						<input className="field scope-q" autoFocus placeholder={`Search ${list.length} ${kind === "project" ? "projects" : "people"}`} maxLength={100} value={q} onChange={(e) => setQ(e.target.value)} />
+						{hits.map((c) => (
+							<PickRow
+								key={c.id}
+								label={c.label}
+								sub={c.count != null ? `${c.count} task${c.count === 1 ? "" : "s"}` : undefined}
+								selected={cur?.id === c.id}
+								onClick={() => {
+									onPick(kind, c)
+									a.close()
+								}}
+							/>
+						))}
+						{hits.length === 0 ? <Note>Nothing found.</Note> : null}
+						{list.length > hits.length && !q ? <Note>Type to find more.</Note> : null}
+					</div>
+				</Popover>
+			) : null}
 		</>
 	)
 }
@@ -357,7 +538,8 @@ function Lanes({ WL, bucket, bars, group, onCap }: { WL: Workload; bucket: Bucke
 	const L = narrow ? 0 : LABEL_W
 	const plotW = W - L - 8
 	const x = (d: number) => L + ((d - WL.start) / Math.max(1, WL.end - WL.start)) * plotW
-	const yMax = Math.max(...WL.lanes.map((l) => Math.max(l.cap * 1.25, l.peak * 1.05)), 1)
+	// Effort lanes share one scale. Task counts share 0–25 (people differ a lot); a lane with more at once gets its own.
+	const yShared = WL.capacity ? Math.max(...WL.lanes.map((l) => Math.max(l.cap * 1.25, l.peak * 1.05)), 1) : COUNT_SCALE
 
 	// Axis ticks: months, or weeks for short ranges.
 	const tickB: Bucket = WL.end - WL.start > 100 ? "month" : "week"
@@ -382,6 +564,7 @@ function Lanes({ WL, bucket, bars, group, onCap }: { WL: Workload; bucket: Bucke
 				const rows = bars ? packRows(lane) : []
 				const nRows = rows.length ? Math.max(...rows) + 1 : 0
 				const h = CHART_H + (bars ? nRows * (BAR_H + 3) + 6 : 0)
+				const yMax = WL.capacity || lane.peak <= COUNT_SCALE ? yShared : Math.ceil(lane.peak * 1.1)
 				const y = (v: number) => CHART_H - (v / yMax) * (CHART_H - 6)
 				return (
 					<Fragment key={lane.key}>
@@ -405,6 +588,11 @@ function Lanes({ WL, bucket, bars, group, onCap }: { WL: Workload; bucket: Bucke
 						</div>
 						<svg width={W} height={h} className="lane-svg" role="img" aria-label={`Workload of ${lane.label}`}>
 							{ticks.map((t, i) => (i % every ? null : <line key={t} x1={x(t)} x2={x(t)} y1={0} y2={h} stroke="var(--grid)" />))}
+							{!WL.capacity ? (
+								<text x={L + plotW - 4} y={10} textAnchor="end" className={"axis" + (yMax > COUNT_SCALE ? " scaled" : "")}>
+									{yMax > COUNT_SCALE ? `scale 0–${yMax}` : `0–${COUNT_SCALE}`}
+								</text>
+							) : null}
 							{WL.buckets.map((b, bi) => {
 								const x0 = x(b)
 								const x1 = x(nextBucket(b, bucket))

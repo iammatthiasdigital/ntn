@@ -9,20 +9,21 @@ import { ErrorBoundary } from "./kit/ErrorBoundary"
 import { useBlockData } from "./kit/useBlockData"
 import assignmentsSeed from "../../../data/worker_assignments.json"
 import peopleSeed from "../../../data/worker_people.json"
+import projectsSeed from "../../../data/worker_projects.json"
 import "./kit/base.css"
 import "./workload.css"
 
 /** Replaced at build time: false in production builds. */
 declare const __MOCK__: boolean
 const params = new URLSearchParams(window.location.search)
-const KEYS = ["assignments", "people"] as const
+const KEYS = ["assignments", "people", "projects"] as const
 const REQUIRED = ["assignments"] as const
 
 /** Standalone dev harness: seed data in memory, theme via ?theme=dark. */
 function MockRoot(): React.ReactNode {
 	const theme = params.get("theme") === "dark" ? "dark" : "light"
 	const scenario = params.get("scenario")
-	const [sources, setSources] = useState<Record<Keys, SourceSnapshot>>(() => ({ assignments: seedSnapshot(assignmentsSeed as Seed, true), people: seedSnapshot(peopleSeed as Seed) }))
+	const [sources, setSources] = useState<Record<Keys, SourceSnapshot>>(() => ({ assignments: seedSnapshot(assignmentsSeed as Seed, true), people: seedSnapshot(peopleSeed as Seed), projects: seedSnapshot(projectsSeed as Seed) }))
 	const mutations = useMemo(() => mockMutations<Keys>(setSources), [])
 	const resolvers = useMemo(() => ({ userName: (id: string) => MOCK_USERS[id] ?? fallbackLabel(id, "person"), pageTitle: (id: string) => mockTitle(sources, id), meId: MOCK_ME }), [sources])
 	let data: BlockData<Keys> = { status: "ready", sources, resolvers, mutations, storageKey: "workload:mock" }
@@ -33,8 +34,8 @@ function MockRoot(): React.ReactNode {
 
 function HostedApp(): React.ReactNode {
 	const theme = useTheme()
-	// Task databases can be far bigger than one 999-row query.
-	const data = useBlockData(KEYS, REQUIRED, "workload", KEYS)
+	// Task databases can be huge: read just the schema until a project or person is picked.
+	const data = useBlockData(KEYS, REQUIRED, "workload", ["assignments"], { assignments: { limit: 1 } })
 	return <WorkloadView data={data} theme={theme} />
 }
 
