@@ -59,6 +59,7 @@ Notion-style filter bar, settings panel and light/dark palette.
 | Type     | select               | Desk, Meeting room, Phone booth, Parking… |
 | Seats    | number               | How many people fit                       |
 | Features | multi-select         | Monitor, Standing desk, Video call…       |
+| Always free | checkbox          | Optional: open seating nobody books       |
 
 **Bookings** (required): one row per reservation. The block creates them.
 
@@ -79,14 +80,16 @@ places are shown as one group.
 Some places are always up for grabs, like cafeteria tables or a kitchen
 counter. They are **never booked**: they show as open seating with their
 seats ("Cafeteria seat · 24 seats · Always free"), are left out of the free
-counts, and the day bar adds "· 32 drop-in seats". A place is drop-in by its
-**Type**:
+counts, and the day bar adds "· 32 drop-in seats".
 
-- By default, types named like Cafeteria, Canteen, Kantine, Kitchen, Break
-  area or Drop-in.
-- *Settings → Always free* picks the exact types instead.
-- Adding a place from the **+** menu has an "Always free" box that marks its
-  type as drop-in.
+A place is drop-in when its **Always free** checkbox in the Places database
+is checked, so everyone sees the same open seating.
+
+- *Settings → Always free* ticks the checkbox for every place of a type
+  (for example all "Cafeteria seat" places), in every room at once.
+- Adding a place from the **+** menu has an "Always free" box.
+- Without an `Always free` property, types named like Cafeteria, Canteen,
+  Kantine, Kitchen, Break area or Drop-in count as always free.
 
 ## Settings (sliders icon)
 

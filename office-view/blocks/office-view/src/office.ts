@@ -8,7 +8,16 @@
 import { asStrings, checkboxOf, numberOf, pointerIds, textOf, type Resolvers } from "./kit/filters/core"
 import { prop, type SourceSnapshot } from "./kit/sources"
 
-export type Place = { id: string; name: string; roomId: string | null; type: string; capacity: number | null; features: string[] }
+export type Place = {
+	id: string
+	name: string
+	roomId: string | null
+	type: string
+	capacity: number | null
+	features: string[]
+	/** The Places database's "Always free" checkbox; null when the database has no such property. */
+	free: boolean | null
+}
 export type Room = { id: string; name: string; floor: string; type: string; places: Place[] }
 export type Booking = {
 	id: string
@@ -48,6 +57,7 @@ export function slotOf(v: unknown): { day: string; start: number; end: number; a
 
 export function readOffice(src: { rooms: SourceSnapshot; places: SourceSnapshot; bookings: SourceSnapshot }, res: Resolvers, visiblePlaces: Set<string> | null): Office {
 	const name = (s: SourceSnapshot, r: { propertiesById: Record<string, unknown>; propertiesByKey: Record<string, unknown> }) => textOf(prop(s, r as never, "name")).trim() || "Untitled"
+	const hasFree = src.places.propertyIdsByKey.free !== undefined
 	const places: Place[] = src.places.items
 		.filter((r) => !visiblePlaces || visiblePlaces.has(r.id))
 		.map((r) => ({
@@ -57,6 +67,7 @@ export function readOffice(src: { rooms: SourceSnapshot; places: SourceSnapshot;
 			type: textOf(prop(src.places, r, "type")).trim() || "Place",
 			capacity: numberOf(prop(src.places, r, "capacity")),
 			features: asStrings(prop(src.places, r, "features")),
+			free: hasFree ? checkboxOf(prop(src.places, r, "free")) : null,
 		}))
 	const rooms: Room[] = src.rooms.items.map((r) => ({
 		id: r.id,
@@ -120,12 +131,16 @@ export function usualPlace(O: Office, me: string | undefined): { placeId: string
 
 export type State = "free" | "partial" | "busy" | "mine" | "offered"
 
-/** Place types that are always free by default: shared seating nobody books (cafeteria, kitchen…). */
+/** Place types that count as always free while the Places database has no "Always free" checkbox. */
 const DROP_IN = /caf[eé]|canteen|kantine|mensa|kitchen|küche|break|pause|drop.?in|walk.?in|open seat|free seat|hot seat/i
 
-/** Whether a place type is drop-in seating: the chosen types, or by name when none are chosen (null). */
-export function isDropIn(type: string, chosen: string[] | null): boolean {
-	return chosen ? chosen.some((t) => t.trim().toLowerCase() === type.trim().toLowerCase()) : DROP_IN.test(type)
+/**
+ * Whether a place is drop-in seating (always free, never booked): its
+ * "Always free" checkbox in Notion, or, without that property, a
+ * cafeteria-like type name.
+ */
+export function isDropIn(p: Pick<Place, "type" | "free">): boolean {
+	return p.free ?? DROP_IN.test(p.type)
 }
 
 /** How taken a place is within the day's opening hours (or right now). */

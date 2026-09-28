@@ -32,6 +32,11 @@ worker.customBlock("office", {
 				type: { name: "Type", description: "Desk, Meeting room, Phone booth, Parking…", type: "select" },
 				capacity: { name: "Seats", description: "How many people fit (meeting rooms).", type: "number" },
 				features: { name: "Features", description: "e.g. Monitor, Standing desk, Video call.", type: "multi_select" },
+				free: {
+					name: "Always free",
+					description: "Checked for open seating nobody books, e.g. cafeteria tables. Shown with its seats, never booked.",
+					type: "checkbox",
+				},
 			},
 		},
 		bookings: {

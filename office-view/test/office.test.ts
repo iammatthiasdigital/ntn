@@ -65,11 +65,14 @@ test("up-for-grabs bookings don't block; whole-day claims make the usual spot", 
 	assert.deepEqual(usualPlace(O, "u1"), { placeId: "p2", count: 2 })
 })
 
-test("drop-in seating is recognized by type, or by the chosen types", async () => {
+test("drop-in seating: the Always free checkbox, or cafeteria-like types without it", async () => {
 	const { isDropIn } = await import("../blocks/office-view/src/office.ts")
-	assert.equal(isDropIn("Cafeteria seat", null), true)
-	assert.equal(isDropIn("Kantine", null), true)
-	assert.equal(isDropIn("Desk", null), false)
-	assert.equal(isDropIn("Lounge", ["lounge"]), true)
-	assert.equal(isDropIn("Cafeteria seat", ["Lounge"]), false)
+	assert.equal(isDropIn({ type: "Cafeteria seat", free: null }), true)
+	assert.equal(isDropIn({ type: "Kantine", free: null }), true)
+	assert.equal(isDropIn({ type: "Desk", free: null }), false)
+	assert.equal(isDropIn({ type: "Lounge", free: true }), true)
+	assert.equal(isDropIn({ type: "Cafeteria seat", free: false }), false)
+	const withFree = { ...sources, places: { ...src([{ id: "p1", name: "Bar", type: "Lounge", free: true }, { id: "p2", name: "Desk", type: "Desk" }]), propertyIdsByKey: { free: "free" } } }
+	assert.deepEqual(readOffice(withFree, res, null).places.map((p) => p.free), [true, false])
+	assert.equal(readOffice(sources, res, null).places[0].free, null)
 })
