@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as RPointerEvent, type ReactNode } from "react"
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as RPointerEvent, type ReactNode } from "react"
 import { dayIso, EMPTY_FILTERS } from "./kit/filters/core"
+import { openPage } from "./kit/openPage"
 import { Plus } from "./kit/filters/icons"
 import { PropIcon } from "./kit/filters/icons"
 import { ColumnIcon, LayersIcon, NavRow, Note, NumberRow, PersonIcon, PickRow, Sep, SettingsShell, TargetIcon, ToggleRow } from "./kit/settings"
@@ -7,10 +8,15 @@ import { W, type BlockData, type PropertyWrite } from "./kit/sources"
 import { oneOf, within } from "./kit/share"
 import { Loading, Setup, Toolbar, useFiltered, usePersistentView, type WithFilters } from "./kit/toolbar"
 import {
+	AUTHOR_TYPES,
 	EMPTY_LOCAL,
 	firstName,
 	frameAt,
+	FRAME_GAP,
 	FRAME_HEAD,
+	FRAME_W,
+	MARGIN,
+	ROW,
 	groupableProps,
 	initials,
 	moveValues,
@@ -38,6 +44,10 @@ type Ready = Extract<BlockData<Keys>, { status: "ready" }>
 type View = WithFilters & {
 	/** Property id the frames come from; "auto" = the first select / multi-select / relation, "none" = no frames. */
 	groupBy: string
+	/** Who wrote a note: a people / Created by / Last edited by property id; "auto" = Author, else Created by. */
+	authorBy: string
+	/** The block's title; "" = "Whiteboard". */
+	title: string
 	/** Leave out frames without notes. */
 	hideEmpty: boolean
 	/** Stickies in a frame take the group's color. */
@@ -49,9 +59,9 @@ type View = WithFilters & {
 	look: "whiteboard" | "cork"
 }
 
-const DEFAULT: View = { groupBy: "auto", hideEmpty: false, byTopic: true, authors: true, showDone: false, perRow: 4, height: 600, look: "whiteboard", filters: EMPTY_FILTERS, filterBar: true }
+const DEFAULT: View = { title: "", authorBy: "auto", groupBy: "auto", hideEmpty: false, byTopic: true, authors: true, showDone: false, perRow: 0, height: 0, look: "whiteboard", filters: EMPTY_FILTERS, filterBar: true }
 /** Imported views stay within what the settings allow. */
-const sanitize = (v: View): View => ({ ...v, perRow: Math.round(within(v.perRow, 1, 12, DEFAULT.perRow)), height: Math.round(within(v.height, 320, 4000, DEFAULT.height)), look: oneOf(v.look, ["whiteboard", "cork"] as const, DEFAULT.look) })
+const sanitize = (v: View): View => ({ ...v, title: String(v.title ?? "").slice(0, 80), perRow: Math.round(within(v.perRow, 0, 12, DEFAULT.perRow)), height: v.height === 0 ? 0 : Math.round(within(v.height, 320, 4000, 600)), look: oneOf(v.look, ["whiteboard", "cork"] as const, DEFAULT.look) })
 const ZOOMS = [0.3, 0.4, 0.55, 0.7, 0.85, 1, 1.2, 1.5] as const
 const FLY_MS = 820
 
@@ -132,13 +142,17 @@ function Ready({ data }: { data: Ready }) {
 	const today = useMemo(() => dayIso(new Date()), [])
 	const { items: itemsSrc } = data.sources
 	const [local, setLocal] = useLocalLayer(`${data.storageKey}:board`)
+	/** The canvas width, for fitting the board to the block. */
+	const [boxW, setBoxW] = useState(800)
+	// 0 = as many frames per row as fit the block at a readable zoom (~65%).
+	const perRow = view.perRow > 0 ? view.perRow : Math.max(1, Math.floor(((boxW - 48) / 0.65 - 2 * MARGIN + FRAME_GAP) / (FRAME_W + FRAME_GAP)))
 	const { properties: allProps, visible, filtering } = useFiltered(itemsSrc, view.filters, data.resolvers, today)
 	const hidden = useMemo(() => new Set(HIDDEN_PROPS.map((k) => itemsSrc.propertyIdsByKey[k]).filter(Boolean)), [itemsSrc.propertyIdsByKey])
 	const properties = useMemo(() => allProps.filter((p) => !hidden.has(p.id)), [allProps, hidden])
 	const groupProp = useMemo(() => resolveGroupBy(itemsSrc, view.groupBy), [itemsSrc, view.groupBy])
 	const base = useMemo(
-		() => readBoard(itemsSrc, local, { perRow: view.perRow, showDone: true, visible: filtering ? visible : null, groupBy: groupProp, hideEmpty: view.hideEmpty, pageTitle: data.resolvers.pageTitle }),
-		[itemsSrc, local, view.perRow, visible, filtering, groupProp, view.hideEmpty, data.resolvers.pageTitle]
+		() => readBoard(itemsSrc, local, { perRow, showDone: true, visible: filtering ? visible : null, groupBy: groupProp, hideEmpty: view.hideEmpty, pageTitle: data.resolvers.pageTitle, authorBy: view.authorBy === "auto" ? null : view.authorBy }),
+		[itemsSrc, local, perRow, visible, filtering, groupProp, view.hideEmpty, data.resolvers.pageTitle, view.authorBy]
 	)
 	const me = data.resolvers.meId
 	const has = (k: string) => itemsSrc.propertyIdsByKey[k] !== undefined
@@ -279,14 +293,39 @@ function Ready({ data }: { data: Ready }) {
 	const worldW = base.width
 	const worldH = base.height
 
+	/* ---- board height: fit to the board (default) or fixed ---- */
+	useLayoutEffect(() => {
+		const el = rootRef.current
+		if (!el) return
+		const ro = new ResizeObserver(() => setBoxW(el.clientWidth))
+		ro.observe(el)
+		setBoxW(el.clientWidth)
+		return () => ro.disconnect()
+	}, [])
+	// Bounds from the saved board (not mid-drag positions), so fitting doesn't jump while dragging.
+	const bounds = useMemo(() => {
+		const boxes = [...base.groups.map((g) => ({ x: g.x, y: g.y, w: g.w, h: g.h })), ...base.items.filter((it) => view.showDone || !it.done).map((it) => ({ x: it.x, y: it.y, w: it.width, h: it.height }))]
+		if (!boxes.length) return null
+		return { x1: Math.min(...boxes.map((b) => b.x)), y1: Math.min(...boxes.map((b) => b.y)), x2: Math.max(...boxes.map((b) => b.x + b.w)), y2: Math.max(...boxes.map((b) => b.y + b.h)) }
+	}, [base, view.showDone])
+	const autoH = view.height === 0
+	const fitScale = bounds ? clamp((boxW - 48) / (bounds.x2 - bounds.x1), ZOOMS[0], 1) : 1
+	const boardH = autoH ? clamp(Math.round((bounds ? bounds.y2 - bounds.y1 : 360) * fitScale + 150), 320, 4000) : view.height
+	useEffect(() => {
+		if (!autoH || !bounds) return
+		setScale(fitScale)
+		setPan([24 - bounds.x1 * fitScale + Math.max(0, (boxW - 48 - (bounds.x2 - bounds.x1) * fitScale) / 2), 20 - bounds.y1 * fitScale])
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [autoH, fitScale, bounds?.x1, bounds?.y1, bounds?.x2, boxW])
+
 	const clampPan = useCallback(
 		([x, y]: Point, s = scale): Point => {
 			const el = rootRef.current
 			const vw = el?.clientWidth ?? 800
-			const vh = el?.clientHeight ?? view.height
+			const vh = el?.clientHeight ?? boardH
 			return [clamp(x, Math.min(0, vw - worldW * s - 40), 40), clamp(y, Math.min(0, vh - worldH * s - 40), 40)]
 		},
-		[scale, worldW, worldH, view.height]
+		[scale, worldW, worldH, boardH]
 	)
 
 	const setTool = useCallback((t: Tool) => {
@@ -310,7 +349,7 @@ function Ready({ data }: { data: Ready }) {
 
 	const zoomTo = (s2: number, at?: Point) => {
 		const el = rootRef.current
-		const c: Point = at ?? [(el?.clientWidth ?? 800) / 2, (el?.clientHeight ?? view.height) / 2]
+		const c: Point = at ?? [(el?.clientWidth ?? 800) / 2, (el?.clientHeight ?? boardH) / 2]
 		const wx = (c[0] - pan[0]) / scale
 		const wy = (c[1] - pan[1]) / scale
 		setScale(s2)
@@ -460,7 +499,7 @@ function Ready({ data }: { data: Ready }) {
 		const size = STICKY * scale
 		const left = it.x * scale + pan[0]
 		const top = it.y * scale + pan[1]
-		const mouth: Point = [22 + MOUTH_AT.x * 4, (el?.clientHeight ?? view.height) - 18 - TURTLE_H * 4 + MOUTH_AT.y * 4]
+		const mouth: Point = [22 + MOUTH_AT.x * 4, (el?.clientHeight ?? boardH) - 18 - TURTLE_H * 4 + MOUTH_AT.y * 4]
 		setFlying((f) => [...f, { key: `${it.id}-${Date.now()}`, item: it, color: fillOf(it), left, top, size, dx: mouth[0] - (left + size / 2), dy: mouth[1] - (top + size / 2), rot: stickyRotation(it.id) }])
 		window.setTimeout(() => setEating((n) => n + 1), FLY_MS - 260)
 		window.setTimeout(() => {
@@ -650,6 +689,25 @@ function Ready({ data }: { data: Ready }) {
 	}
 
 	/* ---- frames ---- */
+	/** Drag the corner handle to size a frame; widths snap to whole note columns. */
+	const startResize = (e: RPointerEvent, g: Group) => {
+		e.stopPropagation()
+		e.preventDefault()
+		const x0 = e.clientX
+		const y0 = e.clientY
+		const move = (ev: PointerEvent) => {
+			const cols = Math.max(1, Math.round((g.w + (ev.clientX - x0) / scale - 20) / ROW))
+			const w = 20 + cols * ROW
+			const h = Math.max(FRAME_HEAD + ROW, Math.round((g.h + (ev.clientY - y0) / scale) / 10) * 10)
+			setLocal((l) => ({ ...l, frames: { ...l.frames, [g.id]: { w, h } } }))
+		}
+		const up = () => {
+			window.removeEventListener("pointermove", move)
+			window.removeEventListener("pointerup", up)
+		}
+		window.addEventListener("pointermove", move)
+		window.addEventListener("pointerup", up)
+	}
 	const tidyFrame = (g: Group) => {
 		const list = items.filter((it) => it.groupId === g.id && it.type === "sticky" && !pending.some((p) => p.id === it.id))
 		for (const [id, pos] of tidy(g, list)) {
@@ -665,7 +723,9 @@ function Ready({ data }: { data: Ready }) {
 	}, [drag, items, groups])
 
 	/* ---- settings ---- */
-	const [page, setPage] = useState<"root" | "look" | "group">("root")
+	const [page, setPage] = useState<"root" | "look" | "group" | "author">("root")
+	const authorProps = useMemo(() => Object.entries(itemsSrc.propertySchemasById).filter(([, p]) => AUTHOR_TYPES.includes(p.type)).map(([id, p]) => ({ id, name: p.name ?? id, type: p.type })), [itemsSrc])
+	const authorName = view.authorBy === "auto" ? "Automatic" : (authorProps.find((p) => p.id === view.authorBy)?.name ?? "Automatic")
 	const groupable = useMemo(() => groupableProps(itemsSrc), [itemsSrc])
 	const settings = (anchor: HTMLElement | null, close: () => void) => {
 		const shut = () => {
@@ -677,6 +737,17 @@ function Ready({ data }: { data: Ready }) {
 				<SettingsShell anchor={anchor} onClose={shut} title="Look" onBack={() => setPage("root")}>
 					<PickRow label="Whiteboard" sub="Dot grid, marker ink" selected={view.look === "whiteboard"} onClick={() => setUi({ look: "whiteboard" })} />
 					<PickRow label="Cork board" sub="Pinned notes and paper topics" selected={view.look === "cork"} onClick={() => setUi({ look: "cork" })} />
+				</SettingsShell>
+			)
+		if (page === "author")
+			return (
+				<SettingsShell anchor={anchor} onClose={shut} title="Written by" onBack={() => setPage("root")}>
+					<PickRow label="Automatic" sub="Author when set, else Created by" selected={view.authorBy === "auto"} onClick={() => setUi({ authorBy: "auto" })} />
+					<Sep />
+					{authorProps.map((p) => (
+						<PickRow key={p.id} icon={<PropIcon type={p.type} />} label={p.name} selected={view.authorBy === p.id} onClick={() => setUi({ authorBy: p.id })} />
+					))}
+					<Note>A person property, Created by or Last edited by. Add Created by / Last edited by to the database to pick them.</Note>
 				</SettingsShell>
 			)
 		if (page === "group")
@@ -706,10 +777,12 @@ function Ready({ data }: { data: Ready }) {
 				<Sep />
 				<ToggleRow icon={<TargetIcon />} label="Color notes by group" sub="Notes in a frame use the frame's color" on={view.byTopic} onChange={(v) => setUi({ byTopic: v })} />
 				<ToggleRow icon={<PersonIcon />} label="Show who wrote it" on={view.authors} onChange={(v) => setUi({ authors: v })} />
+				{view.authors ? <NavRow icon={<PersonIcon />} label="Written by" value={authorName} onClick={() => setPage("author")} /> : null}
 				<ToggleRow label="Show done notes" sub="Faded, with a check. The bin shows them too." on={view.showDone} onChange={(v) => setUi({ showDone: v })} />
 				<Sep />
-				<NumberRow label="Frames per row" value={view.perRow} min={1} onChange={(v) => setUi({ perRow: Math.max(1, Math.min(12, Math.round(v))) })} />
-				<NumberRow label="Board height" value={view.height} min={320} step={40} onChange={(v) => setUi({ height: Math.max(320, Math.min(4000, Math.round(v))) })} suffix="px" />
+				<NumberRow label="Frames per row (0 = fit)" value={view.perRow} min={0} onChange={(v) => setUi({ perRow: Math.max(0, Math.min(12, Math.round(v))) })} />
+				<ToggleRow label="Fit height to the board" sub="The block grows with its frames and notes" on={autoH} onChange={(v) => setUi({ height: v ? 0 : boardH })} />
+				{autoH ? null : <NumberRow label="Board height" value={view.height} min={320} step={40} onChange={(v) => setUi({ height: Math.max(320, Math.min(4000, Math.round(v))) })} suffix="px" />}
 			</SettingsShell>
 		)
 	}
@@ -722,7 +795,7 @@ function Ready({ data }: { data: Ready }) {
 	return (
 		<div className={"wb-wrap look-" + view.look}>
 			<Toolbar
-				title="Whiteboard"
+				title={<EditableTitle value={view.title} fallback="Whiteboard" onChange={(title) => setUi({ title })} />}
 				sub={sub}
 				view={view}
 				setView={setView}
@@ -742,7 +815,7 @@ function Ready({ data }: { data: Ready }) {
 			<div
 				ref={rootRef}
 				className="wb-root"
-				style={{ height: view.height, ...(view.look === "cork" ? { backgroundPosition: `${pan[0]}px ${pan[1]}px` } : {}) }}
+				style={{ height: boardH, ...(view.look === "cork" ? { backgroundPosition: `${pan[0]}px ${pan[1]}px` } : {}) }}
 				data-tool={tool}
 				data-panning={panDrag ? "true" : "false"}
 				data-space={space ? "true" : "false"}
@@ -770,6 +843,12 @@ function Ready({ data }: { data: Ready }) {
 									newSticky(at.x, at.y, g)
 								}}
 								onTidy={() => tidyFrame(g)}
+								onResize={(e) => startResize(e, g)}
+								onResetSize={() => setLocal((l) => {
+									const frames = { ...l.frames }
+									delete frames[g.id]
+									return { ...l, frames }
+								})}
 							/>
 						))}
 						{sorted.map((it) =>
@@ -893,10 +972,15 @@ function Ready({ data }: { data: Ready }) {
 	)
 }
 
-function Frame({ g, hot, onAdd, onTidy }: { g: Group; hot: boolean; onAdd: () => void; onTidy: () => void }) {
+function Frame({ g, hot, onAdd, onTidy, onResize, onResetSize }: { g: Group; hot: boolean; onAdd: () => void; onTidy: () => void; onResize: (e: RPointerEvent) => void; onResetSize: () => void }) {
 	return (
 		<g className={"wb-frame" + (hot ? " hot" : "")} transform={`translate(${g.x} ${g.y})`}>
 			<rect className="wb-frame-bg" width={g.w} height={g.h} rx={14} style={{ fill: `var(--wb-frame-${g.color})`, stroke: `var(--wb-ink-${g.color})` }} />
+			<g className="wb-resize wb-ui" transform={`translate(${g.w - 22} ${g.h - 22})`} onPointerDown={onResize} onDoubleClick={onResetSize}>
+				<title>{g.auto ? "Drag to resize" : "Drag to resize · double-click to fit the notes again"}</title>
+				<rect width={22} height={22} fill="transparent" />
+				<path d="M17 7 7 17M17 12l-5 5" stroke={`var(--wb-ink-${g.color})`} strokeWidth={1.6} strokeLinecap="round" />
+			</g>
 			<foreignObject width={g.w} height={FRAME_HEAD}>
 				<div className="wb-frame-head">
 					<span className="wb-tape" style={{ background: `var(--wb-fill-${g.color})` }} />
@@ -992,6 +1076,24 @@ function StickyView({ it, fill, tool, selected, editing, dragging, hidden, autho
 								</span>
 							) : (
 								<span />
+							)}
+							<span className="spacer" />
+							{it.id.startsWith("tmp-") ? null : (
+								<button
+									type="button"
+									className="wb-open"
+									aria-label="Open in Notion"
+									title="Open in Notion"
+									onPointerDown={(e) => e.stopPropagation()}
+									onClick={(e) => {
+										e.stopPropagation()
+										openPage(it.id)
+									}}
+								>
+									<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+										<path d="M9 3h4v4M13 3 7.5 8.5M11 9.5V13H3V5h3.5" />
+									</svg>
+								</button>
 							)}
 							{onDone ? (
 								<button
@@ -1163,5 +1265,35 @@ function Party({ it, text, today, color, onClose }: { it: Item; text: string; to
 				<p className="wb-party-hint">Click anywhere to feed the turtle</p>
 			</div>
 		</div>
+	)
+}
+
+/** The block title, renamed in place: click, type, Enter. Saved with the view. */
+function EditableTitle({ value, fallback, onChange }: { value: string; fallback: string; onChange: (v: string) => void }) {
+	const [edit, setEdit] = useState(false)
+	if (!edit)
+		return (
+			<button type="button" className="wb-title" title="Rename" onClick={() => setEdit(true)}>
+				{value || fallback}
+			</button>
+		)
+	return (
+		<input
+			className="wb-title-in"
+			autoFocus
+			maxLength={80}
+			defaultValue={value || fallback}
+			aria-label="Board title"
+			onFocus={(e) => e.currentTarget.select()}
+			onBlur={(e) => {
+				const t = e.target.value.trim()
+				onChange(t === fallback ? "" : t)
+				setEdit(false)
+			}}
+			onKeyDown={(e) => {
+				if (e.key === "Enter") e.currentTarget.blur()
+				if (e.key === "Escape") setEdit(false)
+			}}
+		/>
 	)
 }

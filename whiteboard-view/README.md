@@ -19,12 +19,23 @@ the view code (see below) when others should see them too.
   swaps that value. Frames grow with their notes. Each frame has **+** (add a
   note) and **tidy** (line the notes up in two columns). *Hide empty frames*
   and *Color notes by group* are in the settings too.
+- **Frames size themselves** to their notes plus one free row for more.
+  Drag a frame's corner to resize it (widths snap to whole note columns);
+  double-click the corner to fit the notes again. Sizes are local, like
+  colors.
+- **Fits the block.** By default the board is as tall as its content at the
+  block's width, with as many frames per row as fit at a readable zoom. A
+  fixed height and a fixed number of frames per row are in the settings.
+- **Open in Notion.** The small arrow on a note (on hover) opens its page in
+  a new tab, without showing the link.
+- **Title.** Click the block's title to rename it. It's saved with the view.
 - **Positions that survive regrouping.** Notes store their position relative
   to their frame. Notes without a position, or whose position no longer fits
   (for example after switching the grouping), are laid out in the frame's
   next free slot. Loose notes line up below the frames.
-- **Who wrote it.** Every note shows a name tag from `Author` (set to you
-  when you create a note), or from `Created by` when that's empty.
+- **Who wrote it.** Every note shows a name tag. *Settings → Written by*
+  picks a people property, Created by or Last edited by. The automatic
+  default is `Author` (set to you when you create a note), then Created by.
 - **Done, with a fix note.** The round check on a note asks *How was it
   fixed?*, prefilled with the note's `How it was fixed` text so it can be
   edited. Press **Done** (or ⌘/Ctrl+Enter) for a full-screen celebration in

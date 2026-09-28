@@ -977,3 +977,54 @@
 .wb-party .wb-turtle {
 	filter: drop-shadow(0 4px 0 #fff) drop-shadow(0 -4px 0 #fff) drop-shadow(4px 0 0 #fff) drop-shadow(-4px 0 0 #fff) drop-shadow(0 14px 18px rgba(0, 20, 70, 0.45));
 }
+.wb-resize {
+	cursor: nwse-resize;
+	opacity: 0.45;
+	transition: opacity 0.15s;
+}
+.wb-frame:hover .wb-resize {
+	opacity: 1;
+}
+.wb-open {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 22px;
+	height: 22px;
+	margin-right: 2px;
+	padding: 0;
+	border: 0;
+	border-radius: 6px;
+	background: none;
+	color: rgba(55, 53, 47, 0.55);
+	cursor: pointer;
+	opacity: 0;
+	transition: opacity 0.15s;
+}
+.wb-card:hover .wb-open,
+.wb-card.selected .wb-open,
+.wb-open:focus-visible {
+	opacity: 1;
+}
+.wb-open:hover {
+	background: rgba(55, 53, 47, 0.1);
+	color: rgba(55, 53, 47, 0.9);
+}
+.wb-title,
+.wb-title-in {
+	margin: 0 0 0 -4px;
+	padding: 0 4px;
+	border: 0;
+	border-radius: 4px;
+	background: none;
+	color: inherit;
+	font: inherit;
+	cursor: text;
+}
+.wb-title:hover {
+	background: var(--hover);
+}
+.wb-title-in {
+	width: 16em;
+	outline: 2px solid rgba(35, 131, 226, 0.4);
+}

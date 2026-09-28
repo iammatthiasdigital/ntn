@@ -27,6 +27,9 @@ export const INK_COLORS: Color[] = ["gray", "blue", "red", "green", "purple"]
 
 export const STICKY = 160
 export const FRAME_W = 2 * STICKY + 3 * 20
+/** One row of notes in a frame (a note and the gap below it). */
+export const ROW = STICKY + 20
+export const FRAME_MIN_W = STICKY + 40
 export const FRAME_MIN_H = 520
 export const FRAME_HEAD = 48
 export const FRAME_GAP = 36
@@ -74,6 +77,8 @@ export type Group = {
 	h: number
 	/** Stickies in the frame (not done). */
 	count: number
+	/** Sized to its notes (no size set by hand). */
+	auto: boolean
 }
 
 export type Board = {
@@ -94,9 +99,11 @@ export type LocalLayer = {
 	z: Record<string, number>
 	/** Pen strokes, lines and arrows. */
 	ink: Ink[]
+	/** Frame sizes set by hand, per group id. */
+	frames: Record<string, { w?: number; h?: number }>
 }
 
-export const EMPTY_LOCAL: LocalLayer = { colors: {}, z: {}, ink: [] }
+export const EMPTY_LOCAL: LocalLayer = { colors: {}, z: {}, ink: [], frames: {} }
 const MAX_INK = 2000
 const MAX_POINTS = 4000
 
@@ -121,7 +128,17 @@ export function readLocal(raw: unknown): LocalLayer {
 		if (points.length === 0) continue
 		ink.push({ id: i.id, type: i.type, color: isColor(i.color) ? i.color : "gray", x: num(i.x), y: num(i.y), width: num(i.width), height: num(i.height), points, strokeWidth: Math.min(40, Math.max(1, num(i.strokeWidth, 4))), z: num(i.z) })
 	}
-	return { colors, z, ink }
+	const frames: LocalLayer["frames"] = {}
+	if (o.frames && typeof o.frames === "object")
+		for (const [k, v] of Object.entries(o.frames)) {
+			if (k.length > 200 || !v || typeof v !== "object") continue
+			const { w, h } = v as Record<string, unknown>
+			const size: { w?: number; h?: number } = {}
+			if (typeof w === "number" && Number.isFinite(w)) size.w = Math.min(4000, Math.max(FRAME_MIN_W, w))
+			if (typeof h === "number" && Number.isFinite(h)) size.h = Math.min(8000, Math.max(FRAME_HEAD + ROW, h))
+			if (size.w !== undefined || size.h !== undefined) frames[k] = size
+		}
+	return { colors, z, ink, frames }
 }
 
 /* ---------- colors ---------- */
@@ -190,12 +207,21 @@ function topicsOf(src: SourceSnapshot, g: GroupProp, pageTitle: (id: string) => 
 }
 
 /** The n-th two-column slot of a frame, relative to its content area. */
-const slotAt = (n: number) => ({ x: 20 + (n % 2) * (STICKY + 20), y: 12 + Math.floor(n / 2) * (STICKY + 20) })
+/** Note columns that fit a frame of width `w`. */
+export const colsFor = (w: number) => Math.max(1, Math.floor((w - 20) / ROW))
+const slotAt = (n: number, cols = 2) => ({ x: 20 + (n % cols) * ROW, y: 12 + Math.floor(n / cols) * ROW })
 
 /** Frame origins, `perRow` to a row. Heights come later from the contents. */
-export function frameGrid(n: number, perRow: number): { x: number; y: number }[] {
+export function frameGrid(n: number, perRow: number, widths: number[] = []): { x: number; y: number }[] {
 	const per = Math.max(1, Math.floor(perRow))
-	return Array.from({ length: n }, (_, i) => ({ x: MARGIN + (i % per) * (FRAME_W + FRAME_GAP), y: MARGIN + Math.floor(i / per) * (FRAME_MIN_H + FRAME_GAP) }))
+	const out: { x: number; y: number }[] = []
+	let x = MARGIN
+	for (let i = 0; i < n; i++) {
+		if (i % per === 0) x = MARGIN
+		out.push({ x, y: MARGIN + Math.floor(i / per) * (FRAME_MIN_H + FRAME_GAP) })
+		x += (widths[i] ?? FRAME_W) + FRAME_GAP
+	}
+	return out
 }
 
 export type ReadOptions = {
@@ -207,10 +233,16 @@ export type ReadOptions = {
 	/** Frames with no notes are left out. */
 	hideEmpty: boolean
 	pageTitle: (id: string) => string | undefined
+	/** Property for "who wrote it": a people, Created by or Last edited by property id; null = Author, else Created by. */
+	authorBy?: string | null
 }
 
-/** The people who wrote a note: the Author property, else Created by. */
-function authorsOf(src: SourceSnapshot, r: SourceRow): string[] {
+/** Properties that can say who wrote a note. */
+export const AUTHOR_TYPES = ["people", "created_by", "last_edited_by"]
+
+/** The people who wrote a note: the chosen property, else Author, else Created by. */
+function authorsOf(src: SourceSnapshot, r: SourceRow, by?: string | null): string[] {
+	if (by && src.propertySchemasById[by]) return pointerIds(r.propertiesById[by])
 	const own = pointerIds(prop(src, r, "author"))
 	if (own.length) return own
 	const createdBy = Object.entries(src.propertySchemasById).find(([, s]) => s.type === "created_by")?.[0]
@@ -233,7 +265,8 @@ export function readBoard(src: SourceSnapshot, local: LocalLayer, opts: ReadOpti
 		raws.push({ r, x: numberOf(prop(src, r, "x")), y: numberOf(prop(src, r, "y")), values, home, done })
 	}
 	if (opts.hideEmpty) topics = topics.filter((t) => raws.some((w) => w.home === t.id))
-	const grid = frameGrid(topics.length, opts.perRow)
+	const widths = topics.map((t) => local.frames[t.id]?.w ?? FRAME_W)
+	const grid = frameGrid(topics.length, opts.perRow, widths)
 	const origin = new Map(topics.map((t, i) => [t.id, grid[i]]))
 
 	/*
@@ -246,14 +279,14 @@ export function readBoard(src: SourceSnapshot, local: LocalLayer, opts: ReadOpti
 	const clash = (list: { x: number; y: number }[], p: { x: number; y: number }) => list.some((u) => Math.abs(u.x - p.x) < STICKY * 0.6 && Math.abs(u.y - p.y) < STICKY * 0.6)
 	const taken = new Map<string, { x: number; y: number }[]>()
 	const looseTaken: { x: number; y: number }[] = []
-	const frameBox = grid.map((g) => ({ x1: g.x - STICKY / 2, y1: g.y - STICKY / 2, x2: g.x + FRAME_W - STICKY / 2, y2: g.y + FRAME_MIN_H }))
+	const frameBox = grid.map((g) => ({ x1: g.x - STICKY / 2, y1: g.y - STICKY / 2, x2: g.x + widths[grid.indexOf(g)] - STICKY / 2, y2: g.y + FRAME_MIN_H }))
 	const kept = new Set<Raw>()
 	for (const w of raws) {
 		if (w.x === null || w.y === null) continue
 		const p = { x: w.x, y: w.y }
 		if (w.home && origin.has(w.home)) {
 			const list = taken.get(w.home) ?? []
-			if (p.x < -STICKY / 2 || p.x > FRAME_W - STICKY / 2 || p.y < -STICKY / 2 || clash(list, p)) continue
+			if (p.x < -STICKY / 2 || p.x > widths[topics.findIndex((t) => t.id === w.home)] - STICKY / 2 || p.y < -STICKY / 2 || clash(list, p)) continue
 			taken.set(w.home, [...list, p])
 		} else {
 			if (frameBox.some((b) => p.x > b.x1 && p.x < b.x2 && p.y > b.y1 && p.y < b.y2) || clash(looseTaken, p)) continue
@@ -272,8 +305,9 @@ export function readBoard(src: SourceSnapshot, local: LocalLayer, opts: ReadOpti
 			y = w.y! + (o ? o.y + FRAME_HEAD : 0)
 		} else if (o) {
 			const used = taken.get(w.home!) ?? []
-			let slot = slotAt(0)
-			for (let n = 1; clash(used, slot); n++) slot = slotAt(n)
+			const cols = colsFor(widths[topics.findIndex((t) => t.id === w.home)])
+			let slot = slotAt(0, cols)
+			for (let n = 1; clash(used, slot); n++) slot = slotAt(n, cols)
 			taken.set(w.home!, [...used, slot])
 			x = o.x + slot.x
 			y = o.y + FRAME_HEAD + slot.y
@@ -292,14 +326,14 @@ export function readBoard(src: SourceSnapshot, local: LocalLayer, opts: ReadOpti
 			z: local.z[w.r.id] ?? 0,
 			groupId: o ? w.home : null,
 			groupValues: w.values,
-			authorIds: authorsOf(src, w.r),
+			authorIds: authorsOf(src, w.r, opts.authorBy),
 			done: w.done,
 			resolution: textOf(prop(src, w.r, "resolution")).trim(),
 		}
 		items.push(item)
 		if (!o && !kept.has(w)) unplaced.push(item)
 	}
-	const groups = layoutFrames(topics, grid, items)
+	const groups = layoutFrames(topics, grid, items, widths, local.frames)
 	const top = groups.reduce((m, f) => Math.max(m, f.y + f.h + FRAME_GAP), MARGIN)
 	const per = Math.max(2, opts.perRow * 2)
 	let n = 0
@@ -330,13 +364,15 @@ export function readBoard(src: SourceSnapshot, local: LocalLayer, opts: ReadOpti
  * taller frame move down with it (the grouped stickies move along, since
  * they are relative to their frame).
  */
-function layoutFrames(topics: Topic[], grid: { x: number; y: number }[], items: Item[]): Group[] {
+function layoutFrames(topics: Topic[], grid: { x: number; y: number }[], items: Item[], widths: number[], sizes: LocalLayer["frames"]): Group[] {
 	const inFrame = new Map<string, Item[]>()
 	for (const it of items) if (it.groupId) inFrame.set(it.groupId, [...(inFrame.get(it.groupId) ?? []), it])
+	// Sized to the notes plus one free row for more; a size set by hand wins, but never hides a note.
 	const need = topics.map((t, i) => {
-		let h = FRAME_MIN_H
-		for (const it of inFrame.get(t.id) ?? []) h = Math.max(h, it.y - grid[i].y + it.height + 24)
-		return h
+		let bottom = FRAME_HEAD + 12
+		for (const it of inFrame.get(t.id) ?? []) bottom = Math.max(bottom, it.y - grid[i].y + it.height + 20)
+		const hand = sizes[t.id]?.h
+		return hand !== undefined ? Math.max(hand, bottom + 4) : bottom + ROW
 	})
 	// Row offsets: each row starts below the tallest frame of the row above.
 	const rowY = new Map<number, number>()
@@ -351,7 +387,7 @@ function layoutFrames(topics: Topic[], grid: { x: number; y: number }[], items: 
 		const dy = (rowY.get(grid[i].y) ?? grid[i].y) - grid[i].y
 		const list = inFrame.get(t.id) ?? []
 		for (const it of list) it.y += dy
-		return { id: t.id, name: t.name, color: t.color, x: grid[i].x, y: grid[i].y + dy, w: FRAME_W, h: need[i], count: list.filter((it) => !it.done).length }
+		return { id: t.id, name: t.name, color: t.color, x: grid[i].x, y: grid[i].y + dy, w: widths[i], h: need[i], count: list.filter((it) => !it.done).length, auto: !sizes[t.id] }
 	})
 }
 
@@ -376,18 +412,20 @@ export function storedPos(groups: Group[], groupId: string | null, x: number, y:
 	return g ? { x: Math.round(x - g.x), y: Math.round(y - g.y - FRAME_HEAD) } : { x: Math.round(x), y: Math.round(y) }
 }
 
-/** Neat two-column positions (absolute) for the stickies of a frame, in stacking order. */
+/** Neat positions, as many columns as fit, (absolute) for the stickies of a frame, in stacking order. */
 export function tidy(g: Group, stickies: Item[]): Map<string, { x: number; y: number }> {
 	const out = new Map<string, { x: number; y: number }>()
 	const sorted = [...stickies].sort((a, b) => a.y - b.y || a.x - b.x)
-	sorted.forEach((it, i) => out.set(it.id, { x: g.x + 20 + (i % 2) * (STICKY + 20), y: g.y + FRAME_HEAD + 12 + Math.floor(i / 2) * (STICKY + 20) }))
+	const cols = colsFor(g.w)
+	sorted.forEach((it, i) => out.set(it.id, { x: g.x + 20 + (i % cols) * ROW, y: g.y + FRAME_HEAD + 12 + Math.floor(i / cols) * ROW }))
 	return out
 }
 
 /** A free spot for a new sticky in a frame: the next slot after the last sticky. */
 export function nextSlot(g: Group, stickies: Item[]): { x: number; y: number } {
+	const cols = colsFor(g.w)
 	const n = stickies.length
-	return { x: g.x + 20 + (n % 2) * (STICKY + 20), y: g.y + FRAME_HEAD + 12 + Math.floor(n / 2) * (STICKY + 20) }
+	return { x: g.x + 20 + (n % cols) * ROW, y: g.y + FRAME_HEAD + 12 + Math.floor(n / cols) * ROW }
 }
 
 export const initials = (name: string): string => {

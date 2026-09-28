@@ -52,7 +52,8 @@ export function useFiltered(src: SourceSnapshot, filters: FilterState, resolvers
 }
 
 type ToolbarProps<T extends WithFilters> = {
-	title: string
+	/** Text, or an element (e.g. an editable title). */
+	title: ReactNode
 	sub?: ReactNode
 	view: T
 	setView: (f: (v: T) => T) => void

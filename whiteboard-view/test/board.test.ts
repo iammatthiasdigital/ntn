@@ -97,3 +97,29 @@ test("switching the grouping never stacks notes on each other or on frames", () 
 		for (const a of s.filter((i) => !i.groupId)) assert.equal(frameAt(b.groups, a.x + 80, a.y + 80), undefined, `${key}: ${a.id} on a frame`)
 	}
 })
+
+test("frames fit their notes plus one free row; hand-set sizes win but never hide notes", async () => {
+	const { ROW, FRAME_HEAD: HEAD, colsFor } = await import("../blocks/whiteboard-view/src/board.ts")
+	const b = readBoard(src(), EMPTY_LOCAL, opts())
+	for (const g of b.groups) {
+		const notes = b.items.filter((i) => i.groupId === g.id)
+		const bottom = Math.max(g.y + HEAD + 12, ...notes.map((n) => n.y + n.height + 20))
+		assert.equal(g.y + g.h, bottom + ROW, g.name)
+		assert.equal(g.auto, true)
+	}
+	const well = b.groups[0]
+	const sized = readBoard(src(), { ...EMPTY_LOCAL, frames: { [well.id]: { w: 20 + 3 * ROW, h: 100 } } }, opts())
+	const g = sized.groups[0]
+	assert.equal(colsFor(g.w), 3)
+	assert.equal(g.auto, false)
+	assert.ok(Math.max(...sized.items.filter((i) => i.groupId === g.id).map((n) => n.y + n.height)) <= g.y + g.h)
+	assert.ok(sized.groups[1].x > b.groups[1].x)
+})
+
+test("who wrote it can come from Created by or any people property", () => {
+	const s = seedSnapshot(itemsSeed as Seed, true)
+	const b = readBoard(s, EMPTY_LOCAL, opts({ authorBy: "created_by" }))
+	const n1 = b.items.find((i) => i.id === "n1")!
+	assert.deepEqual(n1.authorIds, [(s.items.find((r) => r.id === "n1")!.propertiesById.created_by as { id: string }[])[0].id])
+	assert.deepEqual(readBoard(s, EMPTY_LOCAL, opts()).items.find((i) => i.id === "n1")!.authorIds, ["user-ada-lovelace"])
+})
