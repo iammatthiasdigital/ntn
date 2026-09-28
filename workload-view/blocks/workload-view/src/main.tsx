@@ -33,7 +33,8 @@ function MockRoot(): React.ReactNode {
 
 function HostedApp(): React.ReactNode {
 	const theme = useTheme()
-	const data = useBlockData(KEYS, REQUIRED, "workload")
+	// Task databases can be far bigger than one 999-row query.
+	const data = useBlockData(KEYS, REQUIRED, "workload", KEYS)
 	return <WorkloadView data={data} theme={theme} />
 }
 

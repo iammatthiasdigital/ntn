@@ -6,8 +6,9 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { pages, users } from "@notionhq/custom-blocks"
 import { useBlockId, useCurrentUser, useDataSource } from "@notionhq/custom-blocks/react"
+import { useAllRows } from "./allRows"
 import { pointerIds, textOf } from "./filters/core"
-import type { BlockData, Mutations, SourceSnapshot } from "./sources"
+import type { BlockData, Mutations, SourceSnapshot, Window } from "./sources"
 
 const LIMIT = 999
 const CONCURRENCY = 5
@@ -73,16 +74,35 @@ function referencedIds(snaps: SourceSnapshot[], types: string[]): string[] {
 /**
  * `keys` must be a constant list (hooks are called once per key, in order).
  * `required` are the keys the block can't work without.
+ * `complete` are keys read in full past the 999-row cap (see allRows).
  */
-export function useBlockData<K extends string>(keys: readonly K[], required: readonly K[], storagePrefix: string): BlockData<K> {
+export function useBlockData<K extends string>(keys: readonly K[], required: readonly K[], storagePrefix: string, complete: readonly K[] = []): BlockData<K> {
 	const queries = keys.map((k) => useDataSource(k, { limit: LIMIT }))
+	const [windows, setWindows] = useState<Partial<Record<K, Window | null>>>({})
+	const full = keys.map((k, i) => useAllRows(k, queries[i], complete.includes(k), windows[k] ?? null))
+	const setWindow = useMemo(
+		() => (key: K, w: Window | null) =>
+			setWindows((prev) => {
+				const cur = prev[key]
+				if (cur === w || (cur && w && cur.dateProp === w.dateProp && cur.from === w.from && cur.to === w.to)) return prev
+				return { ...prev, [key]: w }
+			}),
+		[]
+	)
 	const me = useCurrentUser()
 	const blockId = useBlockId()
-	// eslint-disable-next-line react-hooks/exhaustive-deps
-	const snaps = useMemo(() => queries.map(toSnapshot), queries.flatMap((q) => [q.items, q.propertySchemasById, q.propertyIdsByKey, q.hasMore, q.error, q.collectionSchema]))
+	const snaps = useMemo(
+		() =>
+			queries.map((q, i) => {
+				const f = full[i]
+				return f ? toSnapshot({ ...q, items: f.items, hasMore: f.truncated }) : toSnapshot(q)
+			}),
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+		[...queries.flatMap((q) => [q.items, q.propertySchemasById, q.propertyIdsByKey, q.hasMore, q.error, q.collectionSchema]), ...full.flatMap((f) => [f?.items, f?.truncated])]
+	)
 	const sources = useMemo(() => Object.fromEntries(keys.map((k, i) => [k, snaps[i]])) as Record<K, SourceSnapshot>, [snaps, keys])
 	const latest = useRef(queries)
-	latest.current = queries
+	latest.current = queries.map((q, i) => (full[i] ? { ...q, items: full[i]!.items } : q))
 
 	/* ---- people ---- */
 	const [userNames, setUserNames] = useState<ReadonlyMap<string, string>>(new Map())
@@ -187,11 +207,12 @@ export function useBlockData<K extends string>(keys: readonly K[], required: rea
 			sources,
 			mutations,
 			storageKey: `${storagePrefix}:${blockId}`,
+			setWindow: complete.length ? setWindow : undefined,
 			resolvers: {
 				userName: (id) => userNames.get(id) ?? (id === me.id ? me.name : undefined),
 				pageTitle: (id) => knownTitles.get(id) ?? fetchedTitles.get(id),
 				meId: me.id,
 			},
 		}
-	}, [keys, required, sources, loading, mutations, storagePrefix, blockId, userNames, me, knownTitles, fetchedTitles])
+	}, [keys, required, sources, loading, mutations, storagePrefix, blockId, userNames, me, knownTitles, fetchedTitles, setWindow, complete.length])
 }

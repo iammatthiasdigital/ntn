@@ -1,11 +1,12 @@
 /**
  * Workload model. Pure: allocation rows in, per-person load curves out.
  *
- * One Workload database is enough: each row allocates a person (a people
- * property, or a relation to a person page) to a project (select or
- * relation) with a workload (%, or hours), optionally over dates — rows
- * without dates are ongoing. Teams come from a select or relation on the
- * row or on the person. Only people with allocations get a lane, unless more
+ * One Workload (task) database is enough: each row gives a person (a people
+ * property, or a relation to a person page) a task, optionally over dates —
+ * rows without dates are ongoing. Lanes count tasks at once, or sum an
+ * effort property (%, or hours). Lanes can be grouped by a select or
+ * relation on the rows (a person then shows in each group they have tasks
+ * in) or on the person. Only people with allocations get a lane, unless more
  * are picked. An optional People database adds their team and working time,
  * and people to pick (or everyone); without it, working time is 100% unless
  * set locally per person.
@@ -15,17 +16,18 @@ import type { SourceRow, SourceSnapshot } from "./kit/sources"
 
 export type Bucket = "day" | "week" | "month"
 /**
- * How the workload number is meant:
- * - percent: share of a person's full time (50 = half; Notion's 0.5 works too)
- * - perDay: hours per day while it runs
- * - total: hours for the whole allocation, spread over its days
+ * What a lane measures:
+ * - count: how many tasks run at once (no effort property needed)
+ * - percent: effort as a share of a person's full time (50 = half; Notion's 0.5 works too)
+ * - perDay: effort in hours per day while it runs
+ * - total: effort for the whole task, spread evenly over its (work)days
  */
-export type EffortMode = "percent" | "perDay" | "total"
+export type EffortMode = "count" | "percent" | "perDay" | "total"
 
-/** Which columns mean what. Team and capacity ids are prefixed "w:" (Workload) or "p:" (People). */
+/** Which columns mean what. The group id is prefixed "w:" (Workload) or "p:" (People). */
 export type Setup = {
 	person: string | null
-	project: string | null
+	/** Group by: a select, multi-select, status or relation. */
 	team: string | null
 	effort: string | null
 	dates: string | null
@@ -45,6 +47,8 @@ export type Options = Setup & {
 	everyone: boolean
 	/** People rows shown even without allocations. */
 	extra: string[]
+	/** What a bar says: property ids joined with " · "; TITLE = the row's title. */
+	labels: string[]
 	workdays: boolean
 	bucket: Bucket
 	from: string | null
@@ -52,10 +56,12 @@ export type Options = Setup & {
 	today: string
 }
 
-export type Allocation = { id: string; name: string; start: number; end: number; ongoing: boolean; perDay: number; color: string }
+export type Allocation = { id: string; name: string; label: string; start: number; end: number; ongoing: boolean; perDay: number; color: string }
 export type Series = { key: string; label: string; index: number }
 export type Lane = {
 	key: string
+	/** The person (lane key without the group); working time is set per person. */
+	person: string
 	label: string
 	team: string | null
 	load: number[][]
@@ -80,6 +86,8 @@ export type Workload = {
 	unit: string
 	skipped: number
 	fractions: boolean
+	/** Whether lanes have a capacity (effort); task counts don't. */
+	capacity: boolean
 }
 
 /* ---- days ---- */
@@ -112,14 +120,16 @@ const cols = (src: SourceSnapshot | undefined, types: string[]): Column[] =>
 	src?.bound ? Object.entries(src.propertySchemasById).filter(([, s]) => types.includes(s.type)).map(([id, s]) => ({ id, name: s.name ?? id, type: s.type })) : []
 
 export const PERSON_TYPES = ["people", "relation", "select", "created_by"]
-export const PROJECT_TYPES = ["select", "multi_select", "relation", "status"]
-export const TEAM_TYPES = ["select", "multi_select", "relation"]
+export const TEAM_TYPES = ["select", "multi_select", "status", "relation"]
+/** Bars can show these next to (or instead of) the title. */
+export const LABEL_TYPES = ["select", "multi_select", "status", "relation", "people", "created_by", "rich_text", "number", "checkbox", "url", "email", "phone_number", "formula", "rollup", "date"]
+export const TITLE = "__title"
 export const NUM_TYPES = ["number", "formula", "rollup"]
 
 export function columns(work: SourceSnapshot, people?: SourceSnapshot) {
 	return {
 		person: cols(work, PERSON_TYPES),
-		project: cols(work, PROJECT_TYPES),
+		labels: cols(work, LABEL_TYPES),
 		effort: cols(work, NUM_TYPES),
 		dates: cols(work, ["date"]),
 		team: [...cols(people, TEAM_TYPES).map((c) => ({ ...c, id: `p:${c.id}` })), ...cols(work, TEAM_TYPES).map((c) => ({ ...c, id: `w:${c.id}` }))],
@@ -152,10 +162,8 @@ export function resolveSetup(s: Partial<Setup>, work: SourceSnapshot, people?: S
 	const c = columns(work, people)
 	const person = choose(s.person ?? null, c.person, [named(/person|who|member|resource|assignee|owner|mitarbeit/i), typed("people"), typed("relation")])
 	const team = choose(s.team ?? null, c.team, [named(/team|squad|department|abteilung|group/i)])
-	const project = choose(s.project ?? null, c.project.filter((x) => x.id !== person && `w:${x.id}` !== team), [named(/project|allocation|client|initiative|projekt|kunde/i), typed("select"), typed("relation")])
 	return {
 		person,
-		project,
 		team,
 		effort: choose(s.effort ?? null, c.effort, [(x) => looksLikePercent(x.name), named(/effort|hours|stunden/i), () => true]),
 		dates: choose(s.dates ?? null, c.dates, [named(/date|when|period|zeitraum/i), () => true]),
@@ -189,7 +197,8 @@ export function workload(work: SourceSnapshot, people: SourceSnapshot | undefine
 	const countDay = (d: number) => !o.workdays || isWorkday(d)
 	const perWeek = o.workdays ? 5 : 7
 	const pct = o.mode === "percent"
-	const efforts = o.effort ? work.items.map((r) => numberOf(r.propertiesById[o.effort!])).filter((v): v is number => v != null) : []
+	const count = o.mode === "count"
+	const efforts = !count && o.effort ? work.items.map((r) => numberOf(r.propertiesById[o.effort!])).filter((v): v is number => v != null) : []
 	// Notion's percent number format stores 50% as 0.5.
 	const fractions = pct && efforts.length > 0 && efforts.every((v) => Math.abs(v) <= 1.5)
 	const scale = fractions ? 100 : 1
@@ -203,24 +212,38 @@ export function workload(work: SourceSnapshot, people: SourceSnapshot | undefine
 		pRows.find((r) => titleOf(people!, r).toLowerCase() === v.label.toLowerCase())
 
 	/* Allocations. */
-	type Raw = { r: SourceRow; start: number | null; end: number | null; effort: number; lanes: Val[]; color: Val | undefined; team: Val | undefined }
+	type Raw = { r: SourceRow; start: number | null; end: number | null; effort: number; lanes: Val[]; groups: Val[]; label: string }
+	const labelOf = (r: SourceRow): string => {
+		const title = titleOf(work, r) || "Untitled"
+		const parts = (o.labels.length ? o.labels : [TITLE]).map((id) => {
+			if (id === TITLE) return title
+			const type = ws[id]?.type
+			if (!type) return ""
+			if (type === "date") {
+				const d = dateOf(r.propertiesById[id])
+				return d ? fmtDay(toDay(d.start), true) + (d.end && d.end.slice(0, 10) !== d.start.slice(0, 10) ? `–${fmtDay(toDay(d.end), true)}` : "") : ""
+			}
+			if (type === "checkbox") return r.propertiesById[id] === true ? (ws[id]?.name ?? "") : ""
+			return valuesOf(r.propertiesById[id], type, res)
+				.map((v) => v.label)
+				.join(", ")
+		})
+		return parts.filter(Boolean).join(" · ") || title
+	}
 	const raws: Raw[] = []
 	let skipped = 0
-	const seriesLabel = new Map<string, string>()
 	for (const r of work.items) {
 		if (visible && !visible.has(r.id)) continue
-		const raw = o.effort ? numberOf(r.propertiesById[o.effort]) : null
+		const raw = count ? 1 : o.effort ? numberOf(r.propertiesById[o.effort]) : null
 		if (raw == null) {
 			skipped++
 			continue
 		}
 		const d = o.dates ? dateOf(r.propertiesById[o.dates]) : null
 		const lanes = o.person ? valuesOf(r.propertiesById[o.person], ws[o.person]?.type ?? "", res) : []
-		const color = o.project ? valuesOf(r.propertiesById[o.project], ws[o.project]?.type ?? "", res)[0] : undefined
-		if (color) seriesLabel.set(color.key, color.label)
-		const t = team?.db === "w" ? valuesOf(r.propertiesById[team.id], ws[team.id]?.type ?? "", res)[0] : undefined
+		const groups = team?.db === "w" ? valuesOf(r.propertiesById[team.id], ws[team.id]?.type ?? "", res) : []
 		const start = d ? toDay(d.start) : null
-		raws.push({ r, start, end: d ? Math.max(start!, d.end ? toDay(d.end) : start!) : null, effort: raw * scale, lanes, color, team: t })
+		raws.push({ r, start, end: d ? Math.max(start!, d.end ? toDay(d.end) : start!) : null, effort: raw * scale, lanes, groups, label: labelOf(r) })
 	}
 
 	/* Range: dated allocations, or the next quarter when everything is ongoing. */
@@ -233,15 +256,20 @@ export function workload(work: SourceSnapshot, people: SourceSnapshot | undefine
 	for (let t = start; t <= endDay && buckets.length < 400; t = nextBucket(t, o.bucket)) buckets.push(t)
 	const end = buckets.length ? nextBucket(buckets[buckets.length - 1], o.bucket) : start + 1
 
-	/* Lanes: whoever is allocated, plus People rows picked in the settings (or everyone). */
-	type LaneAcc = { key: string; label: string; row?: SourceRow; items: Allocation[]; teams: Map<string, { v: Val; n: number }> }
+	/*
+	 * Lanes: whoever has tasks, plus People rows picked in the settings (or
+	 * everyone). Grouped by a property of the tasks, a person gets a lane in
+	 * each group they have tasks in.
+	 */
+	type LaneAcc = { key: string; person: string; label: string; row?: SourceRow; group?: Val; items: Allocation[] }
 	const lanes = new Map<string, LaneAcc>()
-	const laneFor = (v: Val): LaneAcc => {
+	const laneFor = (v: Val, group?: Val): LaneAcc => {
 		const row = v.key === NONE ? undefined : personRow(v)
-		const key = row ? `p:${row.id}` : v.key
+		const person = row ? `p:${row.id}` : v.key
+		const key = group ? `${person}|${group.key}` : person
 		let l = lanes.get(key)
 		if (!l) {
-			l = { key, label: row ? titleOf(people!, row) || v.label : v.label, row, items: [], teams: new Map() }
+			l = { key, person, label: row ? titleOf(people!, row) || v.label : v.label, row, group, items: [] }
 			lanes.set(key, l)
 		}
 		return l
@@ -253,17 +281,15 @@ export function workload(work: SourceSnapshot, people: SourceSnapshot | undefine
 		const e = x.end ?? end - 1
 		let days = 0
 		for (let d = s; d <= e; d++) if (countDay(d)) days++
+		// Total effort is spread over the task's (work)days. Shared effort splits equally; a task counts once for everyone on it.
 		const perDay = o.mode === "total" ? (days ? x.effort / days : 0) : x.effort
-		for (const v of who) {
-			const l = laneFor(v)
-			// Shared allocations split their workload equally.
-			l.items.push({ id: x.r.id, name: titleOf(work, x.r) || "Untitled", start: s, end: e, ongoing: x.start == null, perDay: perDay / who.length, color: x.color?.key ?? NONE })
-			if (x.team) l.teams.set(x.team.key, { v: x.team, n: (l.teams.get(x.team.key)?.n ?? 0) + 1 })
-		}
+		const groups: (Val | undefined)[] = x.groups.length ? x.groups : team?.db === "w" ? [{ key: NONE, label: "" }] : [undefined]
+		for (const v of who)
+			for (const g of groups)
+				laneFor(v, g).items.push({ id: x.r.id, name: titleOf(work, x.r) || "Untitled", label: x.label, start: s, end: e, ongoing: x.start == null, perDay: count ? perDay : perDay / who.length / groups.length, color: NONE })
 	}
 
-	const series: Series[] = [...seriesLabel.entries()].sort((a, b) => a[1].localeCompare(b[1])).map(([key, label], index) => ({ key, label, index }))
-	if (raws.some((x) => !x.color)) series.push({ key: NONE, label: o.project ? "No project" : "Allocations", index: series.length })
+	const series: Series[] = [{ key: NONE, label: count ? "Tasks" : "Workload", index: 0 }]
 	const sIdx = new Map(series.map((s) => [s.key, s.index]))
 	const full = pct ? 100 : o.dayHours
 	const capColName = o.pCap ? people?.propertySchemasById[o.pCap]?.name : undefined
@@ -276,14 +302,12 @@ export function workload(work: SourceSnapshot, people: SourceSnapshot | undefine
 		if (pv != null) {
 			share = looksLikeHours(capColName) ? (pv / (o.dayHours * perWeek)) * 100 : pv <= 1.5 ? pv * 100 : pv
 			capFrom = "people"
-		} else if (o.caps[l.key] != null) {
-			share = o.caps[l.key]
+		} else if (o.caps[l.person] != null) {
+			share = o.caps[l.person]
 			capFrom = "local"
 		}
-		const cap = (full * share) / 100
-		let tv: Val | undefined
-		if (team?.db === "p" && l.row) tv = valuesOf(l.row.propertiesById[team.id], people!.propertySchemasById[team.id]?.type ?? "", res)[0]
-		else tv = [...l.teams.values()].sort((a, b) => b.n - a.n)[0]?.v
+		const cap = count ? 0 : (full * share) / 100
+		const tv = team?.db === "p" && l.row ? valuesOf(l.row.propertiesById[team.id], people!.propertySchemasById[team.id]?.type ?? "", res)[0] : l.group
 		const load = buckets.map(() => series.map(() => 0))
 		let used = 0
 		let avail = 0
@@ -304,21 +328,22 @@ export function workload(work: SourceSnapshot, people: SourceSnapshot | undefine
 		const total = load.map((s) => s.reduce((a, b) => a + b, 0))
 		return {
 			key: l.key,
-			label: l.key === NONE ? "Unassigned" : l.label,
-			team: tv?.label ?? null,
+			person: l.person,
+			label: l.person === NONE ? "Unassigned" : l.label,
+			team: tv?.label || null,
 			load,
 			total,
 			peak: Math.max(0, ...total),
 			utilization: avail ? used / avail : 0,
-			overBuckets: total.filter((t) => t > cap + 1e-9).length,
+			overBuckets: count ? 0 : total.filter((t) => t > cap + 1e-9).length,
 			items: l.items.sort((a, b) => a.start - b.start || a.end - b.end),
 			cap,
 			share,
 			capFrom,
 		}
 	})
-	out.sort((a, b) => (a.key === NONE ? 1 : b.key === NONE ? -1 : (a.team ?? "￿").localeCompare(b.team ?? "￿") || a.label.localeCompare(b.label)))
-	return { lanes: out, series, buckets, start, end, today, unit: pct ? "%" : "h", skipped, fractions }
+	out.sort((a, b) => (a.team ?? "￿").localeCompare(b.team ?? "￿") || (a.person === NONE ? 1 : b.person === NONE ? -1 : a.label.localeCompare(b.label)))
+	return { lanes: out, series, buckets, start, end, today, unit: count ? "tasks" : pct ? "%" : "h", skipped, fractions, capacity: !count }
 }
 
 export function fmtNum(n: number): string {

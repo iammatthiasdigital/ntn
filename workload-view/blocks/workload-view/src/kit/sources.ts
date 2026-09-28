@@ -50,7 +50,15 @@ export type BlockData<K extends string> =
 			resolvers: Resolvers
 			mutations: Mutations
 			storageKey: string
+			/**
+			 * Large databases: which date property and range to read in weekly
+			 * queries (see allRows). Only on keys read in full.
+			 */
+			setWindow?: (key: K, w: Window | null) => void
 	  }
+
+/** Rows whose date starts in [from, to] are read one week per query. */
+export type Window = { dateProp: string; from: string; to: string }
 
 /* ---- write helpers (Notion public API property shapes) ---- */
 

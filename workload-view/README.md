@@ -1,47 +1,62 @@
 # Workload
 
-A workload chart as a Notion custom block. It shows how much work a person
-(or a team, machine, room, anything) has on any day, when several projects
-run at the same time. The load grows where assignments overlap and shrinks
-when they end, and each lane is compared with its capacity.
+A workload chart as a Notion custom block. It shows how much a person has
+on any day: how many tasks run at once, or how much effort. The load grows
+where tasks overlap and shrinks when they end.
 
 It shares its UI with the [Impactt block](../impactt-view): the same
 Notion-style filter bar, settings panel and light/dark palette.
 
 ## What it shows
 
-- **One lane per person**, grouped under team headings. Bars show the
-  average workload per period, stacked and colored by project, against a
-  dashed capacity line. Periods over capacity are tinted red.
-- **Allocations** under each lane. Rows without dates are ongoing and span
-  the whole range.
+- **One lane per person**, optionally grouped under headings (*Group by*).
+  Bars show the load per period. With effort, a dashed capacity line is
+  drawn and periods over capacity are tinted red.
+- **Tasks** under each lane, labelled with the properties picked in *Bar
+  label* (Title by default, e.g. "Checkout API · Backend · In progress").
+  Rows without dates are ongoing and span the whole range.
 
-## Databases
+## Settings
 
-**Workload** (required) has one row per allocation. Any database works: the
-columns are picked in the block's **settings**, not when connecting it, and
-are guessed from names and types to start with.
+Any database works: the properties are picked in the block's **settings**,
+not when connecting it, and are guessed from names and types to start with.
 
-| Setting  | Column type                          | Meaning                                         |
-| -------- | ------------------------------------ | ----------------------------------------------- |
-| Person   | people, or relation to person pages  | Whose time it is                                |
-| Project  | select or relation                   | What the time goes to (colors the load)         |
-| Team     | select or relation                   | Optional: groups people (can also be on People) |
-| Workload | number, e.g. 50 or 50%               | Share of full time (or hours, see below)        |
-| Dates    | date                                 | Optional: rows without dates are ongoing        |
+| Setting    | Property type                        | Meaning                                                                  |
+| ---------- | ------------------------------------ | ------------------------------------------------------------------------ |
+| Person     | people, or relation to person pages  | Whose task it is                                                         |
+| Dates      | date                                 | Optional: rows without dates are ongoing                                 |
+| Group by   | select, multi-select, status, relation | Optional headings. On the tasks, a person shows in each group they have tasks in; on People, in their own |
+| Bar label  | any (at least one)                   | What the task bars say                                                   |
+| Measure    |                                      | **Task count** (default), or effort (below)                              |
+| Effort     | number                               | Only when measuring effort                                               |
 
-Only people with allocations in the Workload get a lane. **People**
-(optional) adds their team column (select or relation) and a working-time
-column (hours per week, or %); rows are matched to the Workload by
-relation, by person or by name. *Settings → People shown* adds people from
-it who have no allocations (tick them one by one) or shows everyone.
+**Measure**:
 
-**Working time** is 100% unless the People database provides it. You can also
-click "works …" on a person to set it locally. It's saved in the view, so it
-travels with the share code.
+- **Task count**: how many tasks run at once. No effort property needed.
+- **Effort, spread over the task**: effort ÷ the task's days, workdays only
+  when *Workdays only* is on (40 h over two weeks = 4 h a day).
+- **Effort per day**: hours every day while it runs.
+- **Effort as % of full time**: 50 = half of someone's time (Notion's
+  percent format works).
 
-**Workload is** % of full time by default (Notion's percent format works).
-Hours per day or hours in total are there for later.
+**From / To** are never empty: without your own dates, half a year back and
+half a year ahead.
+
+**Large databases.** Notion gives a block at most 999 rows per query and no
+paging. When the database has more, the block reads it one week of From–To
+per query (by start date, via the Dates property), plus the latest tasks
+that started before From and the tasks without a date, and merges them.
+All queries stay live. A week with more than 999 tasks starting in it is
+the only thing that can still be cut short (the footer says so).
+
+**People** (optional database) adds a group column, a working-time column
+(hours per week, or %) and people to show. Only people with tasks get a
+lane; *People shown* adds others (tick them one by one) or shows everyone.
+Rows are matched by relation, by person or by name.
+
+**Working time** (effort only) is 100% unless the People database provides
+it. You can also click "works …" on a person to set it locally. It's saved
+in the view, so it travels with the share code.
 
 ## Development
 
