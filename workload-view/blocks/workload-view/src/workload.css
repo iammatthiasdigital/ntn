@@ -59,3 +59,31 @@
 .lane-h span.capl {
 	color: var(--muted);
 }
+.team-h {
+	margin: 14px 0 2px;
+	padding-bottom: 4px;
+	border-bottom: 1px solid var(--line);
+	color: var(--ink2);
+	font-size: 12px;
+	font-weight: 600;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+}
+.lane-h .capl-b {
+	padding: 0;
+	border: 0;
+	background: none;
+	color: var(--muted);
+	font-size: 12px;
+	text-align: left;
+	cursor: pointer;
+}
+.lane-h .capl-b:hover {
+	color: var(--blue);
+	text-decoration: underline;
+}
+.capin {
+	width: 56px !important;
+	height: 22px !important;
+	padding: 0 6px !important;
+}

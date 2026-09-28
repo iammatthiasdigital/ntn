@@ -15,6 +15,18 @@
 		"workload": {
 			"name": "Workload %",
 			"type": "number"
+		},
+		"team": {
+			"name": "Team",
+			"type": "select",
+			"options": [
+				"Product",
+				"Platform"
+			],
+			"colors": [
+				"purple",
+				"green"
+			]
 		}
 	},
 	"rows": [
@@ -27,7 +39,8 @@
 					"table": "notion_user"
 				}
 			],
-			"hours": 40
+			"hours": 40,
+			"team": "Product"
 		},
 		{
 			"id": "pp-grace",
@@ -38,7 +51,8 @@
 					"table": "notion_user"
 				}
 			],
-			"hours": 32
+			"hours": 32,
+			"team": "Platform"
 		},
 		{
 			"id": "pp-alan",
@@ -49,7 +63,19 @@
 					"table": "notion_user"
 				}
 			],
-			"workload": 0.5
+			"workload": 0.5,
+			"team": "Product"
+		},
+		{
+			"id": "pp-radia",
+			"name": "Radia Perlman",
+			"person": [
+				{
+					"id": "user-radia-perlman",
+					"table": "notion_user"
+				}
+			],
+			"team": "Platform"
 		}
 	]
 }

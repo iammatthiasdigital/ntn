@@ -9,6 +9,7 @@ import { pages } from "@notionhq/custom-blocks"
 import { accentFor, DONE_SOFT_ALPHA, TODO_SOFT_ALPHA, withAlpha } from "./colors"
 import { flagEmoji } from "./countries"
 import { dayIso } from "./kit/filters/core"
+import { openPage } from "./kit/openPage"
 import { ColumnIcon, LayersIcon, NavRow, Note, PickRow, Sep, SettingsShell, TableIcon, TargetIcon, ToggleRow } from "./kit/settings"
 import type { BlockData, SourceSnapshot } from "./kit/sources"
 import { Loading, Setup, Toolbar, useFiltered, usePersistentView } from "./kit/toolbar"
@@ -460,7 +461,7 @@ function Kanban({ features, year, now }: { features: Feature[]; year: number; no
 						) : (
 							<div className="mr-cards">
 								{items.map((f) => (
-									<article key={f.id} className="mr-card">
+									<article key={f.id} className="mr-card is-link" role="button" tabIndex={0} title={`Open ${f.countryName} in Notion`} onClick={() => openPage(f.id)} onKeyDown={(e) => e.key === "Enter" && openPage(f.id)}>
 										<div className="mr-card-flag" aria-hidden="true">
 											<Flag f={f} />
 										</div>
@@ -486,7 +487,7 @@ function CoverageBoard({ coverage }: { coverage: Coverage }) {
 			) : (
 				<div className="mr-cov-grid">
 					{items.map((f) => (
-						<div key={f.id} className="mr-cov-pill">
+						<div key={f.id} className="mr-cov-pill is-link" role="button" tabIndex={0} title={`Open ${f.countryName} in Notion`} onClick={() => openPage(f.id)} onKeyDown={(e) => e.key === "Enter" && openPage(f.id)}>
 							<span className="mr-cov-flag" aria-hidden="true">
 								<Flag f={f} />
 							</span>
@@ -523,7 +524,9 @@ function MissingList({ items }: { items: Missing[] }) {
 			<ul>
 				{items.map((m) => (
 					<li key={m.id}>
-						<b>{m.name}</b>
+						<button type="button" className="ctc-open" title={`Open ${m.name} in Notion`} onClick={() => openPage(m.id)}>
+							{m.name}
+						</button>
 						{m.missing.map((p) => (
 							<span key={p} className="tag tag-red">
 								no {p}

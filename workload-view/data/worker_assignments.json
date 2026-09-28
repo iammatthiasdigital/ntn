@@ -277,6 +277,18 @@
 			"project": "Mobile app",
 			"discipline": "Research",
 			"allocation": 0.4
+		},
+		{
+			"id": "as-ongoing",
+			"name": "Support rotation",
+			"who": [
+				{
+					"id": "user-grace-hopper",
+					"table": "notion_user"
+				}
+			],
+			"project": "Support",
+			"allocation": 0.2
 		}
 	]
 }

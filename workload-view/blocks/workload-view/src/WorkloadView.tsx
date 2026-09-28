@@ -1,23 +1,30 @@
-import { useLayoutEffect, useMemo, useRef, useState } from "react"
+import { Fragment, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { dayIso, EMPTY_FILTERS } from "./kit/filters/core"
 import { PropIcon } from "./kit/filters/icons"
 import { ClockIcon, ColumnIcon, HashIcon, LayersIcon, NavRow, Note, NumberRow, PersonIcon, PickRow, Sep, SettingsShell, TargetIcon, ToggleRow } from "./kit/settings"
 import type { BlockData } from "./kit/sources"
 import { isoDay, oneOf, within } from "./kit/share"
 import { Loading, Setup, Toolbar, useFiltered, usePersistentView, type WithFilters } from "./kit/toolbar"
-import { bucketStart, columns, looksLikePercent, readPeople, fmtBucket, fmtDay, fmtNum, nextBucket, pick, workload, type Bucket, type EffortMode, type Lane, type Workload } from "./workload"
+import { bucketStart, columns, fmtBucket, fmtDay, fmtNum, looksLikePercent, nextBucket, resolveSetup, workload, type Bucket, type Column, type EffortMode, type Lane, type Workload } from "./workload"
 
 export type Keys = "assignments" | "people"
 type Ready = Extract<BlockData<Keys>, { status: "ready" }>
 
+/** Column choices: null = automatic (by name and type), "" = none. */
 type View = WithFilters & {
-	/** Property ids; null = automatic, "" = none (color only). */
-	groupBy: string | null
-	colorBy: string | null
+	person: string | null
+	project: string | null
+	team: string | null
 	effort: string | null
-	/** null = automatic: % for allocation-like columns, else total hours. */
+	dates: string | null
+	pPerson: string | null
+	pCap: string | null
+	/** null = automatic: % unless the column is named like hours. */
 	mode: EffortMode | null
-	capacity: number
+	/** Hours in a full working day (hour modes). */
+	dayHours: number
+	/** Working time per person (lane key), % of full time; local to this browser and the view code. */
+	caps: Record<string, number>
 	workdays: boolean
 	bucket: Bucket
 	from: string
@@ -26,11 +33,16 @@ type View = WithFilters & {
 }
 
 const DEFAULT: View = {
-	groupBy: null,
-	colorBy: null,
+	person: null,
+	project: null,
+	team: null,
 	effort: null,
+	dates: null,
+	pPerson: null,
+	pCap: null,
 	mode: null,
-	capacity: 8,
+	dayHours: 8,
+	caps: {},
 	workdays: true,
 	bucket: "week",
 	from: "",
@@ -41,31 +53,37 @@ const DEFAULT: View = {
 }
 
 /** Imported views stay within what the settings allow. */
-const sanitize = (v: View): View => ({
-	...v,
-	mode: oneOf(v.mode, ["total", "perDay", "percent", null] as const, DEFAULT.mode),
-	bucket: oneOf(v.bucket, ["day", "week", "month"] as const, DEFAULT.bucket),
-	capacity: within(v.capacity, 0.5, 24, DEFAULT.capacity),
-	from: isoDay(v.from),
-	to: isoDay(v.to),
-})
+const sanitize = (v: View): View => {
+	const caps: Record<string, number> = {}
+	for (const [k, n] of Object.entries(v.caps ?? {})) if (typeof n === "number" && k.length < 100) caps[k] = within(n, 0, 200, 100)
+	return {
+		...v,
+		mode: oneOf(v.mode, ["total", "perDay", "percent", null] as const, DEFAULT.mode),
+		bucket: oneOf(v.bucket, ["day", "week", "month"] as const, DEFAULT.bucket),
+		dayHours: within(v.dayHours, 0.5, 24, DEFAULT.dayHours),
+		caps,
+		from: isoDay(v.from),
+		to: isoDay(v.to),
+	}
+}
 
 const PALETTE = ["blue", "orange", "green", "purple", "pink", "yellow", "brown", "red", "gray"]
 const color = (i: number) => `var(--d-${PALETTE[i % PALETTE.length]})`
-const MODE_LABEL: Record<EffortMode, string> = { percent: "% allocation", total: "Hours in total", perDay: "Hours per day" }
+const MODE_LABEL: Record<EffortMode, string> = { percent: "% of full time", total: "Hours in total", perDay: "Hours per day" }
 
 export function WorkloadView({ data, theme }: { data: BlockData<Keys>; theme: "light" | "dark" }) {
 	return (
 		<div className="nb" data-theme={theme}>
 			{data.status === "loading" ? (
-				<Loading what="assignments" />
+				<Loading what="the workload" />
 			) : data.status === "unbound" ? (
-				<Setup title="Connect a database to draw the workload." missing={data.missing}>
+				<Setup title="Connect your workload database." missing={data.missing}>
 					<li>
-						<b>Assignments</b>: Name, Who (people, or any property to group by), Dates (date range), Effort (a % allocation or hours), Project (optional, for colors).
+						<b>Workload</b>: one row per allocation, with a person (people or relation), a project (select or relation), a workload % and optionally
+						dates and a team. Which column is which is set in the block's settings.
 					</li>
 					<li>
-						<b>People</b> (optional): Name, Person, Hours per week, Workload %. Sets each person's own capacity.
+						<b>People</b> (optional): everyone on the team, with their team and working time.
 					</li>
 				</Setup>
 			) : (
@@ -75,25 +93,24 @@ export function WorkloadView({ data, theme }: { data: BlockData<Keys>; theme: "l
 	)
 }
 
-type Page = "root" | "group" | "color" | "effort" | "mode" | "bucket"
+type Page = "root" | "person" | "project" | "team" | "effort" | "dates" | "pPerson" | "pCap" | "mode" | "bucket"
 
 function Ready({ data }: { data: Ready }) {
 	const [view, setView] = usePersistentView(data.storageKey, DEFAULT)
 	const setUi = (f: Partial<View>) => setView((v) => ({ ...v, ...f }))
 	const today = useMemo(() => dayIso(new Date()), [])
 	const src = data.sources.assignments
+	const ppl = data.sources.people?.bound ? data.sources.people : undefined
 	const { properties, visible, filtering } = useFiltered(src, view.filters, data.resolvers, today)
-	const cols = useMemo(() => columns(src), [src])
-	const groupBy = pick(src, view.groupBy, "who", cols.group, ["people", "select", "relation"])
-	const colorBy = pick(src, view.colorBy, "project", cols.group.filter((c) => c.id !== groupBy), [])
-	const effort = pick(src, view.effort, "effort", cols.effort, ["number", "formula", "rollup"])
-	const mode: EffortMode = view.mode ?? (looksLikePercent(effort ? src.propertySchemasById[effort]?.name : undefined) ? "percent" : "total")
-	const people = useMemo(() => readPeople(data.sources.people), [data.sources.people])
-	const name = (id: string | null) => (id ? (src.propertySchemasById[id]?.name ?? id) : "None")
+	const cols = useMemo(() => columns(src, ppl), [src, ppl])
+	const setup = useMemo(() => resolveSetup(view, src, ppl), [view, src, ppl])
+	const effortName = setup.effort ? src.propertySchemasById[setup.effort]?.name : undefined
+	const mode: EffortMode = view.mode ?? (/hour|stunde/i.test(effortName ?? "") && !looksLikePercent(effortName) ? "total" : "percent")
 	const WL = useMemo(
-		() => workload(src, visible, data.resolvers, { groupBy, colorBy, effort, mode, capacity: view.capacity, people, workdays: view.workdays, bucket: view.bucket, from: view.from || null, to: view.to || null, today }),
-		[src, visible, data.resolvers, groupBy, colorBy, effort, mode, people, view.capacity, view.workdays, view.bucket, view.from, view.to, today]
+		() => workload(src, ppl, filtering ? visible : null, data.resolvers, { ...setup, mode, dayHours: view.dayHours, caps: view.caps, workdays: view.workdays, bucket: view.bucket, from: view.from || null, to: view.to || null, today }),
+		[src, ppl, visible, filtering, data.resolvers, setup, mode, view.dayHours, view.caps, view.workdays, view.bucket, view.from, view.to, today]
 	)
+	const nameOf = (id: string | null, list: Column[]) => (id ? (list.find((c) => c.id === id)?.name ?? "—") : "None")
 	const [page, setPage] = useState<Page>("root")
 
 	const settings = (anchor: HTMLElement | null, close: () => void) => {
@@ -102,51 +119,69 @@ function Ready({ data }: { data: Ready }) {
 			setPage("root")
 			close()
 		}
-		const colPage = (title: string, list: typeof cols.group, cur: string | null, set: (id: string | null) => void, none?: string) => (
+		const colPage = (title: string, list: Column[], cur: string | null, key: keyof View, note: string, none?: string) => (
 			<SettingsShell anchor={anchor} onClose={shut} title={title} onBack={back}>
-				{none ? <PickRow label={none} selected={cur == null} onClick={() => set("")} /> : null}
+				<PickRow label="Automatic" sub="Picked by name and type" selected={view[key] === null} onClick={() => setUi({ [key]: null } as Partial<View>)} />
+				{none ? <PickRow label={none} selected={view[key] === ""} onClick={() => setUi({ [key]: "" } as Partial<View>)} /> : null}
+				<Sep />
 				{list.map((c) => (
-					<PickRow key={c.id} icon={<PropIcon type={c.type} />} label={c.name} selected={cur === c.id} onClick={() => set(c.id)} />
+					<PickRow key={c.id} icon={<PropIcon type={c.type} />} label={c.name} sub={c.id.startsWith("p:") ? "People database" : c.id.startsWith("w:") ? "Workload database" : undefined} selected={view[key] !== null && cur === c.id} onClick={() => setUi({ [key]: c.id } as Partial<View>)} />
 				))}
-				{list.length === 0 ? <Note>No suitable property in this database.</Note> : null}
+				{list.length === 0 ? <Note>No suitable property yet.</Note> : null}
+				<Note>{note}</Note>
 			</SettingsShell>
 		)
-		if (page === "group") return colPage("Group by", cols.group, groupBy, (id) => setUi({ groupBy: id }))
-		if (page === "color") return colPage("Color by", cols.group.filter((c) => c.id !== groupBy), colorBy, (id) => setUi({ colorBy: id }), "None")
-		if (page === "effort") return colPage("Effort", cols.effort, effort, (id) => setUi({ effort: id }))
-		if (page === "mode")
-			return (
-				<SettingsShell anchor={anchor} onClose={shut} title="Effort is" onBack={back}>
-					<PickRow label="% allocation" sub="50 = half of someone's time. No hours involved." selected={mode === "percent"} onClick={() => setUi({ mode: "percent" })} />
-					<PickRow label="Hours in total" sub="40 h, spread evenly over the assignment's days" selected={mode === "total"} onClick={() => setUi({ mode: "total" })} />
-					<PickRow label="Hours per day" sub="4 h every day while it runs" selected={mode === "perDay"} onClick={() => setUi({ mode: "perDay" })} />
-					<Note>Picked automatically from the column name ("%", "Allocation", "FTE", "Workload" → %).</Note>
-				</SettingsShell>
-			)
-		if (page === "bucket")
-			return (
-				<SettingsShell anchor={anchor} onClose={shut} title="Time scale" onBack={back}>
-					{(["day", "week", "month"] as Bucket[]).map((b) => (
-						<PickRow key={b} label={b === "day" ? "Days" : b === "week" ? "Weeks" : "Months"} selected={view.bucket === b} onClick={() => setUi({ bucket: b })} />
-					))}
-				</SettingsShell>
-			)
+		switch (page) {
+			case "person":
+				return colPage("Person", cols.person, setup.person, "person", "Whose time the row allocates: a people property, or a relation to a person page.")
+			case "project":
+				return colPage("Project", cols.project, setup.project, "project", "What the time goes to: a select or a relation. Colors the load.", "No projects")
+			case "team":
+				return colPage("Team", cols.team, setup.team, "team", "Groups people into teams: a select or relation on the person (People) or on the row.", "No teams")
+			case "effort":
+				return colPage("Workload", cols.effort, setup.effort, "effort", "A number: 50 or 50% of someone's time, or hours (see Workload is).")
+			case "dates":
+				return colPage("Dates", cols.dates, setup.dates, "dates", "Rows without dates count as ongoing.", "No dates (all ongoing)")
+			case "pPerson":
+				return colPage("Match people by", cols.pPerson, setup.pPerson, "pPerson", "Rows of the People database are matched by this person, by relation, or by name.", "Name only")
+			case "pCap":
+				return colPage("Working time", cols.pCap, setup.pCap, "pCap", "Hours per week (column named with hours) or % of full time. Empty = set per person on the board.", "Set on the board")
+			case "mode":
+				return (
+					<SettingsShell anchor={anchor} onClose={shut} title="Workload is" onBack={back}>
+						<PickRow label="% of full time" sub="50 = half of someone's time. Notion's percent format works too." selected={mode === "percent"} onClick={() => setUi({ mode: "percent" })} />
+						<PickRow label="Hours per day" sub="4 h every day while it runs" selected={mode === "perDay"} onClick={() => setUi({ mode: "perDay" })} />
+						<PickRow label="Hours in total" sub="40 h spread over the allocation's days" selected={mode === "total"} onClick={() => setUi({ mode: "total" })} />
+					</SettingsShell>
+				)
+			case "bucket":
+				return (
+					<SettingsShell anchor={anchor} onClose={shut} title="Time scale" onBack={back}>
+						{(["day", "week", "month"] as Bucket[]).map((b) => (
+							<PickRow key={b} label={b === "day" ? "Days" : b === "week" ? "Weeks" : "Months"} selected={view.bucket === b} onClick={() => setUi({ bucket: b })} />
+						))}
+					</SettingsShell>
+				)
+		}
 		return (
 			<SettingsShell anchor={anchor} onClose={shut} title="Workload settings">
-				<NavRow icon={<PersonIcon />} label="Group by" value={name(groupBy)} onClick={() => setPage("group")} />
-				<NavRow icon={<LayersIcon />} label="Color by" value={name(colorBy)} onClick={() => setPage("color")} />
-				<NavRow icon={<HashIcon />} label="Effort" value={name(effort)} onClick={() => setPage("effort")} />
-				<NavRow icon={<ColumnIcon />} label="Effort is" value={MODE_LABEL[mode]} onClick={() => setPage("mode")} />
-				<NavRow icon={<ClockIcon />} label="Time scale" value={view.bucket === "day" ? "Days" : view.bucket === "week" ? "Weeks" : "Months"} onClick={() => setPage("bucket")} />
+				<NavRow icon={<PersonIcon />} label="Person" value={nameOf(setup.person, cols.person)} onClick={() => setPage("person")} />
+				<NavRow icon={<LayersIcon />} label="Project" value={nameOf(setup.project, cols.project)} onClick={() => setPage("project")} />
+				<NavRow icon={<ColumnIcon />} label="Team" value={nameOf(setup.team, cols.team)} onClick={() => setPage("team")} />
+				<NavRow icon={<HashIcon />} label="Workload" value={nameOf(setup.effort, cols.effort)} onClick={() => setPage("effort")} />
+				<NavRow icon={<ClockIcon />} label="Dates" value={nameOf(setup.dates, cols.dates)} onClick={() => setPage("dates")} />
+				{ppl ? (
+					<>
+						<NavRow icon={<PersonIcon />} label="Match people by" value={nameOf(setup.pPerson, cols.pPerson)} onClick={() => setPage("pPerson")} />
+						<NavRow icon={<TargetIcon />} label="Working time" value={setup.pCap ? nameOf(setup.pCap, cols.pCap) : "On the board"} onClick={() => setPage("pCap")} />
+					</>
+				) : null}
 				<Sep />
-				{mode !== "percent" ? <NumberRow label={people.length ? "Default hours per day" : "Hours per day"} value={view.capacity} step={0.5} min={0} onChange={(v) => setUi({ capacity: v })} suffix="h" /> : null}
-				<Note>
-					{data.sources.people?.bound
-						? `Working time comes from People for ${WL.lanes.filter((l) => l.capFrom === "people").length} of ${WL.lanes.length}; the rest use ${mode === "percent" ? "100%" : "the default"}.`
-						: "Connect a People database (Hours per week, Workload %) to give everyone their own capacity."}
-				</Note>
+				<NavRow icon={<HashIcon />} label="Workload is" value={MODE_LABEL[mode]} onClick={() => setPage("mode")} />
+				{mode !== "percent" ? <NumberRow label="Hours in a full day" value={view.dayHours} step={0.5} min={0.5} onChange={(v) => setUi({ dayHours: v })} suffix="h" /> : null}
+				<NavRow icon={<ClockIcon />} label="Time scale" value={view.bucket === "day" ? "Days" : view.bucket === "week" ? "Weeks" : "Months"} onClick={() => setPage("bucket")} />
 				<ToggleRow icon={<TargetIcon />} label="Workdays only" sub="Weekends carry no load or capacity" on={view.workdays} onChange={(v) => setUi({ workdays: v })} />
-				<ToggleRow icon={<LayersIcon />} label="Show assignments" on={view.bars} onChange={(v) => setUi({ bars: v })} />
+				<ToggleRow icon={<LayersIcon />} label="Show allocations" on={view.bars} onChange={(v) => setUi({ bars: v })} />
 				<Sep />
 				<label className="srow">
 					<span className="srow-l">From</span>
@@ -156,43 +191,52 @@ function Ready({ data }: { data: Ready }) {
 					<span className="srow-l">To</span>
 					<input className="field" style={{ width: 150, flex: "none" }} type="date" value={view.to} onChange={(e) => setUi({ to: e.target.value })} />
 				</label>
-				<Note>Empty dates fit all assignments. Shared assignments split their effort between the people or values they're grouped under.</Note>
+				<Note>
+					{ppl ? "A People database adds everyone, their team and working time." : "Connect a People database to list everyone, even without allocations."} Click “works …” on a person to set their working time
+					locally.
+				</Note>
 			</SettingsShell>
 		)
 	}
 
+	const setCap = (key: string, share: number | null) =>
+		setView((v) => {
+			const caps = { ...v.caps }
+			if (share == null || share === 100) delete caps[key]
+			else caps[key] = within(share, 0, 200, 100)
+			return { ...v, caps }
+		})
 	const over = WL.lanes.filter((l) => l.overBuckets > 0).length
+	const teams = new Set(WL.lanes.map((l) => l.team).filter(Boolean)).size
+	const people = WL.lanes.filter((l) => l.key !== "__none").length
 	return (
 		<>
 			<Toolbar
 				title="Workload"
-				sub={groupBy ? `by ${name(groupBy)}` : undefined}
+				sub={`${people} ${people === 1 ? "person" : "people"}${teams ? ` · ${teams} team${teams === 1 ? "" : "s"}` : ""}`}
 				view={view}
 				setView={setView}
 				properties={properties}
 				filtering={filtering}
 				today={today}
 				settings={settings}
-				share={{ block: "workload", defaults: DEFAULT, schemas: { ...data.sources.people?.propertySchemasById, ...src.propertySchemasById }, sanitize }}
+				share={{ block: "workload", defaults: DEFAULT, schemas: { ...ppl?.propertySchemasById, ...src.propertySchemasById }, sanitize }}
 			/>
 			<div className="stats">
-				<Stat l={name(groupBy)} v={String(WL.lanes.length)} />
-				<Stat
-					l="Capacity"
-					v={mode === "percent" ? "100%" : `${fmtNum(WL.cap)} h/day`}
-					sub={WL.lanes.some((l) => l.capFrom === "people") ? `${WL.lanes.filter((l) => l.capFrom === "people").length} from People` : "default"}
-				/>
+				<Stat l="People" v={String(people)} sub={teams ? `in ${teams} team${teams === 1 ? "" : "s"}` : ""} />
 				<Stat l="Over capacity" v={String(over)} sub={over ? "at some point" : ""} tone={over ? "bad" : undefined} />
 				<Stat l="Range" v={`${fmtDay(WL.start)} – ${fmtDay(WL.end - 1, true)}`} />
 			</div>
-			{!effort ? (
-				<div className="state">Add a number property for the effort, then choose it in the settings.</div>
+			{!setup.person || !setup.effort ? (
+				<div className="state">
+					Pick the {!setup.person ? "Person" : "Workload"} column in the settings (sliders button) to draw the workload.
+				</div>
 			) : WL.lanes.length === 0 ? (
-				<div className="state">No assignments with dates and effort{filtering ? " match the filters" : ""}.</div>
+				<div className="state">No allocations{filtering ? " match the filters" : ""}.</div>
 			) : (
-				<Lanes WL={WL} bucket={view.bucket} bars={view.bars} />
+				<Lanes WL={WL} bucket={view.bucket} bars={view.bars} onCap={setCap} />
 			)}
-			{WL.series.length > 1 || colorBy ? (
+			{WL.series.length > 1 || setup.project ? (
 				<div className="legend">
 					{WL.series.map((s) => (
 						<span key={s.key} className="key">
@@ -217,8 +261,8 @@ function Ready({ data }: { data: Ready }) {
 						</button>
 					</span>
 				) : null}
-				{WL.skipped ? <span>{WL.skipped} assignments have no dates or effort and are left out.</span> : null}
-				{src.truncated ? <span>Only the first 999 assignments are read.</span> : null}
+				{WL.skipped ? <span>{WL.skipped} rows have no workload and are left out.</span> : null}
+				{src.truncated ? <span>Only the first 999 rows are read.</span> : null}
 			</div>
 		</>
 	)
@@ -228,7 +272,7 @@ const LABEL_W = 170
 const CHART_H = 72
 const BAR_H = 16
 
-function Lanes({ WL, bucket, bars }: { WL: Workload; bucket: Bucket; bars: boolean }) {
+function Lanes({ WL, bucket, bars, onCap }: { WL: Workload; bucket: Bucket; bars: boolean; onCap: (key: string, share: number | null) => void }) {
 	const wrap = useRef<HTMLDivElement>(null)
 	const [W, setW] = useState(700)
 	const [tip, setTip] = useState<{ lane: Lane; bi: number; x: number; y: number } | null>(null)
@@ -265,23 +309,22 @@ function Lanes({ WL, bucket, bars }: { WL: Workload; bucket: Bucket; bars: boole
 				)}
 				<line x1={x(WL.today)} x2={x(WL.today)} y1={16} y2={22} stroke="var(--today)" />
 			</svg>
-			{WL.lanes.map((lane) => {
+			{WL.lanes.map((lane, li) => {
 				const rows = bars ? packRows(lane) : []
 				const nRows = rows.length ? Math.max(...rows) + 1 : 0
 				const h = CHART_H + (bars ? nRows * (BAR_H + 3) + 6 : 0)
 				const y = (v: number) => CHART_H - (v / yMax) * (CHART_H - 6)
 				return (
-					<div className="lane" key={lane.key}>
+					<Fragment key={lane.key}>
+						{WL.lanes.some((l) => l.team) && (li === 0 || lane.team !== WL.lanes[li - 1].team) ? <div className="team-h">{lane.team ?? "No team"}</div> : null}
+					<div className="lane">
 						<div className="lane-h" style={narrow ? undefined : { width: LABEL_W - 12 }}>
 							<b title={lane.label}>{lane.label}</b>
 							<span className={lane.overBuckets ? "bad" : ""}>
 								{Math.round(lane.utilization * 100)}% used · peak {fmtNum(lane.peak)}
 								{WL.unit === "%" ? "%" : ` ${WL.unit}`}
 							</span>
-							<span className="capl" title={lane.capFrom === "people" ? "From the People database" : "Default capacity"}>
-								works {lane.capLabel}
-								{lane.capFrom === "people" ? "" : " (default)"}
-							</span>
+							<CapLabel lane={lane} unit={WL.unit} onCap={onCap} />
 						</div>
 						<svg width={W} height={h} className="lane-svg" role="img" aria-label={`Workload of ${lane.label}`}>
 							{ticks.map((t, i) => (i % every ? null : <line key={t} x1={x(t)} x2={x(t)} y1={0} y2={h} stroke="var(--grid)" />))}
@@ -335,6 +378,7 @@ function Lanes({ WL, bucket, bars }: { WL: Workload; bucket: Bucket; bars: boole
 								: null}
 						</svg>
 					</div>
+					</Fragment>
 				)
 			})}
 			{tip ? (
@@ -392,5 +436,42 @@ function Stat({ l, v, sub, tone }: { l: string; v: string; sub?: string; tone?: 
 				{sub ? <span className={"stat-s" + (tone ? " " + tone : "")}>{sub}</span> : null}
 			</span>
 		</div>
+	)
+}
+
+/** "works 80%": click to set a person's working time locally (unless People provides it). */
+function CapLabel({ lane, unit, onCap }: { lane: Lane; unit: string; onCap: (key: string, share: number | null) => void }) {
+	const [edit, setEdit] = useState(false)
+	const text = `works ${fmtNum(lane.share)}%${unit === "h" ? ` · ${fmtNum(lane.cap)} h/day` : ""}`
+	if (lane.capFrom === "people" || lane.key === "__none") return <span className="capl" title={lane.capFrom === "people" ? "From the People database" : undefined}>{lane.key === "__none" ? "" : text}</span>
+	if (!edit)
+		return (
+			<button type="button" className="capl capl-b" title="Set this person's working time (saved in this view)" onClick={() => setEdit(true)}>
+				{text}
+				{lane.capFrom === "local" ? "" : " (default)"}
+			</button>
+		)
+	return (
+		<span className="capl">
+			works{" "}
+			<input
+				className="field capin"
+				type="number"
+				min={0}
+				max={200}
+				step={5}
+				autoFocus
+				defaultValue={Math.round(lane.share)}
+				onBlur={(e) => {
+					onCap(lane.key, e.target.value === "" ? null : Number(e.target.value))
+					setEdit(false)
+				}}
+				onKeyDown={(e) => {
+					if (e.key === "Enter") e.currentTarget.blur()
+					if (e.key === "Escape") setEdit(false)
+				}}
+			/>
+			%
+		</span>
 	)
 }
