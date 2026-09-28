@@ -178,3 +178,40 @@ test("average mode: equal shares of a 100% goal, achieved by mean reach across K
 	assert.equal(Math.round(M.planTotal), 100)
 	assert.equal(goalOf(A, time, A.kpis[0], M).by > 0, true)
 })
+
+test("average mode over a subset of KPIs, optionally with every initiative", async () => {
+	const { averageDataset, AVG_KPI_ID } = await import("../blocks/impactt-view/src/dataset.ts")
+	const { dataset: D } = buildDataset(sources, opts)
+	// WAU + MRR only: initiatives that move neither drop out.
+	const two = averageDataset(D, ["kpi-wau", "kpi-mrr"])
+	const members = two.initiatives.filter((i) => i.impact[AVG_KPI_ID])
+	assert.ok(members.length < 9 && members.length > 1)
+	assert.match(two.kpis[0].label, /Average of Weekly active users, MRR/)
+	const android = two.initiatives.find((i) => i.name === "Android app")!.impact[AVG_KPI_ID]!
+	// Android only moves WAU among the two: reach 1100/5000.
+	assert.equal(Math.round(android.now! * 1000), Math.round((100 / members.length) * 0.22 * 1000))
+	// With every initiative: 9 equal shares; the done ones without these KPIs count as reached.
+	const all = averageDataset(D, ["kpi-wau", "kpi-mrr"], true)
+	assert.equal(all.initiatives.filter((i) => i.impact[AVG_KPI_ID]).length, 9)
+})
+
+test("KPIs from number columns on Initiatives; effort flips what counts as bad", async () => {
+	const { COLUMNS_SOURCE, kpiColumnPairs } = await import("../blocks/impactt-view/src/dataset.ts")
+	const noImpacts: Sources = { ...sources, impacts: { ...sources.impacts, bound: false, items: [] } }
+	assert.deepEqual(kpiColumnPairs(noImpacts).map((p) => p.label), ["Effort"])
+	const b = buildDataset(noImpacts, opts)
+	assert.equal(b.kpiColumn, COLUMNS_SOURCE)
+	const eff = b.dataset.kpis[0]
+	assert.equal(eff.label, "Effort")
+	assert.equal(eff.kind, "effort")
+	assert.equal(eff.rowId, "kpi-effort")
+	assert.deepEqual(b.dataset.initiatives.find((i) => i.name === "Private beta")!.impact[eff.id], { plan: 30, now: 41 })
+	const time = createTime(b.dataset.start, b.dataset.today)
+	const M = model(b.dataset, time, eff)
+	const beta = M.list.find((o) => o.it.name === "Private beta")!
+	// 41 spent of 30 planned: over effort is the bad case.
+	assert.equal(beta.st, "miss")
+	assert.equal(beta.status, "Done, over effort")
+	const launch = M.list.find((o) => o.it.name === "Public launch")!
+	assert.notEqual(launch.st, "miss")
+})

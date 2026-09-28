@@ -1,0 +1,450 @@
+{
+	"schema": {
+		"name": {
+			"name": "Name",
+			"type": "title"
+		},
+		"role": {
+			"name": "Role",
+			"type": "rich_text"
+		},
+		"reportsTo": {
+			"name": "Reports to",
+			"type": "relation"
+		},
+		"team": {
+			"name": "Team",
+			"type": "select",
+			"options": [
+				"Exec",
+				"Engineering",
+				"Design",
+				"Product",
+				"Sales",
+				"People Ops"
+			]
+		},
+		"location": {
+			"name": "Location",
+			"type": "select",
+			"options": [
+				"Berlin",
+				"Lisbon",
+				"Remote",
+				"New York"
+			]
+		},
+		"start": {
+			"name": "Start date",
+			"type": "date"
+		},
+		"hiring": {
+			"name": "Hiring",
+			"type": "checkbox"
+		},
+		"exitDate": {
+			"name": "Exit date",
+			"type": "date"
+		}
+	},
+	"rows": [
+		{
+			"id": "p-ceo",
+			"name": "Nora Lindqvist",
+			"role": "Chief Executive Officer",
+			"team": "Exec",
+			"location": "Berlin",
+			"start": {
+				"type": "date",
+				"start_date": "2018-01-10"
+			},
+			"hiring": false
+		},
+		{
+			"id": "p-cto",
+			"name": "Kwame Mensah",
+			"role": "Chief Technology Officer",
+			"team": "Engineering",
+			"location": "New York",
+			"start": {
+				"type": "date",
+				"start_date": "2019-02-11"
+			},
+			"hiring": false,
+			"reportsTo": [
+				{
+					"id": "p-ceo",
+					"table": "block"
+				}
+			]
+		},
+		{
+			"id": "p-cpo",
+			"name": "Priya Natarajan",
+			"role": "Chief Product Officer",
+			"team": "Product",
+			"location": "Remote",
+			"start": {
+				"type": "date",
+				"start_date": "2020-03-12"
+			},
+			"hiring": true,
+			"reportsTo": [
+				{
+					"id": "p-ceo",
+					"table": "block"
+				}
+			]
+		},
+		{
+			"id": "p-cro",
+			"name": "Diego Alvarez",
+			"role": "Chief Revenue Officer",
+			"team": "Sales",
+			"location": "Lisbon",
+			"start": {
+				"type": "date",
+				"start_date": "2021-04-13"
+			},
+			"hiring": false,
+			"reportsTo": [
+				{
+					"id": "p-ceo",
+					"table": "block"
+				}
+			]
+		},
+		{
+			"id": "p-hr",
+			"name": "Mei Tanaka",
+			"role": "Head of People",
+			"team": "People Ops",
+			"location": "Berlin",
+			"start": {
+				"type": "date",
+				"start_date": "2022-05-14"
+			},
+			"hiring": false,
+			"reportsTo": [
+				{
+					"id": "p-ceo",
+					"table": "block"
+				}
+			]
+		},
+		{
+			"id": "p-em1",
+			"name": "Jonas Weber",
+			"role": "Engineering Manager, Platform",
+			"team": "Engineering",
+			"location": "New York",
+			"start": {
+				"type": "date",
+				"start_date": "2023-06-15"
+			},
+			"hiring": false,
+			"reportsTo": [
+				{
+					"id": "p-cto",
+					"table": "block"
+				}
+			]
+		},
+		{
+			"id": "p-em2",
+			"name": "Aisha Bello",
+			"role": "Engineering Manager, Apps",
+			"team": "Engineering",
+			"location": "Remote",
+			"start": {
+				"type": "date",
+				"start_date": "2024-07-16"
+			},
+			"hiring": false,
+			"reportsTo": [
+				{
+					"id": "p-cto",
+					"table": "block"
+				}
+			],
+			"exitDate": {
+				"type": "date",
+				"start_date": "2026-08-31"
+			}
+		},
+		{
+			"id": "p-e1",
+			"name": "Tom Novak",
+			"role": "Senior Engineer",
+			"team": "Engineering",
+			"location": "Lisbon",
+			"start": {
+				"type": "date",
+				"start_date": "2018-08-17"
+			},
+			"hiring": false,
+			"reportsTo": [
+				{
+					"id": "p-em1",
+					"table": "block"
+				}
+			]
+		},
+		{
+			"id": "p-e2",
+			"name": "Lena Fischer",
+			"role": "Engineer",
+			"team": "Engineering",
+			"location": "Berlin",
+			"start": {
+				"type": "date",
+				"start_date": "2019-09-18"
+			},
+			"hiring": true,
+			"reportsTo": [
+				{
+					"id": "p-em1",
+					"table": "block"
+				}
+			]
+		},
+		{
+			"id": "p-e3",
+			"name": "Ravi Kapoor",
+			"role": "SRE",
+			"team": "Engineering",
+			"location": "New York",
+			"start": {
+				"type": "date",
+				"start_date": "2020-01-10"
+			},
+			"hiring": false,
+			"reportsTo": [
+				{
+					"id": "p-em1",
+					"table": "block"
+				}
+			]
+		},
+		{
+			"id": "p-e4",
+			"name": "Sofia Rossi",
+			"role": "Senior Engineer",
+			"team": "Engineering",
+			"location": "Remote",
+			"start": {
+				"type": "date",
+				"start_date": "2021-02-11"
+			},
+			"hiring": false,
+			"reportsTo": [
+				{
+					"id": "p-em2",
+					"table": "block"
+				}
+			]
+		},
+		{
+			"id": "p-e5",
+			"name": "Ben Carter",
+			"role": "Engineer",
+			"team": "Engineering",
+			"location": "Lisbon",
+			"start": {
+				"type": "date",
+				"start_date": "2022-03-12"
+			},
+			"hiring": false,
+			"reportsTo": [
+				{
+					"id": "p-em2",
+					"table": "block"
+				}
+			]
+		},
+		{
+			"id": "p-e6",
+			"name": "Yuki Sato",
+			"role": "iOS Engineer",
+			"team": "Engineering",
+			"location": "Berlin",
+			"start": {
+				"type": "date",
+				"start_date": "2023-04-13"
+			},
+			"hiring": false,
+			"reportsTo": [
+				{
+					"id": "p-em2",
+					"table": "block"
+				}
+			]
+		},
+		{
+			"id": "p-dl",
+			"name": "Maya Chen",
+			"role": "Design Lead",
+			"team": "Design",
+			"location": "New York",
+			"start": {
+				"type": "date",
+				"start_date": "2024-05-14"
+			},
+			"hiring": false,
+			"reportsTo": [
+				{
+					"id": "p-cpo",
+					"table": "block"
+				}
+			]
+		},
+		{
+			"id": "p-d1",
+			"name": "Alice Nguyen",
+			"role": "Product Designer",
+			"team": "Design",
+			"location": "Remote",
+			"start": {
+				"type": "date",
+				"start_date": "2018-06-15"
+			},
+			"hiring": true,
+			"reportsTo": [
+				{
+					"id": "p-dl",
+					"table": "block"
+				}
+			]
+		},
+		{
+			"id": "p-d2",
+			"name": "Sam Okafor",
+			"role": "Product Designer",
+			"team": "Design",
+			"location": "Lisbon",
+			"start": {
+				"type": "date",
+				"start_date": "2019-07-16"
+			},
+			"hiring": false,
+			"reportsTo": [
+				{
+					"id": "p-dl",
+					"table": "block"
+				}
+			]
+		},
+		{
+			"id": "p-pm1",
+			"name": "Lucas Martin",
+			"role": "Senior PM",
+			"team": "Product",
+			"location": "Berlin",
+			"start": {
+				"type": "date",
+				"start_date": "2020-08-17"
+			},
+			"hiring": false,
+			"reportsTo": [
+				{
+					"id": "p-cpo",
+					"table": "block"
+				}
+			]
+		},
+		{
+			"id": "p-pm2",
+			"name": "Hannah Berg",
+			"role": "PM",
+			"team": "Product",
+			"location": "New York",
+			"start": {
+				"type": "date",
+				"start_date": "2021-09-18"
+			},
+			"hiring": false,
+			"reportsTo": [
+				{
+					"id": "p-cpo",
+					"table": "block"
+				}
+			]
+		},
+		{
+			"id": "p-s1",
+			"name": "Olivia Brown",
+			"role": "Account Executive",
+			"team": "Sales",
+			"location": "Remote",
+			"start": {
+				"type": "date",
+				"start_date": "2022-01-10"
+			},
+			"hiring": false,
+			"reportsTo": [
+				{
+					"id": "p-cro",
+					"table": "block"
+				}
+			]
+		},
+		{
+			"id": "p-s2",
+			"name": "Marco Bianchi",
+			"role": "Account Executive",
+			"team": "Sales",
+			"location": "Lisbon",
+			"start": {
+				"type": "date",
+				"start_date": "2023-02-11"
+			},
+			"hiring": false,
+			"reportsTo": [
+				{
+					"id": "p-cro",
+					"table": "block"
+				}
+			],
+			"exitDate": {
+				"type": "date",
+				"start_date": "2026-08-31"
+			}
+		},
+		{
+			"id": "p-s3",
+			"name": "Chloe Dubois",
+			"role": "Sales Engineer",
+			"team": "Sales",
+			"location": "Berlin",
+			"start": {
+				"type": "date",
+				"start_date": "2024-03-12"
+			},
+			"hiring": true,
+			"reportsTo": [
+				{
+					"id": "p-cro",
+					"table": "block"
+				}
+			]
+		},
+		{
+			"id": "p-h1",
+			"name": "Ethan Park",
+			"role": "Recruiter",
+			"team": "People Ops",
+			"location": "New York",
+			"start": {
+				"type": "date",
+				"start_date": "2018-04-13"
+			},
+			"hiring": false,
+			"reportsTo": [
+				{
+					"id": "p-hr",
+					"table": "block"
+				}
+			]
+		}
+	]
+}

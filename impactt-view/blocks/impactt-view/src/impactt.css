@@ -1425,30 +1425,24 @@ body {
 	}
 }
 
-/* ---------- toolbar KPI title ---------- */
-.kpititle {
-	display: inline-flex;
-	align-items: center;
-	gap: 4px;
-	margin: 0 0 4px -6px;
-	padding: 2px 6px;
-	border: 0;
-	border-radius: 6px;
-	background: none;
+/* ---------- toolbar title ---------- */
+.ctitle {
+	display: flex;
+	align-items: baseline;
+	gap: 8px;
+	margin: 0 0 4px;
+	min-width: 0;
 	font-size: 16px !important;
 	font-weight: 600 !important;
 	color: var(--ink);
-	cursor: pointer;
-	min-width: 0;
-	max-width: 70%;
-}
-.kpititle span {
-	overflow: hidden;
-	text-overflow: ellipsis;
 	white-space: nowrap;
 }
-.kpititle:hover {
-	background: var(--hover);
+.ctitle .csub {
+	font-size: 13px;
+	font-weight: 400;
+	color: var(--muted);
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 /* ---------- settings (Notion view-settings panel) ---------- */
@@ -1580,4 +1574,124 @@ body {
 }
 .switch.on span {
 	transform: translateX(12px);
+}
+
+/* ---------- share view ---------- */
+.sh {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	padding: 6px 12px 10px;
+}
+.sh-t {
+	margin: 0;
+	color: var(--ink2);
+	font-size: 12px;
+	line-height: 1.45;
+}
+.sh-t b {
+	color: var(--ink);
+	font-weight: 600;
+}
+.sh-code {
+	width: 100%;
+	box-sizing: border-box;
+	resize: none;
+	padding: 6px 8px;
+	border: 0;
+	border-radius: 6px;
+	background: var(--field);
+	box-shadow: inset 0 0 0 1px var(--fieldline);
+	color: var(--ink);
+	font: 11px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+	word-break: break-all;
+	outline: none;
+}
+.sh-code:focus {
+	box-shadow: inset 0 0 0 1px var(--blue-line), 0 0 0 2px rgba(35, 131, 226, 0.2);
+}
+.sh-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+.sh-hint {
+	flex: 1;
+	min-width: 0;
+	color: var(--muted);
+	font-size: 12px;
+	line-height: 1.35;
+}
+.sh-hint.bad {
+	color: #e03e3e;
+}
+.sh-opt {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	color: var(--ink2);
+	font-size: 12px;
+	cursor: pointer;
+}
+.sh-file {
+	position: relative;
+	color: var(--muted);
+	text-decoration: underline dotted;
+	cursor: pointer;
+}
+.sh-file input {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	opacity: 0;
+}
+.sh-btn {
+	flex: none;
+	height: 28px;
+	padding: 0 12px;
+	border: 0;
+	border-radius: 6px;
+	background: var(--hover);
+	color: var(--ink);
+	font: inherit;
+	font-size: 13px;
+	font-weight: 500;
+	cursor: pointer;
+}
+.sh-btn:hover {
+	background: var(--sel);
+}
+.sh-btn.primary {
+	background: var(--blue);
+	color: #fff;
+}
+.sh-btn.primary:hover {
+	filter: brightness(1.08);
+}
+.sh-btn:disabled {
+	opacity: 0.45;
+	cursor: default;
+	filter: none;
+}
+.sh-btn.warn {
+	background: #e03e3e;
+	color: #fff;
+}
+.sh-foot {
+	padding-top: 2px;
+	padding-bottom: 8px;
+}
+.sh-foot .sh-btn {
+	background: none;
+	color: var(--ink2);
+	align-self: flex-start;
+	padding: 0 6px;
+}
+.sh-foot .sh-btn:hover {
+	background: var(--hover);
+}
+.sh-foot .sh-btn.warn,
+.sh-foot .sh-btn.warn:hover {
+	background: #e03e3e;
+	color: #fff;
 }

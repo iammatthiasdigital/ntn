@@ -1,0 +1,306 @@
+{
+	"schema": {
+		"title": {
+			"name": "Title",
+			"type": "title"
+		},
+		"x": {
+			"name": "X",
+			"type": "number"
+		},
+		"y": {
+			"name": "Y",
+			"type": "number"
+		},
+		"author": {
+			"name": "Author",
+			"type": "people"
+		},
+		"done": {
+			"name": "Done",
+			"type": "checkbox"
+		},
+		"resolution": {
+			"name": "How it was fixed",
+			"type": "rich_text"
+		},
+		"topic": {
+			"name": "Topic",
+			"type": "select",
+			"options": [
+				"What went well",
+				"What didn't",
+				"Try next sprint",
+				"Action items"
+			],
+			"colors": [
+				"green",
+				"red",
+				"blue",
+				"purple"
+			]
+		},
+		"tags": {
+			"name": "Tags",
+			"type": "multi_select",
+			"options": [
+				"Process",
+				"Tooling",
+				"Team",
+				"Customer"
+			],
+			"colors": [
+				"orange",
+				"blue",
+				"pink",
+				"green"
+			]
+		},
+		"epic": {
+			"name": "Epic",
+			"type": "relation"
+		},
+		"votes": {
+			"name": "Votes",
+			"type": "number"
+		}
+	},
+	"rows": [
+		{
+			"id": "n1",
+			"title": "Release train felt calmer this sprint 🚆",
+			"x": 20,
+			"y": 12,
+			"author": [
+				{
+					"id": "user-ada-lovelace",
+					"table": "notion_user"
+				}
+			],
+			"topic": "What went well",
+			"tags": [
+				"Process"
+			],
+			"epic": [
+				{
+					"id": "ep-rt",
+					"table": "block"
+				}
+			],
+			"votes": 4
+		},
+		{
+			"id": "n2",
+			"title": "Pairing on the mapping rules paid off",
+			"x": 200,
+			"y": 12,
+			"author": [
+				{
+					"id": "user-grace-hopper",
+					"table": "notion_user"
+				}
+			],
+			"topic": "What went well",
+			"tags": [
+				"Team"
+			],
+			"epic": [
+				{
+					"id": "ep-map",
+					"table": "block"
+				}
+			],
+			"votes": 3
+		},
+		{
+			"id": "n3",
+			"title": "Customer demo landed — they asked for the roadmap",
+			"author": [
+				{
+					"id": "user-alan-turing",
+					"table": "notion_user"
+				}
+			],
+			"topic": "What went well",
+			"tags": [
+				"Customer"
+			],
+			"votes": 5
+		},
+		{
+			"id": "n4",
+			"title": "Flaky e2e tests blocked two merges",
+			"x": 20,
+			"y": 12,
+			"author": [
+				{
+					"id": "user-margaret-hamilton",
+					"table": "notion_user"
+				}
+			],
+			"topic": "What didn't",
+			"tags": [
+				"Tooling"
+			],
+			"epic": [
+				{
+					"id": "ep-ci",
+					"table": "block"
+				}
+			],
+			"resolution": "Quarantined the 3 worst ones; ticket for the rest",
+			"votes": 6
+		},
+		{
+			"id": "n5",
+			"title": "Too many meetings on Wednesday",
+			"x": 200,
+			"y": 12,
+			"author": [
+				{
+					"id": "user-hedy-lamarr",
+					"table": "notion_user"
+				}
+			],
+			"topic": "What didn't",
+			"tags": [
+				"Process",
+				"Team"
+			],
+			"votes": 2
+		},
+		{
+			"id": "n6",
+			"title": "Staging was down for a day",
+			"x": 20,
+			"y": 192,
+			"author": [
+				{
+					"id": "user-radia-perlman",
+					"table": "notion_user"
+				}
+			],
+			"topic": "What didn't",
+			"tags": [
+				"Tooling"
+			],
+			"epic": [
+				{
+					"id": "ep-ci",
+					"table": "block"
+				}
+			],
+			"done": true,
+			"resolution": "Moved staging to the new cluster with alerts"
+		},
+		{
+			"id": "n7",
+			"title": "Try async stand-ups twice a week",
+			"x": 20,
+			"y": 12,
+			"author": [
+				{
+					"id": "user-ada-lovelace",
+					"table": "notion_user"
+				}
+			],
+			"topic": "Try next sprint",
+			"tags": [
+				"Process"
+			]
+		},
+		{
+			"id": "n8",
+			"title": "Timebox spikes to one day",
+			"author": [
+				{
+					"id": "user-grace-hopper",
+					"table": "notion_user"
+				}
+			],
+			"topic": "Try next sprint",
+			"tags": [
+				"Process"
+			]
+		},
+		{
+			"id": "n9",
+			"title": "Owner for the flaky-test list",
+			"x": 20,
+			"y": 12,
+			"author": [
+				{
+					"id": "user-alan-turing",
+					"table": "notion_user"
+				}
+			],
+			"topic": "Action items",
+			"tags": [
+				"Tooling"
+			],
+			"epic": [
+				{
+					"id": "ep-ci",
+					"table": "block"
+				}
+			]
+		},
+		{
+			"id": "n10",
+			"title": "Book the customer workshop",
+			"x": 200,
+			"y": 12,
+			"author": [
+				{
+					"id": "user-hedy-lamarr",
+					"table": "notion_user"
+				}
+			],
+			"topic": "Action items",
+			"tags": [
+				"Customer"
+			],
+			"epic": [
+				{
+					"id": "ep-rt",
+					"table": "block"
+				}
+			],
+			"done": true,
+			"resolution": "Booked for the 14th, invite sent"
+		},
+		{
+			"id": "n11",
+			"title": "Write down the release checklist",
+			"author": [
+				{
+					"id": "user-margaret-hamilton",
+					"table": "notion_user"
+				}
+			],
+			"topic": "Action items",
+			"tags": [
+				"Process"
+			],
+			"epic": [
+				{
+					"id": "ep-rt",
+					"table": "block"
+				}
+			]
+		},
+		{
+			"id": "n12",
+			"title": "Parking lot: rename the repo?",
+			"author": [
+				{
+					"id": "user-radia-perlman",
+					"table": "notion_user"
+				}
+			],
+			"tags": [
+				"Team"
+			]
+		}
+	]
+}

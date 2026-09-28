@@ -1,0 +1,318 @@
+/* The slide design of the boards (kept from the original block): Manrope,
+ * bordered quarter columns in the lane colors, centered titles, flag cards. */
+.mr {
+	--mr-bg: #ffffff;
+	--mr-text: #21243a;
+	--mr-muted: #6b7086;
+	--mr-title: #4a5bd4;
+	--mr-card-bg: #ffffff;
+	--mr-card-border: #e3e6ee;
+	--mr-card-shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
+	/* Lane colors follow the palette; the block overrides these inline from
+	 * the color pickers (soft fills are the base color at low alpha). */
+	--mr-done-border: #def15d;
+	--mr-done-bg: #def15d26;
+	--mr-done-accent: #7e8c15;
+	--mr-todo-border: #0054ff;
+	--mr-todo-bg: #0054ff10;
+	--mr-todo-accent: #0043cc;
+	--mr-picker-bg: #f1f3f9;
+	--mr-hint-bg: #fff7e0;
+	--mr-hint-border: #eddfa8;
+
+	font-family: "Manrope", -apple-system, "Segoe UI", "Helvetica Neue", Arial,
+		sans-serif;
+	color: var(--mr-text);
+	background: transparent;
+	padding: 0;
+}
+
+.mr[data-theme="dark"] {
+	--mr-bg: #191919;
+	--mr-text: #e8eaf2;
+	--mr-muted: #9aa0b5;
+	--mr-title: #93a1f0;
+	--mr-card-bg: #262a36;
+	--mr-card-border: #3a3f4f;
+	--mr-card-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+	--mr-done-accent: #e7f594;
+	--mr-todo-accent: #7099ff;
+	--mr-picker-bg: #2c303d;
+	--mr-hint-bg: rgba(240, 200, 80, 0.12);
+	--mr-hint-border: rgba(240, 200, 80, 0.35);
+}
+
+/* ---------- Header ---------- */
+.mr-board {
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	gap: 14px;
+	align-items: start;
+}
+
+@media (max-width: 900px) {
+	.mr-board {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+}
+
+@media (max-width: 460px) {
+	.mr-board {
+		grid-template-columns: minmax(0, 1fr);
+	}
+}
+
+/* Export mode: the PNG always captures the year as a 4-across grid at a
+ * fixed width, whatever the responsive on-screen layout shows. */
+.mr.is-exporting .mr-board {
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	/* Wide enough that each quarter fits two cards per row, like the slide. */
+	width: 1160px;
+}
+
+.mr-col {
+	border: 2px solid;
+	border-radius: 16px;
+	padding: 14px 12px 16px;
+	min-height: 180px;
+}
+
+.mr-col.is-complete {
+	border-color: var(--mr-done-border);
+	background: var(--mr-done-bg);
+}
+
+.mr-col.is-upcoming {
+	border-color: var(--mr-todo-border);
+	background: var(--mr-todo-bg);
+}
+
+.mr-col-title {
+	margin: 0;
+	text-align: center;
+	font-size: 15px;
+	font-weight: 800;
+	letter-spacing: 0.01em;
+}
+
+.is-complete .mr-col-title {
+	color: var(--mr-done-accent);
+}
+
+.is-upcoming .mr-col-title {
+	color: var(--mr-todo-accent);
+}
+
+.mr-col-rule {
+	height: 2px;
+	border-radius: 1px;
+	margin: 9px 6px 13px;
+	opacity: 0.5;
+}
+
+.is-complete .mr-col-rule {
+	background: var(--mr-done-border);
+}
+
+.is-upcoming .mr-col-rule {
+	background: var(--mr-todo-border);
+}
+
+.mr-col-empty {
+	text-align: center;
+	font-size: 12px;
+	color: var(--mr-muted);
+	padding: 26px 0;
+}
+
+/* ---------- Cards ---------- */
+
+.mr-cards {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+	gap: 10px;
+}
+
+.mr-card {
+	background: var(--mr-card-bg);
+	border: 1px solid var(--mr-card-border);
+	border-radius: 10px;
+	box-shadow: var(--mr-card-shadow);
+	padding: 12px 8px 11px;
+	text-align: center;
+}
+
+.mr-card-flag {
+	height: 26px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin-bottom: 7px;
+}
+
+.mr-card-flag-img {
+	max-height: 26px;
+	max-width: 40px;
+	object-fit: contain;
+	filter: drop-shadow(0 1px 1px rgba(16, 24, 40, 0.2));
+}
+
+.mr-card-flag-emoji {
+	font-size: 23px;
+	line-height: 1;
+}
+
+.mr-card-country {
+	font-size: 12.5px;
+	font-weight: 700;
+	line-height: 1.25;
+}
+
+.mr-card-scopes {
+	margin-top: 2px;
+	font-size: 11px;
+	font-weight: 500;
+	color: var(--mr-muted);
+	line-height: 1.3;
+}
+
+/* ---------- Coverage view ---------- */
+
+.mr-coverage {
+	display: flex;
+	align-items: flex-start;
+	gap: 16px;
+	flex-wrap: wrap;
+}
+
+.mr-cov-panel {
+	border: 2px solid;
+	border-radius: 16px;
+	overflow: hidden;
+	min-width: 240px;
+}
+
+.mr-cov-panel.is-available {
+	flex: 1.6 1 340px;
+	border-color: var(--mr-todo-border);
+	background: var(--mr-card-bg);
+}
+
+.mr-cov-panel.is-roadmap {
+	flex: 1 1 250px;
+	border-color: var(--mr-done-border);
+	background: var(--mr-done-bg);
+}
+
+.mr-cov-head {
+	margin: 0;
+	padding: 9px 12px;
+	text-align: center;
+	font-size: 13px;
+	font-weight: 800;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+}
+
+.is-available .mr-cov-head {
+	background: var(--mr-todo-border);
+	color: #ffffff;
+}
+
+.is-roadmap .mr-cov-head {
+	background: var(--mr-done-border);
+	color: #21243a;
+}
+
+.mr-cov-grid {
+	padding: 14px;
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+	gap: 8px;
+}
+
+.mr-cov-pill {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	min-width: 0;
+	background: var(--mr-card-bg);
+	border: 1px solid var(--mr-card-border);
+	border-radius: 8px;
+	box-shadow: var(--mr-card-shadow);
+	padding: 6px 9px;
+}
+
+.mr-cov-flag {
+	flex: none;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 20px;
+}
+
+.mr-cov-flag .mr-card-flag-emoji {
+	font-size: 15px;
+}
+
+.mr-cov-flag .mr-card-flag-img {
+	max-height: 15px;
+	max-width: 20px;
+}
+
+.mr-cov-name {
+	font-size: 12px;
+	font-weight: 600;
+	line-height: 1.2;
+}
+
+/* ---------- Export mode extras ---------- */
+
+/* Condensed cards, two per quarter column. */
+.mr.is-exporting .mr-cards {
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 8px;
+}
+
+.mr.is-exporting .mr-card {
+	padding: 8px 5px 7px;
+}
+
+.mr.is-exporting .mr-card-flag {
+	height: 20px;
+	margin-bottom: 4px;
+}
+
+.mr.is-exporting .mr-card-flag-emoji {
+	font-size: 17px;
+}
+
+.mr.is-exporting .mr-card-flag-img {
+	max-height: 20px;
+}
+
+.mr.is-exporting .mr-card-country {
+	font-size: 11.5px;
+}
+
+.mr.is-exporting .mr-card-scopes {
+	font-size: 10px;
+	margin-top: 1px;
+}
+
+/* Coverage exports at a fixed slide-friendly width. */
+.mr.is-exporting .mr-coverage {
+	width: 1440px;
+	flex-wrap: nowrap;
+}
+
+.mr.is-exporting .mr-cov-panel.is-available .mr-cov-grid {
+	grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.mr.is-exporting .mr-cov-panel.is-roadmap .mr-cov-grid {
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+/* ---------- States & notes ---------- */
+

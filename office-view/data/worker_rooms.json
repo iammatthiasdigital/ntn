@@ -1,0 +1,48 @@
+{
+	"schema": {
+		"name": {
+			"name": "Name",
+			"type": "title"
+		},
+		"floor": {
+			"name": "Floor",
+			"type": "select"
+		},
+		"type": {
+			"name": "Type",
+			"type": "select"
+		}
+	},
+	"rows": [
+		{
+			"id": "room-lobby",
+			"name": "Lobby",
+			"floor": "Ground floor",
+			"type": "Common"
+		},
+		{
+			"id": "room-open",
+			"name": "Open space North",
+			"floor": "1st floor",
+			"type": "Open space"
+		},
+		{
+			"id": "room-quiet",
+			"name": "Quiet zone",
+			"floor": "1st floor",
+			"type": "Quiet"
+		},
+		{
+			"id": "room-atlas",
+			"name": "Atlas",
+			"floor": "1st floor",
+			"type": "Meeting"
+		},
+		{
+			"id": "room-garage",
+			"name": "Garage",
+			"floor": "Basement",
+			"type": "Parking"
+		}
+	]
+}

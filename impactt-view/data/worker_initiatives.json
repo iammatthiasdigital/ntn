@@ -67,6 +67,14 @@
 		"depends": {
 			"name": "Depends on",
 			"type": "relation"
+		},
+		"effortPlan": {
+			"name": "Effort planned",
+			"type": "number"
+		},
+		"effortSpent": {
+			"name": "Effort spent",
+			"type": "number"
 		}
 	},
 	"rows": [
@@ -96,7 +104,9 @@
 			"budget": 40,
 			"priority": "P0",
 			"approved": true,
-			"spec": "https://example.com/specs/beta"
+			"spec": "https://example.com/specs/beta",
+			"effortPlan": 30,
+			"effortSpent": 41
 		},
 		{
 			"id": "init-launch",
@@ -135,7 +145,9 @@
 					"id": "init-beta",
 					"table": "block"
 				}
-			]
+			],
+			"effortPlan": 60,
+			"effortSpent": 58
 		},
 		{
 			"id": "init-referral",
@@ -174,7 +186,9 @@
 					"id": "init-launch",
 					"table": "block"
 				}
-			]
+			],
+			"effortPlan": 45,
+			"effortSpent": 30
 		},
 		{
 			"id": "init-android",
@@ -207,7 +221,9 @@
 					"id": "init-launch",
 					"table": "block"
 				}
-			]
+			],
+			"effortPlan": 120,
+			"effortSpent": 55
 		},
 		{
 			"id": "init-onboarding",
@@ -231,7 +247,8 @@
 			],
 			"budget": 35,
 			"priority": "P1",
-			"approved": true
+			"approved": true,
+			"effortPlan": 20
 		},
 		{
 			"id": "init-premium",
@@ -260,7 +277,8 @@
 					"id": "init-onboarding",
 					"table": "block"
 				}
-			]
+			],
+			"effortPlan": 50
 		},
 		{
 			"id": "init-uni",
@@ -283,7 +301,8 @@
 			],
 			"budget": 25,
 			"priority": "P2",
-			"approved": false
+			"approved": false,
+			"effortPlan": 25
 		},
 		{
 			"id": "init-events",
@@ -308,7 +327,8 @@
 			],
 			"budget": 15,
 			"priority": "P2",
-			"approved": false
+			"approved": false,
+			"effortPlan": 15
 		},
 		{
 			"id": "init-city",
@@ -347,7 +367,8 @@
 					"id": "init-android",
 					"table": "block"
 				}
-			]
+			],
+			"effortPlan": 90
 		}
 	]
 }

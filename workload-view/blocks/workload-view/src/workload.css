@@ -1,0 +1,61 @@
+.nb {
+	--overbg: rgba(212, 76, 71, 0.08);
+}
+.nb[data-theme="dark"] {
+	--overbg: rgba(255, 115, 105, 0.12);
+}
+.lanes {
+	position: relative;
+	width: 100%;
+	overflow: hidden;
+}
+.lanes svg {
+	display: block;
+}
+.lane {
+	position: relative;
+	border-bottom: 1px solid var(--line);
+	padding: 6px 0;
+}
+.lane-h {
+	position: absolute;
+	left: 0;
+	top: 10px;
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	min-width: 0;
+}
+.lanes.narrow .lane-h {
+	position: static;
+	padding: 2px 0 4px;
+}
+.lane-h b {
+	font-weight: 500;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.lane-h span {
+	font-size: 12px;
+	color: var(--ink2);
+}
+.lane-h span.bad,
+.btip .bad {
+	color: var(--bad);
+}
+.nb svg text.barlbl {
+	font-size: 11px;
+	fill: var(--ink);
+	pointer-events: none;
+}
+.btip .sw {
+	display: inline-block;
+	width: 8px;
+	height: 8px;
+	border-radius: 2px;
+	margin-right: 6px;
+}
+.lane-h span.capl {
+	color: var(--muted);
+}

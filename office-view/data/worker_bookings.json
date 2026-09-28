@@ -1,0 +1,870 @@
+{
+	"schema": {
+		"name": {
+			"name": "Name",
+			"type": "title"
+		},
+		"place": {
+			"name": "Place",
+			"type": "relation"
+		},
+		"who": {
+			"name": "Who",
+			"type": "people"
+		},
+		"when": {
+			"name": "When",
+			"type": "date"
+		},
+		"note": {
+			"name": "Note",
+			"type": "rich_text"
+		},
+		"open": {
+			"name": "Up for grabs",
+			"type": "checkbox"
+		}
+	},
+	"rows": [
+		{
+			"id": "bk-1",
+			"name": "pl-d1",
+			"place": [
+				{
+					"id": "pl-d1",
+					"table": "block"
+				}
+			],
+			"who": [
+				{
+					"id": "user-grace-hopper",
+					"table": "notion_user"
+				}
+			],
+			"when": {
+				"type": "date",
+				"start_date": "2026-09-28"
+			},
+			"note": "Only in until 12, take it after",
+			"open": true
+		},
+		{
+			"id": "bk-2",
+			"name": "pl-d2",
+			"place": [
+				{
+					"id": "pl-d2",
+					"table": "block"
+				}
+			],
+			"who": [
+				{
+					"id": "user-alan-turing",
+					"table": "notion_user"
+				}
+			],
+			"when": {
+				"type": "date",
+				"start_date": "2026-09-28"
+			},
+			"note": "Back after lunch"
+		},
+		{
+			"id": "bk-3",
+			"name": "pl-d3",
+			"place": [
+				{
+					"id": "pl-d3",
+					"table": "block"
+				}
+			],
+			"who": [
+				{
+					"id": "user-margaret-hamilton",
+					"table": "notion_user"
+				}
+			],
+			"when": {
+				"type": "date",
+				"start_date": "2026-09-28"
+			}
+		},
+		{
+			"id": "bk-4",
+			"name": "pl-q1",
+			"place": [
+				{
+					"id": "pl-q1",
+					"table": "block"
+				}
+			],
+			"who": [
+				{
+					"id": "user-hedy-lamarr",
+					"table": "notion_user"
+				}
+			],
+			"when": {
+				"type": "date",
+				"start_date": "2026-09-28"
+			}
+		},
+		{
+			"id": "bk-5",
+			"name": "Weekly sync",
+			"place": [
+				{
+					"id": "pl-atlas",
+					"table": "block"
+				}
+			],
+			"who": [
+				{
+					"id": "user-radia-perlman",
+					"table": "notion_user"
+				}
+			],
+			"when": {
+				"type": "datetimerange",
+				"start_date": "2026-09-28",
+				"start_time": "10:00",
+				"end_date": "2026-09-28",
+				"end_time": "11:00"
+			}
+		},
+		{
+			"id": "bk-6",
+			"name": "Design review",
+			"place": [
+				{
+					"id": "pl-atlas",
+					"table": "block"
+				}
+			],
+			"who": [
+				{
+					"id": "user-ada-lovelace",
+					"table": "notion_user"
+				}
+			],
+			"when": {
+				"type": "datetimerange",
+				"start_date": "2026-09-28",
+				"start_time": "14:00",
+				"end_date": "2026-09-28",
+				"end_time": "15:30"
+			}
+		},
+		{
+			"id": "bk-7",
+			"name": "pl-booth1",
+			"place": [
+				{
+					"id": "pl-booth1",
+					"table": "block"
+				}
+			],
+			"who": [
+				{
+					"id": "user-alan-turing",
+					"table": "notion_user"
+				}
+			],
+			"when": {
+				"type": "datetimerange",
+				"start_date": "2026-09-28",
+				"start_time": "13:00",
+				"end_date": "2026-09-28",
+				"end_time": "13:30"
+			}
+		},
+		{
+			"id": "bk-8",
+			"name": "pl-p1",
+			"place": [
+				{
+					"id": "pl-p1",
+					"table": "block"
+				}
+			],
+			"who": [
+				{
+					"id": "user-grace-hopper",
+					"table": "notion_user"
+				}
+			],
+			"when": {
+				"type": "date",
+				"start_date": "2026-09-28"
+			}
+		},
+		{
+			"id": "bk-9",
+			"name": "pl-d5",
+			"place": [
+				{
+					"id": "pl-d5",
+					"table": "block"
+				}
+			],
+			"who": [
+				{
+					"id": "user-ada-lovelace",
+					"table": "notion_user"
+				}
+			],
+			"when": {
+				"type": "date",
+				"start_date": "2026-09-28"
+			}
+		},
+		{
+			"id": "bk-10",
+			"name": "pl-d1",
+			"place": [
+				{
+					"id": "pl-d1",
+					"table": "block"
+				}
+			],
+			"who": [
+				{
+					"id": "user-grace-hopper",
+					"table": "notion_user"
+				}
+			],
+			"when": {
+				"type": "date",
+				"start_date": "2026-09-29"
+			},
+			"note": "Only in until 12, take it after",
+			"open": true
+		},
+		{
+			"id": "bk-11",
+			"name": "pl-d2",
+			"place": [
+				{
+					"id": "pl-d2",
+					"table": "block"
+				}
+			],
+			"who": [
+				{
+					"id": "user-alan-turing",
+					"table": "notion_user"
+				}
+			],
+			"when": {
+				"type": "date",
+				"start_date": "2026-09-29"
+			},
+			"note": "Back after lunch"
+		},
+		{
+			"id": "bk-12",
+			"name": "Weekly sync",
+			"place": [
+				{
+					"id": "pl-atlas",
+					"table": "block"
+				}
+			],
+			"who": [
+				{
+					"id": "user-radia-perlman",
+					"table": "notion_user"
+				}
+			],
+			"when": {
+				"type": "datetimerange",
+				"start_date": "2026-09-29",
+				"start_time": "10:00",
+				"end_date": "2026-09-29",
+				"end_time": "11:00"
+			}
+		},
+		{
+			"id": "bk-13",
+			"name": "Design review",
+			"place": [
+				{
+					"id": "pl-atlas",
+					"table": "block"
+				}
+			],
+			"who": [
+				{
+					"id": "user-ada-lovelace",
+					"table": "notion_user"
+				}
+			],
+			"when": {
+				"type": "datetimerange",
+				"start_date": "2026-09-29",
+				"start_time": "14:00",
+				"end_date": "2026-09-29",
+				"end_time": "15:30"
+			}
+		},
+		{
+			"id": "bk-14",
+			"name": "pl-booth1",
+			"place": [
+				{
+					"id": "pl-booth1",
+					"table": "block"
+				}
+			],
+			"who": [
+				{
+					"id": "user-alan-turing",
+					"table": "notion_user"
+				}
+			],
+			"when": {
+				"type": "datetimerange",
+				"start_date": "2026-09-29",
+				"start_time": "13:00",
+				"end_date": "2026-09-29",
+				"end_time": "13:30"
+			}
+		},
+		{
+			"id": "bk-15",
+			"name": "pl-p1",
+			"place": [
+				{
+					"id": "pl-p1",
+					"table": "block"
+				}
+			],
+			"who": [
+				{
+					"id": "user-grace-hopper",
+					"table": "notion_user"
+				}
+			],
+			"when": {
+				"type": "date",
+				"start_date": "2026-09-29"
+			}
+		},
+		{
+			"id": "bk-16",
+			"name": "pl-d1",
+			"place": [
+				{
+					"id": "pl-d1",
+					"table": "block"
+				}
+			],
+			"who": [
+				{
+					"id": "user-grace-hopper",
+					"table": "notion_user"
+				}
+			],
+			"when": {
+				"type": "date",
+				"start_date": "2026-09-30"
+			},
+			"note": "Only in until 12, take it after",
+			"open": true
+		},
+		{
+			"id": "bk-17",
+			"name": "pl-d2",
+			"place": [
+				{
+					"id": "pl-d2",
+					"table": "block"
+				}
+			],
+			"who": [
+				{
+					"id": "user-alan-turing",
+					"table": "notion_user"
+				}
+			],
+			"when": {
+				"type": "date",
+				"start_date": "2026-09-30"
+			},
+			"note": "Back after lunch"
+		},
+		{
+			"id": "bk-18",
+			"name": "pl-d3",
+			"place": [
+				{
+					"id": "pl-d3",
+					"table": "block"
+				}
+			],
+			"who": [
+				{
+					"id": "user-margaret-hamilton",
+					"table": "notion_user"
+				}
+			],
+			"when": {
+				"type": "date",
+				"start_date": "2026-09-30"
+			}
+		},
+		{
+			"id": "bk-19",
+			"name": "pl-q1",
+			"place": [
+				{
+					"id": "pl-q1",
+					"table": "block"
+				}
+			],
+			"who": [
+				{
+					"id": "user-hedy-lamarr",
+					"table": "notion_user"
+				}
+			],
+			"when": {
+				"type": "date",
+				"start_date": "2026-09-30"
+			}
+		},
+		{
+			"id": "bk-20",
+			"name": "Weekly sync",
+			"place": [
+				{
+					"id": "pl-atlas",
+					"table": "block"
+				}
+			],
+			"who": [
+				{
+					"id": "user-radia-perlman",
+					"table": "notion_user"
+				}
+			],
+			"when": {
+				"type": "datetimerange",
+				"start_date": "2026-09-30",
+				"start_time": "10:00",
+				"end_date": "2026-09-30",
+				"end_time": "11:00"
+			}
+		},
+		{
+			"id": "bk-21",
+			"name": "Design review",
+			"place": [
+				{
+					"id": "pl-atlas",
+					"table": "block"
+				}
+			],
+			"who": [
+				{
+					"id": "user-ada-lovelace",
+					"table": "notion_user"
+				}
+			],
+			"when": {
+				"type": "datetimerange",
+				"start_date": "2026-09-30",
+				"start_time": "14:00",
+				"end_date": "2026-09-30",
+				"end_time": "15:30"
+			}
+		},
+		{
+			"id": "bk-22",
+			"name": "pl-booth1",
+			"place": [
+				{
+					"id": "pl-booth1",
+					"table": "block"
+				}
+			],
+			"who": [
+				{
+					"id": "user-alan-turing",
+					"table": "notion_user"
+				}
+			],
+			"when": {
+				"type": "datetimerange",
+				"start_date": "2026-09-30",
+				"start_time": "13:00",
+				"end_date": "2026-09-30",
+				"end_time": "13:30"
+			}
+		},
+		{
+			"id": "bk-23",
+			"name": "pl-p1",
+			"place": [
+				{
+					"id": "pl-p1",
+					"table": "block"
+				}
+			],
+			"who": [
+				{
+					"id": "user-grace-hopper",
+					"table": "notion_user"
+				}
+			],
+			"when": {
+				"type": "date",
+				"start_date": "2026-09-30"
+			}
+		},
+		{
+			"id": "bk-24",
+			"name": "pl-d5",
+			"place": [
+				{
+					"id": "pl-d5",
+					"table": "block"
+				}
+			],
+			"who": [
+				{
+					"id": "user-ada-lovelace",
+					"table": "notion_user"
+				}
+			],
+			"when": {
+				"type": "date",
+				"start_date": "2026-09-30"
+			}
+		},
+		{
+			"id": "bk-25",
+			"name": "pl-d1",
+			"place": [
+				{
+					"id": "pl-d1",
+					"table": "block"
+				}
+			],
+			"who": [
+				{
+					"id": "user-grace-hopper",
+					"table": "notion_user"
+				}
+			],
+			"when": {
+				"type": "date",
+				"start_date": "2026-10-01"
+			},
+			"note": "Only in until 12, take it after",
+			"open": true
+		},
+		{
+			"id": "bk-26",
+			"name": "pl-d2",
+			"place": [
+				{
+					"id": "pl-d2",
+					"table": "block"
+				}
+			],
+			"who": [
+				{
+					"id": "user-alan-turing",
+					"table": "notion_user"
+				}
+			],
+			"when": {
+				"type": "date",
+				"start_date": "2026-10-01"
+			},
+			"note": "Back after lunch"
+		},
+		{
+			"id": "bk-27",
+			"name": "Weekly sync",
+			"place": [
+				{
+					"id": "pl-atlas",
+					"table": "block"
+				}
+			],
+			"who": [
+				{
+					"id": "user-radia-perlman",
+					"table": "notion_user"
+				}
+			],
+			"when": {
+				"type": "datetimerange",
+				"start_date": "2026-10-01",
+				"start_time": "10:00",
+				"end_date": "2026-10-01",
+				"end_time": "11:00"
+			}
+		},
+		{
+			"id": "bk-28",
+			"name": "Design review",
+			"place": [
+				{
+					"id": "pl-atlas",
+					"table": "block"
+				}
+			],
+			"who": [
+				{
+					"id": "user-ada-lovelace",
+					"table": "notion_user"
+				}
+			],
+			"when": {
+				"type": "datetimerange",
+				"start_date": "2026-10-01",
+				"start_time": "14:00",
+				"end_date": "2026-10-01",
+				"end_time": "15:30"
+			}
+		},
+		{
+			"id": "bk-29",
+			"name": "pl-booth1",
+			"place": [
+				{
+					"id": "pl-booth1",
+					"table": "block"
+				}
+			],
+			"who": [
+				{
+					"id": "user-alan-turing",
+					"table": "notion_user"
+				}
+			],
+			"when": {
+				"type": "datetimerange",
+				"start_date": "2026-10-01",
+				"start_time": "13:00",
+				"end_date": "2026-10-01",
+				"end_time": "13:30"
+			}
+		},
+		{
+			"id": "bk-30",
+			"name": "pl-p1",
+			"place": [
+				{
+					"id": "pl-p1",
+					"table": "block"
+				}
+			],
+			"who": [
+				{
+					"id": "user-grace-hopper",
+					"table": "notion_user"
+				}
+			],
+			"when": {
+				"type": "date",
+				"start_date": "2026-10-01"
+			}
+		},
+		{
+			"id": "bk-31",
+			"name": "pl-d1",
+			"place": [
+				{
+					"id": "pl-d1",
+					"table": "block"
+				}
+			],
+			"who": [
+				{
+					"id": "user-grace-hopper",
+					"table": "notion_user"
+				}
+			],
+			"when": {
+				"type": "date",
+				"start_date": "2026-10-02"
+			},
+			"note": "Only in until 12, take it after",
+			"open": true
+		},
+		{
+			"id": "bk-32",
+			"name": "pl-d2",
+			"place": [
+				{
+					"id": "pl-d2",
+					"table": "block"
+				}
+			],
+			"who": [
+				{
+					"id": "user-alan-turing",
+					"table": "notion_user"
+				}
+			],
+			"when": {
+				"type": "date",
+				"start_date": "2026-10-02"
+			},
+			"note": "Back after lunch"
+		},
+		{
+			"id": "bk-33",
+			"name": "pl-d3",
+			"place": [
+				{
+					"id": "pl-d3",
+					"table": "block"
+				}
+			],
+			"who": [
+				{
+					"id": "user-margaret-hamilton",
+					"table": "notion_user"
+				}
+			],
+			"when": {
+				"type": "date",
+				"start_date": "2026-10-02"
+			}
+		},
+		{
+			"id": "bk-34",
+			"name": "pl-q1",
+			"place": [
+				{
+					"id": "pl-q1",
+					"table": "block"
+				}
+			],
+			"who": [
+				{
+					"id": "user-hedy-lamarr",
+					"table": "notion_user"
+				}
+			],
+			"when": {
+				"type": "date",
+				"start_date": "2026-10-02"
+			}
+		},
+		{
+			"id": "bk-35",
+			"name": "Weekly sync",
+			"place": [
+				{
+					"id": "pl-atlas",
+					"table": "block"
+				}
+			],
+			"who": [
+				{
+					"id": "user-radia-perlman",
+					"table": "notion_user"
+				}
+			],
+			"when": {
+				"type": "datetimerange",
+				"start_date": "2026-10-02",
+				"start_time": "10:00",
+				"end_date": "2026-10-02",
+				"end_time": "11:00"
+			}
+		},
+		{
+			"id": "bk-36",
+			"name": "Design review",
+			"place": [
+				{
+					"id": "pl-atlas",
+					"table": "block"
+				}
+			],
+			"who": [
+				{
+					"id": "user-ada-lovelace",
+					"table": "notion_user"
+				}
+			],
+			"when": {
+				"type": "datetimerange",
+				"start_date": "2026-10-02",
+				"start_time": "14:00",
+				"end_date": "2026-10-02",
+				"end_time": "15:30"
+			}
+		},
+		{
+			"id": "bk-37",
+			"name": "pl-booth1",
+			"place": [
+				{
+					"id": "pl-booth1",
+					"table": "block"
+				}
+			],
+			"who": [
+				{
+					"id": "user-alan-turing",
+					"table": "notion_user"
+				}
+			],
+			"when": {
+				"type": "datetimerange",
+				"start_date": "2026-10-02",
+				"start_time": "13:00",
+				"end_date": "2026-10-02",
+				"end_time": "13:30"
+			}
+		},
+		{
+			"id": "bk-38",
+			"name": "pl-p1",
+			"place": [
+				{
+					"id": "pl-p1",
+					"table": "block"
+				}
+			],
+			"who": [
+				{
+					"id": "user-grace-hopper",
+					"table": "notion_user"
+				}
+			],
+			"when": {
+				"type": "date",
+				"start_date": "2026-10-02"
+			}
+		},
+		{
+			"id": "bk-39",
+			"name": "pl-d5",
+			"place": [
+				{
+					"id": "pl-d5",
+					"table": "block"
+				}
+			],
+			"who": [
+				{
+					"id": "user-ada-lovelace",
+					"table": "notion_user"
+				}
+			],
+			"when": {
+				"type": "date",
+				"start_date": "2026-10-02"
+			}
+		}
+	]
+}

@@ -1363,6 +1363,44 @@
 			"country": "Uruguay",
 			"scopes": [],
 			"salesStatus": "available"
+		},
+		{
+			"id": "feat-gap-1",
+			"name": "Oman mandate (draft)",
+			"tags": [
+				"Mandate"
+			],
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
+			"country": "OM",
+			"scopes": [
+				"B2B"
+			]
+		},
+		{
+			"id": "feat-gap-2",
+			"name": "GCC e-invoicing",
+			"tags": [
+				"Mandate"
+			],
+			"product": [
+				{
+					"id": "prod-ctc",
+					"table": "block"
+				}
+			],
+			"eta": {
+				"type": "date",
+				"start_date": "2026-11-01"
+			},
+			"scopes": [
+				"B2B"
+			],
+			"salesStatus": "Roadmap"
 		}
 	]
 }

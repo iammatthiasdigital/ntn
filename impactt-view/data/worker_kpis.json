@@ -31,6 +31,10 @@
 		"range": {
 			"name": "Range ±",
 			"type": "number"
+		},
+		"kind": {
+			"name": "Kind",
+			"type": "select"
 		}
 	},
 	"rows": [
@@ -45,7 +49,8 @@
 				"type": "date",
 				"start_date": "2027-06-30"
 			},
-			"range": 0.3
+			"range": 0.3,
+			"kind": "Impact"
 		},
 		{
 			"id": "kpi-mrr",
@@ -57,7 +62,8 @@
 				"type": "date",
 				"start_date": "2027-06-30"
 			},
-			"range": 0.35
+			"range": 0.35,
+			"kind": "Impact"
 		},
 		{
 			"id": "kpi-ret",
@@ -70,7 +76,8 @@
 				"type": "date",
 				"start_date": "2027-06-30"
 			},
-			"range": 0.3
+			"range": 0.3,
+			"kind": "Impact"
 		},
 		{
 			"id": "kpi-churn",
@@ -83,7 +90,22 @@
 				"type": "date",
 				"start_date": "2027-03-31"
 			},
-			"range": 0.3
+			"range": 0.3,
+			"kind": "Impact"
+		},
+		{
+			"id": "kpi-effort",
+			"name": "Effort",
+			"unit": "Number",
+			"baseline": 0,
+			"direction": "Increase",
+			"goal": 480,
+			"goalBy": {
+				"type": "date",
+				"start_date": "2027-06-30"
+			},
+			"range": 0.2,
+			"kind": "Effort"
 		}
 	]
 }

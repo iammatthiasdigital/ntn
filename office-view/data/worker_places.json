@@ -1,0 +1,244 @@
+{
+	"schema": {
+		"name": {
+			"name": "Name",
+			"type": "title"
+		},
+		"room": {
+			"name": "Room",
+			"type": "relation"
+		},
+		"type": {
+			"name": "Type",
+			"type": "select"
+		},
+		"capacity": {
+			"name": "Seats",
+			"type": "number"
+		},
+		"features": {
+			"name": "Features",
+			"type": "multi_select"
+		}
+	},
+	"rows": [
+		{
+			"id": "pl-d1",
+			"name": "Desk 1",
+			"room": [
+				{
+					"id": "room-open",
+					"table": "block"
+				}
+			],
+			"type": "Desk",
+			"capacity": 1,
+			"features": [
+				"Monitor"
+			]
+		},
+		{
+			"id": "pl-d2",
+			"name": "Desk 2",
+			"room": [
+				{
+					"id": "room-open",
+					"table": "block"
+				}
+			],
+			"type": "Desk",
+			"capacity": 1,
+			"features": [
+				"Monitor",
+				"Standing desk"
+			]
+		},
+		{
+			"id": "pl-d3",
+			"name": "Desk 3",
+			"room": [
+				{
+					"id": "room-open",
+					"table": "block"
+				}
+			],
+			"type": "Desk",
+			"capacity": 1,
+			"features": [
+				"Monitor"
+			]
+		},
+		{
+			"id": "pl-d4",
+			"name": "Desk 4",
+			"room": [
+				{
+					"id": "room-open",
+					"table": "block"
+				}
+			],
+			"type": "Desk",
+			"capacity": 1,
+			"features": [
+				"Monitor",
+				"Standing desk"
+			]
+		},
+		{
+			"id": "pl-d5",
+			"name": "Desk 5",
+			"room": [
+				{
+					"id": "room-open",
+					"table": "block"
+				}
+			],
+			"type": "Desk",
+			"capacity": 1,
+			"features": []
+		},
+		{
+			"id": "pl-d6",
+			"name": "Desk 6",
+			"room": [
+				{
+					"id": "room-open",
+					"table": "block"
+				}
+			],
+			"type": "Desk",
+			"capacity": 1,
+			"features": []
+		},
+		{
+			"id": "pl-q1",
+			"name": "Quiet 1",
+			"room": [
+				{
+					"id": "room-quiet",
+					"table": "block"
+				}
+			],
+			"type": "Desk",
+			"capacity": 1,
+			"features": [
+				"Monitor"
+			]
+		},
+		{
+			"id": "pl-q2",
+			"name": "Quiet 2",
+			"room": [
+				{
+					"id": "room-quiet",
+					"table": "block"
+				}
+			],
+			"type": "Desk",
+			"capacity": 1,
+			"features": [
+				"Monitor"
+			]
+		},
+		{
+			"id": "pl-q3",
+			"name": "Quiet 3",
+			"room": [
+				{
+					"id": "room-quiet",
+					"table": "block"
+				}
+			],
+			"type": "Desk",
+			"capacity": 1,
+			"features": [
+				"Monitor"
+			]
+		},
+		{
+			"id": "pl-atlas",
+			"name": "Atlas",
+			"room": [
+				{
+					"id": "room-atlas",
+					"table": "block"
+				}
+			],
+			"type": "Meeting room",
+			"capacity": 8,
+			"features": [
+				"Video call",
+				"Whiteboard"
+			]
+		},
+		{
+			"id": "pl-booth1",
+			"name": "Booth 1",
+			"room": [
+				{
+					"id": "room-atlas",
+					"table": "block"
+				}
+			],
+			"type": "Phone booth",
+			"capacity": 1,
+			"features": [
+				"Video call"
+			]
+		},
+		{
+			"id": "pl-booth2",
+			"name": "Booth 2",
+			"room": [
+				{
+					"id": "room-lobby",
+					"table": "block"
+				}
+			],
+			"type": "Phone booth",
+			"capacity": 1,
+			"features": []
+		},
+		{
+			"id": "pl-sofa",
+			"name": "Lounge",
+			"room": [
+				{
+					"id": "room-lobby",
+					"table": "block"
+				}
+			],
+			"type": "Lounge",
+			"capacity": 4,
+			"features": []
+		},
+		{
+			"id": "pl-p1",
+			"name": "P1",
+			"room": [
+				{
+					"id": "room-garage",
+					"table": "block"
+				}
+			],
+			"type": "Parking",
+			"capacity": 1,
+			"features": [
+				"EV charger"
+			]
+		},
+		{
+			"id": "pl-p2",
+			"name": "P2",
+			"room": [
+				{
+					"id": "room-garage",
+					"table": "block"
+				}
+			],
+			"type": "Parking",
+			"capacity": 1,
+			"features": []
+		}
+	]
+}

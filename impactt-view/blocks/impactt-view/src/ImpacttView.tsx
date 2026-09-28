@@ -1,17 +1,22 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { AUTO_UNIT, ImpactChart, RANGES, type ChartUI, type RangeKey } from "./chart"
-import { averageDataset, AVG_KPI_ID, buildDataset, kpiColumnCandidates } from "./dataset"
+import { averageDataset, buildDataset, COLUMNS_SOURCE, kpiColumnCandidates, kpiColumnPairs } from "./dataset"
 import { applyFilters, buildProperties, dayIso, EMPTY_FILTERS, hasActiveFilters, newRule, type FilterState } from "./filters/core"
 import { FilterBar } from "./filters/FilterBar"
 import { PropertyMenu } from "./filters/editors"
-import { Chevron, FilterIcon } from "./filters/icons"
+import { FilterIcon } from "./filters/icons"
 import { SettingsPanel, SlidersIcon, type SettingsPage } from "./SettingsPanel"
 import { Popover, useAnchor } from "./filters/popover"
+import { oneOf } from "./share"
+import { ShareIcon, ShareView } from "./ShareView"
 import { createTime, fmtD, fmtMo, goalOf, model, span, type GoalMode, type Growth, type Timing, type TimeUnit } from "./model"
 import type { ImpacttData, Writer } from "./sources"
 
 type ViewState = ChartUI & {
-	kpiId: string | null
+	/** Charted KPIs: one = that KPI; none or several = average mode over them (none = all). */
+	kpiIds: string[]
+	/** Average mode also counts initiatives that move none of the chosen KPIs. */
+	includeAll: boolean
 	table: boolean
 	timing: Timing
 	goalModes: Record<string, GoalMode>
@@ -27,13 +32,30 @@ const DEFAULT_VIEW: ViewState = {
 	scrollT: null,
 	compare: false,
 	lines: { plan: true, actual: true, proj: true, band: true, goal: true },
-	kpiId: null,
+	kpiIds: [],
+	includeAll: false,
 	table: true,
 	timing: "flexible",
 	goalModes: {},
 	kpiColumn: null,
 	filterBar: true,
 	filters: EMPTY_FILTERS,
+}
+
+/** Imported views stay within what the settings allow. */
+function sanitize(v: ViewState): ViewState {
+	const goalModes: Record<string, GoalMode> = {}
+	for (const [k, m] of Object.entries(v.goalModes ?? {})) if (m === "plan" || m === "custom") goalModes[k] = m
+	return {
+		...v,
+		unit: oneOf(v.unit, ["days", "weeks", "months", "quarters", "years"] as const, DEFAULT_VIEW.unit),
+		range: oneOf(v.range, ["all", ...Object.keys(RANGES)] as RangeKey[], DEFAULT_VIEW.range),
+		timing: oneOf(v.timing, ["flexible", "fixed"] as const, DEFAULT_VIEW.timing),
+		scrollT: null,
+		lines: { ...DEFAULT_VIEW.lines, ...v.lines },
+		kpiIds: v.kpiIds.filter((x) => typeof x === "string"),
+		goalModes,
+	}
 }
 
 function loadView(key: string): ViewState {
@@ -137,10 +159,11 @@ function Ready({ data }: { data: Ready }) {
 
 	const Dall = useMemo(() => ({ ...built.dataset, initiatives: built.dataset.initiatives.filter((i) => visible.has(i.id)) }), [built.dataset, visible])
 	// Average mode: several KPIs folded into one "% of goal reached" scale.
-	const avgOn = view.kpiId === AVG_KPI_ID && Dall.kpis.length > 1
-	const D = useMemo(() => (avgOn ? averageDataset(Dall) : Dall), [avgOn, Dall])
+	const sel = useMemo(() => (view.kpiIds ?? []).filter((id) => Dall.kpis.some((x) => x.id === id)), [view.kpiIds, Dall.kpis])
+	const avgOn = Dall.kpis.length > 0 && (view.includeAll || (sel.length !== 1 && Dall.kpis.length > 1))
+	const D = useMemo(() => (avgOn ? averageDataset(Dall, sel, view.includeAll) : Dall), [avgOn, Dall, sel, view.includeAll])
 	const time = useMemo(() => createTime(D.start, D.today), [D.start, D.today])
-	const k = D.kpis.find((x) => x.id === view.kpiId) ?? D.kpis[0]
+	const k = avgOn ? D.kpis[0] : (D.kpis.find((x) => x.id === sel[0]) ?? D.kpis[0])
 	const calc = useMemo(() => {
 		if (!k) return null
 		const M = model(D, time, k)
@@ -233,9 +256,9 @@ function Ready({ data }: { data: Ready }) {
 		}
 	}, [draw])
 
-	/* ---- toolbar: KPI title, settings ---- */
-	const kpiBtn = useAnchor()
+	/* ---- toolbar: title, settings ---- */
 	const setBtn = useAnchor()
+	const shareBtn = useAnchor()
 	const [settings, setSettings] = useState<{ page: SettingsPage; anchor: HTMLElement | null } | null>(null)
 	const openSettings = (page: SettingsPage, anchor: HTMLElement | null) => setSettings({ page, anchor })
 
@@ -256,10 +279,9 @@ function Ready({ data }: { data: Ready }) {
 	return (
 		<>
 			<div className="toolbar">
-				<button type="button" ref={kpiBtn.ref} className="kpititle" onClick={() => openSettings("kpi", kpiBtn.el)} aria-haspopup="dialog" title="Choose KPI">
-					<span>{k?.label ?? "No KPI"}</span>
-					<Chevron />
-				</button>
+				<h2 className="ctitle">
+					Impactt Chart
+				</h2>
 				<span className="spacer" />
 				<div className="tools">
 					<button
@@ -299,7 +321,7 @@ function Ready({ data }: { data: Ready }) {
 					</button>
 					{settings && k && calc ? (
 						<SettingsPanel
-							key={settings.page + (settings.anchor === kpiBtn.el ? "k" : "s")}
+							key={settings.page}
 							anchor={settings.anchor}
 							initialPage={settings.page}
 							onClose={() => setSettings(null)}
@@ -313,8 +335,27 @@ function Ready({ data }: { data: Ready }) {
 							save={save}
 							kpiBound={data.sources.kpis.propertyIdsByKey}
 							onKpiChange={() => chartRef.current?.setPin(null)}
-							columns={kpiColumnCandidates(data.sources)}
+							columns={[
+								...(data.sources.impacts.bound ? kpiColumnCandidates(data.sources) : []),
+								...(kpiColumnPairs(data.sources).length ? [{ id: COLUMNS_SOURCE, name: "Initiatives columns", type: "number" }] : []),
+							]}
+							selected={sel}
 							kpiColumn={built.kpiColumn}
+						/>
+					) : null}
+					<button type="button" ref={shareBtn.ref} className="tool" aria-label="Share view" aria-pressed={shareBtn.open} title="Share view" onClick={shareBtn.toggle}>
+						<ShareIcon />
+					</button>
+					{shareBtn.open ? (
+						<ShareView
+							anchor={shareBtn.el}
+							onClose={shareBtn.close}
+							view={view}
+							setView={setView}
+							block="impactt"
+							defaults={DEFAULT_VIEW}
+							schemas={{ ...data.sources.kpis.propertySchemasById, ...data.sources.impacts.propertySchemasById, ...data.sources.initiatives.propertySchemasById }}
+							sanitize={sanitize}
 						/>
 					) : null}
 				</div>

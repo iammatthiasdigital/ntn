@@ -1,0 +1,421 @@
+/* Org chart: cards on a pannable canvas, connectors that glide as teams open and fold. */
+
+.oc-wrap {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+.oc-vp {
+	position: relative;
+	overflow: hidden;
+	border: 1px solid var(--line);
+	border-radius: 10px;
+	background-color: var(--bg);
+	background-image: radial-gradient(circle, var(--grid) 1px, transparent 1.2px);
+	background-size: 20px 20px;
+	cursor: grab;
+	touch-action: none;
+	user-select: none;
+	outline: none;
+}
+.oc-vp.dragging {
+	cursor: grabbing;
+}
+.oc-vp:focus-visible {
+	box-shadow: 0 0 0 2px rgba(35, 131, 226, 0.4);
+}
+.oc-world {
+	position: absolute;
+	top: 0;
+	left: 0;
+	transform-origin: 0 0;
+}
+.oc-world.moving {
+	transition: transform 0.26s cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+.oc-edges {
+	position: absolute;
+	top: 0;
+	left: 0;
+	overflow: visible;
+	pointer-events: none;
+}
+.oc-edge {
+	fill: none;
+	stroke: var(--fieldline);
+	stroke-width: 1.5;
+	transition: d 0.26s cubic-bezier(0.2, 0.7, 0.3, 1), stroke 0.15s;
+}
+.oc-edge.on {
+	stroke: var(--blue);
+	stroke-width: 2;
+}
+.oc-edge.skip {
+	stroke-dasharray: 4 5;
+}
+
+.oc-node {
+	position: absolute;
+	top: 0;
+	left: 0;
+	transition: transform 0.26s cubic-bezier(0.2, 0.7, 0.3, 1), opacity 0.2s;
+	animation: oc-in 0.28s ease-out;
+}
+@keyframes oc-in {
+	from {
+		opacity: 0;
+		translate: 0 -10px;
+	}
+}
+.oc-node.dim {
+	opacity: 0.32;
+}
+.oc-card {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	box-sizing: border-box;
+	padding: 12px 12px 10px;
+	overflow: hidden;
+	border-radius: 10px;
+	background: var(--panel);
+	box-shadow: 0 0 0 1px var(--line), 0 2px 4px rgba(15, 15, 15, 0.04);
+	cursor: pointer;
+	transition: box-shadow 0.15s, transform 0.15s;
+}
+.oc-card:hover {
+	box-shadow: 0 0 0 1px var(--fieldline), 0 6px 16px rgba(15, 15, 15, 0.1);
+	transform: translateY(-1px);
+}
+.oc-card.chain {
+	box-shadow: 0 0 0 1.5px var(--blue-line), 0 4px 12px rgba(15, 15, 15, 0.06);
+}
+.oc-card.sel {
+	box-shadow: 0 0 0 2px var(--blue), 0 8px 20px rgba(35, 131, 226, 0.18);
+}
+.oc-card[style*="--tint"] {
+	background: linear-gradient(180deg, color-mix(in srgb, var(--tint-bg) 55%, transparent), transparent 52px), var(--panel);
+}
+.oc-stripe {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	height: 4px;
+	background: var(--tint);
+}
+.oc-head {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	min-width: 0;
+}
+.oc-face {
+	display: grid;
+	place-items: center;
+	flex: none;
+	width: 38px;
+	height: 38px;
+	border-radius: 50%;
+	font-size: 13px;
+	font-weight: 700;
+	letter-spacing: 0.02em;
+}
+.oc-face.sm {
+	width: 22px;
+	height: 22px;
+	font-size: 9px;
+}
+.oc-who {
+	min-width: 0;
+}
+.oc-name,
+.oc-role {
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+.oc-name {
+	font-weight: 600;
+	line-height: 20px;
+}
+.oc-role {
+	color: var(--ink2);
+	font-size: 12.5px;
+	line-height: 17px;
+}
+.oc-fields {
+	display: flex;
+	flex-direction: column;
+	border-top: 1px solid var(--line);
+	padding-top: 4px;
+}
+.oc-field {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	height: 24px;
+	min-width: 0;
+	color: var(--ink2);
+	font-size: 12.5px;
+}
+.oc-field .ico {
+	flex: none;
+	opacity: 0.7;
+}
+.oc-txt {
+	overflow: hidden;
+	color: var(--ink);
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+.oc-tags {
+	display: flex;
+	gap: 4px;
+	min-width: 0;
+	overflow: hidden;
+}
+.oc-tags .tag {
+	height: 18px;
+	font-size: 12px;
+	line-height: 18px;
+}
+.oc-nil {
+	color: var(--muted);
+}
+.oc-stats {
+	position: absolute;
+	top: -10px;
+	right: 10px;
+	padding: 0 8px;
+	border-radius: 10px;
+	background: var(--blue);
+	color: #fff;
+	font-size: 11px;
+	font-weight: 600;
+	line-height: 20px;
+	white-space: nowrap;
+	animation: oc-in 0.2s ease-out;
+}
+
+/* Fold / open pill: a little stack of cards with the team size. */
+.oc-pill {
+	position: absolute;
+	left: 50%;
+	bottom: -12px;
+	z-index: 1;
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	height: 22px;
+	min-width: 26px;
+	padding: 0 8px 0 7px;
+	border: 0;
+	border-radius: 11px;
+	background: var(--pop);
+	box-shadow: 0 0 0 1px var(--fieldline), 0 2px 5px rgba(15, 15, 15, 0.08);
+	color: var(--ink2);
+	font-size: 11.5px;
+	font-weight: 650;
+	font-variant-numeric: tabular-nums;
+	cursor: pointer;
+	transform: translateX(-50%);
+	transition: background 0.15s, color 0.15s, transform 0.15s;
+}
+.oc-pill:hover {
+	background: var(--blue);
+	color: #fff;
+	transform: translateX(-50%) scale(1.08);
+}
+.oc-pill.open {
+	padding: 0 7px;
+}
+.oc-stack {
+	position: relative;
+	width: 9px;
+	height: 8px;
+	border-radius: 2px;
+	background: currentColor;
+	opacity: 0.8;
+	box-shadow: 2px -2px 0 -0.5px var(--pop), 2px -2px 0 0.5px currentColor;
+}
+
+/* ---------- floating chrome ---------- */
+
+.oc-search {
+	position: absolute;
+	top: 12px;
+	left: 12px;
+	z-index: 3;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	width: 230px;
+	height: 32px;
+	padding: 0 10px;
+	border-radius: 8px;
+	background: var(--pop);
+	box-shadow: var(--popshadow);
+	color: var(--ink2);
+	cursor: text;
+}
+.oc-search input {
+	flex: 1;
+	min-width: 0;
+	border: 0;
+	background: transparent;
+	color: var(--ink);
+	font: inherit;
+	font-size: 13px;
+	outline: none;
+}
+.oc-matches {
+	position: absolute;
+	top: 36px;
+	left: 0;
+	right: -60px;
+	display: flex;
+	flex-direction: column;
+	padding: 4px;
+	border-radius: 8px;
+	background: var(--pop);
+	box-shadow: var(--popshadow);
+}
+.oc-matches button {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	height: 32px;
+	padding: 0 8px;
+	border: 0;
+	border-radius: 6px;
+	background: none;
+	text-align: left;
+	cursor: pointer;
+}
+.oc-matches button.on {
+	background: var(--hover);
+}
+.oc-m-n {
+	font-size: 13px;
+	white-space: nowrap;
+}
+.oc-m-r {
+	overflow: hidden;
+	color: var(--ink2);
+	font-size: 12px;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+.oc-legend {
+	position: absolute;
+	top: 12px;
+	right: 12px;
+	z-index: 2;
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: flex-end;
+	gap: 4px;
+	max-width: 50%;
+}
+.oc-legend button {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	height: 26px;
+	padding: 0 9px;
+	border: 0;
+	border-radius: 13px;
+	background: var(--pop);
+	box-shadow: 0 0 0 1px var(--line);
+	font-size: 12px;
+	cursor: pointer;
+	transition: opacity 0.15s;
+}
+.oc-legend button.on {
+	box-shadow: 0 0 0 1.5px var(--blue);
+}
+.oc-legend button.off {
+	opacity: 0.45;
+}
+.oc-swatch {
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+}
+.oc-controls {
+	position: absolute;
+	right: 12px;
+	bottom: 12px;
+	z-index: 3;
+	display: flex;
+	align-items: center;
+	padding: 3px;
+	border-radius: 10px;
+	background: var(--pop);
+	box-shadow: var(--popshadow);
+}
+.oc-controls button {
+	min-width: 28px;
+	height: 28px;
+	padding: 0 8px;
+	border: 0;
+	border-radius: 7px;
+	background: none;
+	color: var(--ink2);
+	font-size: 13px;
+	cursor: pointer;
+}
+.oc-controls button:hover {
+	background: var(--hover);
+	color: var(--ink);
+}
+.oc-z {
+	min-width: 48px !important;
+	font-size: 12px !important;
+	font-variant-numeric: tabular-nums;
+}
+.oc-sep {
+	width: 1px;
+	height: 16px;
+	margin: 0 4px;
+	background: var(--line);
+}
+.oc-count {
+	position: absolute;
+	left: 14px;
+	bottom: 12px;
+	color: var(--muted);
+	font-size: 12px;
+	pointer-events: none;
+}
+.oc-empty {
+	position: absolute;
+	inset: 0;
+	display: grid;
+	place-items: center;
+	color: var(--ink2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.oc-world.moving,
+	.oc-node,
+	.oc-edge {
+		transition: none;
+		animation: none;
+	}
+}
+
+.oc-via {
+	position: absolute;
+	bottom: 100%;
+	left: 8px;
+	max-width: calc(100% - 16px);
+	overflow: hidden;
+	padding-bottom: 3px;
+	color: var(--muted);
+	font-size: 11.5px;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}

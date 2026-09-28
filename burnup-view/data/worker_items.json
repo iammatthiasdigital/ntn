@@ -1,0 +1,601 @@
+{
+	"schema": {
+		"name": {
+			"name": "Name",
+			"type": "title"
+		},
+		"estimate": {
+			"name": "Estimate",
+			"type": "number"
+		},
+		"added": {
+			"name": "Added",
+			"type": "date"
+		},
+		"done": {
+			"name": "Done",
+			"type": "date"
+		},
+		"team": {
+			"name": "Team",
+			"type": "select"
+		},
+		"status": {
+			"name": "Status",
+			"type": "status"
+		},
+		"owner": {
+			"name": "Owner",
+			"type": "people"
+		},
+		"type": {
+			"name": "Type",
+			"type": "select"
+		}
+	},
+	"rows": [
+		{
+			"id": "item-1",
+			"name": "Login page",
+			"estimate": 3,
+			"added": {
+				"type": "date",
+				"start_date": "2026-06-01"
+			},
+			"team": "Web",
+			"status": "Done",
+			"owner": [
+				{
+					"id": "user-ada-lovelace",
+					"table": "notion_user"
+				}
+			],
+			"type": "Feature",
+			"done": {
+				"type": "date",
+				"start_date": "2026-06-12"
+			}
+		},
+		{
+			"id": "item-2",
+			"name": "Password reset",
+			"estimate": 8,
+			"added": {
+				"type": "date",
+				"start_date": "2026-06-01"
+			},
+			"team": "Platform",
+			"status": "Done",
+			"owner": [
+				{
+					"id": "user-grace-hopper",
+					"table": "notion_user"
+				}
+			],
+			"type": "Feature",
+			"done": {
+				"type": "date",
+				"start_date": "2026-06-19"
+			}
+		},
+		{
+			"id": "item-3",
+			"name": "Profile settings",
+			"estimate": 13,
+			"added": {
+				"type": "date",
+				"start_date": "2026-06-01"
+			},
+			"team": "Growth",
+			"status": "Done",
+			"owner": [
+				{
+					"id": "user-alan-turing",
+					"table": "notion_user"
+				}
+			],
+			"type": "Chore",
+			"done": {
+				"type": "date",
+				"start_date": "2026-06-25"
+			}
+		},
+		{
+			"id": "item-4",
+			"name": "Avatar upload",
+			"estimate": 3,
+			"added": {
+				"type": "date",
+				"start_date": "2026-06-01"
+			},
+			"team": "Web",
+			"status": "Done",
+			"owner": [
+				{
+					"id": "user-margaret-hamilton",
+					"table": "notion_user"
+				}
+			],
+			"type": "Chore",
+			"done": {
+				"type": "date",
+				"start_date": "2026-07-02"
+			}
+		},
+		{
+			"id": "item-5",
+			"name": "Email verification",
+			"estimate": 5,
+			"added": {
+				"type": "date",
+				"start_date": "2026-06-01"
+			},
+			"team": "Platform",
+			"status": "Done",
+			"owner": [
+				{
+					"id": "user-ada-lovelace",
+					"table": "notion_user"
+				}
+			],
+			"type": "Feature",
+			"done": {
+				"type": "date",
+				"start_date": "2026-07-08"
+			}
+		},
+		{
+			"id": "item-6",
+			"name": "Onboarding tour",
+			"estimate": 1,
+			"added": {
+				"type": "date",
+				"start_date": "2026-06-01"
+			},
+			"team": "Growth",
+			"status": "Done",
+			"owner": [
+				{
+					"id": "user-grace-hopper",
+					"table": "notion_user"
+				}
+			],
+			"type": "Bug",
+			"done": {
+				"type": "date",
+				"start_date": "2026-07-15"
+			}
+		},
+		{
+			"id": "item-7",
+			"name": "Team invites",
+			"estimate": 1,
+			"added": {
+				"type": "date",
+				"start_date": "2026-06-01"
+			},
+			"team": "Web",
+			"status": "Done",
+			"owner": [
+				{
+					"id": "user-alan-turing",
+					"table": "notion_user"
+				}
+			],
+			"type": "Feature",
+			"done": {
+				"type": "date",
+				"start_date": "2026-07-21"
+			}
+		},
+		{
+			"id": "item-8",
+			"name": "Roles & permissions",
+			"estimate": 5,
+			"added": {
+				"type": "date",
+				"start_date": "2026-06-01"
+			},
+			"team": "Platform",
+			"status": "Done",
+			"owner": [
+				{
+					"id": "user-margaret-hamilton",
+					"table": "notion_user"
+				}
+			],
+			"type": "Bug",
+			"done": {
+				"type": "date",
+				"start_date": "2026-07-28"
+			}
+		},
+		{
+			"id": "item-9",
+			"name": "Audit log",
+			"estimate": 13,
+			"added": {
+				"type": "date",
+				"start_date": "2026-06-01"
+			},
+			"team": "Growth",
+			"status": "Done",
+			"owner": [
+				{
+					"id": "user-ada-lovelace",
+					"table": "notion_user"
+				}
+			],
+			"type": "Chore",
+			"done": {
+				"type": "date",
+				"start_date": "2026-08-03"
+			}
+		},
+		{
+			"id": "item-10",
+			"name": "Billing page",
+			"estimate": 2,
+			"added": {
+				"type": "date",
+				"start_date": "2026-06-01"
+			},
+			"team": "Web",
+			"status": "Done",
+			"owner": [
+				{
+					"id": "user-grace-hopper",
+					"table": "notion_user"
+				}
+			],
+			"type": "Chore",
+			"done": {
+				"type": "date",
+				"start_date": "2026-08-10"
+			}
+		},
+		{
+			"id": "item-11",
+			"name": "Invoices PDF",
+			"estimate": 5,
+			"added": {
+				"type": "date",
+				"start_date": "2026-06-01"
+			},
+			"team": "Platform",
+			"status": "Done",
+			"owner": [
+				{
+					"id": "user-alan-turing",
+					"table": "notion_user"
+				}
+			],
+			"type": "Feature",
+			"done": {
+				"type": "date",
+				"start_date": "2026-08-17"
+			}
+		},
+		{
+			"id": "item-12",
+			"name": "Usage metering",
+			"estimate": 5,
+			"added": {
+				"type": "date",
+				"start_date": "2026-06-01"
+			},
+			"team": "Growth",
+			"status": "Done",
+			"owner": [
+				{
+					"id": "user-margaret-hamilton",
+					"table": "notion_user"
+				}
+			],
+			"type": "Bug",
+			"done": {
+				"type": "date",
+				"start_date": "2026-08-23"
+			}
+		},
+		{
+			"id": "item-13",
+			"name": "Plan upgrade",
+			"estimate": 2,
+			"added": {
+				"type": "date",
+				"start_date": "2026-06-01"
+			},
+			"team": "Web",
+			"status": "Done",
+			"owner": [
+				{
+					"id": "user-ada-lovelace",
+					"table": "notion_user"
+				}
+			],
+			"type": "Feature",
+			"done": {
+				"type": "date",
+				"start_date": "2026-08-30"
+			}
+		},
+		{
+			"id": "item-14",
+			"name": "Webhooks",
+			"estimate": 13,
+			"added": {
+				"type": "date",
+				"start_date": "2026-06-01"
+			},
+			"team": "Platform",
+			"status": "Done",
+			"owner": [
+				{
+					"id": "user-grace-hopper",
+					"table": "notion_user"
+				}
+			],
+			"type": "Feature",
+			"done": {
+				"type": "date",
+				"start_date": "2026-09-05"
+			}
+		},
+		{
+			"id": "item-15",
+			"name": "API keys",
+			"estimate": 5,
+			"added": {
+				"type": "date",
+				"start_date": "2026-06-01"
+			},
+			"team": "Growth",
+			"status": "Done",
+			"owner": [
+				{
+					"id": "user-alan-turing",
+					"table": "notion_user"
+				}
+			],
+			"type": "Feature",
+			"done": {
+				"type": "date",
+				"start_date": "2026-09-12"
+			}
+		},
+		{
+			"id": "item-16",
+			"name": "Rate limiting",
+			"estimate": 1,
+			"added": {
+				"type": "date",
+				"start_date": "2026-06-01"
+			},
+			"team": "Web",
+			"status": "Done",
+			"owner": [
+				{
+					"id": "user-margaret-hamilton",
+					"table": "notion_user"
+				}
+			],
+			"type": "Chore",
+			"done": {
+				"type": "date",
+				"start_date": "2026-09-18"
+			}
+		},
+		{
+			"id": "item-17",
+			"name": "Search",
+			"estimate": 13,
+			"added": {
+				"type": "date",
+				"start_date": "2026-08-31"
+			},
+			"team": "Platform",
+			"status": "In progress",
+			"owner": [
+				{
+					"id": "user-ada-lovelace",
+					"table": "notion_user"
+				}
+			],
+			"type": "Chore"
+		},
+		{
+			"id": "item-18",
+			"name": "Saved filters",
+			"estimate": 5,
+			"added": {
+				"type": "date",
+				"start_date": "2026-07-04"
+			},
+			"team": "Growth",
+			"status": "In progress",
+			"owner": [
+				{
+					"id": "user-grace-hopper",
+					"table": "notion_user"
+				}
+			],
+			"type": "Chore"
+		},
+		{
+			"id": "item-19",
+			"name": "CSV export",
+			"estimate": 2,
+			"added": {
+				"type": "date",
+				"start_date": "2026-09-10"
+			},
+			"team": "Web",
+			"status": "In progress",
+			"owner": [
+				{
+					"id": "user-alan-turing",
+					"table": "notion_user"
+				}
+			],
+			"type": "Bug"
+		},
+		{
+			"id": "item-20",
+			"name": "Dark mode",
+			"estimate": 5,
+			"added": {
+				"type": "date",
+				"start_date": "2026-07-03"
+			},
+			"team": "Platform",
+			"status": "In progress",
+			"owner": [
+				{
+					"id": "user-margaret-hamilton",
+					"table": "notion_user"
+				}
+			],
+			"type": "Chore"
+		},
+		{
+			"id": "item-21",
+			"name": "Mobile layout",
+			"added": {
+				"type": "date",
+				"start_date": "2026-06-29"
+			},
+			"team": "Growth",
+			"status": "In progress",
+			"owner": [
+				{
+					"id": "user-ada-lovelace",
+					"table": "notion_user"
+				}
+			],
+			"type": "Feature"
+		},
+		{
+			"id": "item-22",
+			"name": "Notifications",
+			"added": {
+				"type": "date",
+				"start_date": "2026-09-08"
+			},
+			"team": "Web",
+			"status": "Not started",
+			"owner": [
+				{
+					"id": "user-grace-hopper",
+					"table": "notion_user"
+				}
+			],
+			"type": "Bug"
+		},
+		{
+			"id": "item-23",
+			"name": "Slack integration",
+			"added": {
+				"type": "date",
+				"start_date": "2026-09-16"
+			},
+			"team": "Platform",
+			"status": "Not started",
+			"owner": [
+				{
+					"id": "user-alan-turing",
+					"table": "notion_user"
+				}
+			],
+			"type": "Bug"
+		},
+		{
+			"id": "item-24",
+			"name": "SSO (SAML)",
+			"added": {
+				"type": "date",
+				"start_date": "2026-07-31"
+			},
+			"team": "Growth",
+			"status": "Not started",
+			"owner": [
+				{
+					"id": "user-margaret-hamilton",
+					"table": "notion_user"
+				}
+			],
+			"type": "Chore"
+		},
+		{
+			"id": "item-25",
+			"name": "Data retention",
+			"added": {
+				"type": "date",
+				"start_date": "2026-08-18"
+			},
+			"team": "Web",
+			"status": "Not started",
+			"owner": [
+				{
+					"id": "user-ada-lovelace",
+					"table": "notion_user"
+				}
+			],
+			"type": "Bug"
+		},
+		{
+			"id": "item-26",
+			"name": "Status page",
+			"estimate": 13,
+			"added": {
+				"type": "date",
+				"start_date": "2026-07-22"
+			},
+			"team": "Platform",
+			"status": "Not started",
+			"owner": [
+				{
+					"id": "user-grace-hopper",
+					"table": "notion_user"
+				}
+			],
+			"type": "Feature"
+		},
+		{
+			"id": "item-27",
+			"name": "Accessibility pass",
+			"estimate": 13,
+			"added": {
+				"type": "date",
+				"start_date": "2026-09-18"
+			},
+			"team": "Growth",
+			"status": "Not started",
+			"owner": [
+				{
+					"id": "user-alan-turing",
+					"table": "notion_user"
+				}
+			],
+			"type": "Feature"
+		},
+		{
+			"id": "item-28",
+			"name": "Performance budget",
+			"estimate": 5,
+			"added": {
+				"type": "date",
+				"start_date": "2026-07-01"
+			},
+			"team": "Web",
+			"status": "Not started",
+			"owner": [
+				{
+					"id": "user-margaret-hamilton",
+					"table": "notion_user"
+				}
+			],
+			"type": "Bug"
+		}
+	]
+}

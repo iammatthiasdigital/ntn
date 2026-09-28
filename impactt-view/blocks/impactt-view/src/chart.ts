@@ -464,7 +464,7 @@ export class ImpactChart {
 			txt(
 				fg,
 				{ x: bx - 8, y: ly, "text-anchor": "end", "font-size": 12, "font-weight": 600, fill: cc, class: "halo num" },
-				`Projected ${fmt(G.proj, k.fmt)} · ${G.gap < 0 ? fmtD(-diff, k.fmt).replace(/^−/, "") + " short" : fmtD(diff, k.fmt).replace(/^\+/, "") + " ahead"}`
+				`Projected ${fmt(G.proj, k.fmt)} · ${fmtD(diff, k.fmt).replace(/^[+−]/, "")} ${k.kind === "effort" ? (G.gap < 0 ? "over budget" : "under budget") : G.gap < 0 ? "short" : "ahead"}`
 			)
 		}
 		const tX = x(T)
@@ -495,7 +495,7 @@ export class ImpactChart {
 			txt(
 				over,
 				{ x: L + 8, y: y(G.value) - 7, "font-size": 12, "font-weight": 600, fill: "var(--goal)", class: "halo" },
-				`Goal ${fmt(G.value, k.fmt)}${G.mode === "plan" ? " (from plan)" : ""} by ${time.monthYear(G.by - 0.01)}`
+				`${k.kind === "effort" ? "Budget" : "Goal"} ${fmt(G.value, k.fmt)}${G.mode === "plan" ? " (from plan)" : ""} by ${time.monthYear(G.by - 0.01)}`
 			)
 
 		/* crosshair */
@@ -568,10 +568,11 @@ export class ImpactChart {
 			r("If off plan", o.timing === "fixed" ? "Impact changes" : "Timeline moves") +
 			r("Growth", o.growth === "exp" ? "Exponential" : "Linear") +
 			"<hr>"
-		h += r("Planned impact", fmtD(o.P, f))
-		if (o.state !== "planned") h += r(o.state === "done" ? "Delivered" : "Achieved so far", fmtD(o.N, f))
-		if (o.state === "active") h += r("Projected impact", fmtD(o.proj, f))
-		if (o.state !== "planned") h += r("Impact vs plan", fmtD(o.dImp, f))
+		const eff = c.k.kind === "effort"
+		h += r(eff ? "Estimated effort" : "Planned impact", fmtD(o.P, f))
+		if (o.state !== "planned") h += r(eff ? "Spent" : o.state === "done" ? "Delivered" : "Achieved so far", fmtD(o.N, f))
+		if (o.state === "active") h += r(eff ? "Projected effort" : "Projected impact", fmtD(o.proj, f))
+		if (o.state !== "planned") h += r(eff ? "Effort vs estimate" : "Impact vs plan", fmtD(o.dImp, f))
 		h += "<hr>" + r("Planned", t.mWin(o.pa, o.pe))
 		if (o.state === "done") h += r("Actual", t.mWin(o.sa, o.ea))
 		if (o.state === "active") {

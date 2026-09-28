@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { pages, users } from "@notionhq/custom-blocks"
 import { useBlockId, useCurrentUser, useDataSource } from "@notionhq/custom-blocks/react"
 import { pointerIds, textOf } from "./filters/core"
-import type { SourceRow, SourceSnapshot, Sources } from "./dataset"
+import { kpiColumnPairs, type SourceRow, type SourceSnapshot, type Sources } from "./dataset"
 import { GROWTH_NAMES, lastDayOf, TIMING_NAMES, type ImpacttData, type Writer } from "./sources"
 import type { Growth, Timing } from "./model"
 
@@ -201,7 +201,10 @@ export function useImpacttData(): ImpacttData {
 		const missing = (Object.keys(sources) as (keyof Sources)[]).filter((k) => !sources[k].bound)
 		if (loading && missing.length === 0) return { status: "loading" }
 		// KPIs is optional: KPI names can come from a select column in Impacts.
-		if (!sources.initiatives.bound || !sources.impacts.bound) return { status: "unbound", missing: missing.filter((m) => m !== "kpis") }
+		// Impacts is optional too when the Initiatives database has "<KPI> planned / achieved" columns.
+		const impactsOptional = kpiColumnPairs(sources).length > 0
+		if (!sources.initiatives.bound || (!sources.impacts.bound && !impactsOptional))
+			return { status: "unbound", missing: missing.filter((m) => m !== "kpis" && (m !== "impacts" || !impactsOptional)) }
 		return {
 			status: "ready",
 			sources,

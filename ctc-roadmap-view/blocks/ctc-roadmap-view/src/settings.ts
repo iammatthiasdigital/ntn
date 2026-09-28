@@ -1,97 +1,86 @@
 /**
- * Block settings, editable on the page so wording changes in the database
- * (a renamed tag, product, or sales status) don't require a code change.
- * Filters hold the selected values (multi-select against lists rendered
- * from the database); matching is case-insensitive. An empty tag/product
- * selection switches that filter off. Persisted per browser, best effort.
+ * The block's view: which board, the board scope (tags, product), the
+ * coverage lanes, lane colors and export format, plus the Notion-style
+ * filters. Remembered per block in each viewer's browser (kit
+ * usePersistentView); views saved by the earlier version of the block
+ * (one global entry per browser) seed the defaults once.
  */
+import { DEFAULT_DONE_COLOR, DEFAULT_TODO_COLOR, isHexColor } from "./colors"
+import { EMPTY_FILTERS } from "./kit/filters/core"
+import type { WithFilters } from "./kit/toolbar"
 
 export type BlockView = "kanban" | "coverage"
 
-export type BlockSettings = {
+export type View = WithFilters & {
 	view: BlockView
 	/** Tags to keep (both views); empty = filter off. */
 	tagTerms: string[]
 	/** Product names to keep (singular/plural match); empty = filter off. */
 	productTerms: string[]
-	/** Scopes to keep (both views); empty = filter off. */
-	scopeTerms: string[]
-	/** Sales statuses of the AVAILABLE lane; empty = empty lane. */
+	/** Sales statuses of the AVAILABLE lane; ["*"] = any status. */
 	availableTerms: string[]
-	/** Sales statuses of the ROADMAP lane; empty = empty lane. */
+	/** Sales statuses of the ROADMAP lane. */
 	roadmapTerms: string[]
 	/** Pad the exported PNG to a 16:9 canvas so it drops onto a slide. */
 	exportSlide: boolean
+	/** Lane colors: delivered quarters / roadmap lane, upcoming quarters / available lane. */
+	done: string
+	todo: string
+	/** List rows in scope that miss an ETA, country, sales status or readable product. */
+	showMissing: boolean
 }
 
-export const DEFAULT_SETTINGS: BlockSettings = {
+export const DEFAULT_VIEW: View = {
 	view: "kanban",
 	tagTerms: ["mandate"],
 	productTerms: ["Compliance transaction"],
-	scopeTerms: [],
 	availableTerms: ["available"],
 	roadmapTerms: ["roadmap"],
 	exportSlide: true,
+	done: DEFAULT_DONE_COLOR,
+	todo: DEFAULT_TODO_COLOR,
+	showMissing: true,
+	filters: EMPTY_FILTERS,
+	filterBar: true,
 }
 
-const STORAGE_KEY = "ctc-roadmap-settings"
+const LEGACY_SETTINGS = "ctc-roadmap-settings"
+const LEGACY_COLORS = "ctc-roadmap-colors"
 
-function textList(value: unknown, legacy: unknown, fallback: string[]): string[] {
-	if (Array.isArray(value)) {
-		return value.filter(
-			(entry): entry is string => typeof entry === "string" && entry.trim() !== ""
-		)
-	}
-	// Migration from the free-text single-term settings.
-	if (typeof legacy === "string" && legacy.trim() !== "") return [legacy]
-	return [...fallback]
+function textList(value: unknown, fallback: string[]): string[] {
+	if (!Array.isArray(value)) return [...fallback]
+	return value.filter((e): e is string => typeof e === "string" && e.trim() !== "" && e.length < 200).slice(0, 100)
 }
 
-function sanitize(value: unknown): BlockSettings {
-	const record =
-		value !== null && typeof value === "object"
-			? (value as Record<string, unknown>)
-			: {}
+/** Clamps any view-shaped value (storage, view codes) to what the settings allow. */
+export function sanitize(value: unknown): View {
+	const r = value !== null && typeof value === "object" ? (value as Record<string, unknown>) : {}
 	return {
-		view: record.view === "coverage" ? "coverage" : "kanban",
-		tagTerms: textList(record.tagTerms, record.tagTerm, DEFAULT_SETTINGS.tagTerms),
-		productTerms: textList(
-			record.productTerms,
-			record.productTerm,
-			DEFAULT_SETTINGS.productTerms
-		),
-		scopeTerms: textList(record.scopeTerms, undefined, DEFAULT_SETTINGS.scopeTerms),
-		availableTerms: textList(
-			record.availableTerms,
-			record.availableTerm,
-			DEFAULT_SETTINGS.availableTerms
-		),
-		roadmapTerms: textList(
-			record.roadmapTerms,
-			record.roadmapTerm,
-			DEFAULT_SETTINGS.roadmapTerms
-		),
-		exportSlide:
-			typeof record.exportSlide === "boolean"
-				? record.exportSlide
-				: DEFAULT_SETTINGS.exportSlide,
+		...DEFAULT_VIEW,
+		...(r as Partial<View>),
+		view: r.view === "coverage" ? "coverage" : "kanban",
+		tagTerms: textList(r.tagTerms, DEFAULT_VIEW.tagTerms),
+		productTerms: textList(r.productTerms, DEFAULT_VIEW.productTerms),
+		availableTerms: textList(r.availableTerms, DEFAULT_VIEW.availableTerms),
+		roadmapTerms: textList(r.roadmapTerms, DEFAULT_VIEW.roadmapTerms),
+		exportSlide: typeof r.exportSlide === "boolean" ? r.exportSlide : DEFAULT_VIEW.exportSlide,
+		done: isHexColor(r.done) ? r.done : DEFAULT_VIEW.done,
+		todo: isHexColor(r.todo) ? r.todo : DEFAULT_VIEW.todo,
+		showMissing: typeof r.showMissing === "boolean" ? r.showMissing : DEFAULT_VIEW.showMissing,
+		filters: (r.filters as View["filters"]) ?? EMPTY_FILTERS,
+		filterBar: typeof r.filterBar === "boolean" ? r.filterBar : true,
 	}
 }
 
-export function loadSettings(): BlockSettings {
+/** Defaults, seeded from the previous version's per-browser settings when present. */
+export function initialView(): View {
 	try {
-		const raw = window.localStorage.getItem(STORAGE_KEY)
-		if (raw) return sanitize(JSON.parse(raw))
+		const s = window.localStorage.getItem(LEGACY_SETTINGS)
+		const c = window.localStorage.getItem(LEGACY_COLORS)
+		if (!s && !c) return DEFAULT_VIEW
+		const colors = c ? (JSON.parse(c) as Record<string, unknown>) : {}
+		return sanitize({ ...(s ? JSON.parse(s) : {}), done: colors.done, todo: colors.todo, filters: EMPTY_FILTERS })
 	} catch {
-		// Storage unavailable in this sandbox — fall through to defaults.
-	}
-	return sanitize({})
-}
-
-export function storeSettings(settings: BlockSettings): void {
-	try {
-		window.localStorage.setItem(STORAGE_KEY, JSON.stringify(settings))
-	} catch {
-		// Best effort only.
+		return DEFAULT_VIEW
 	}
 }

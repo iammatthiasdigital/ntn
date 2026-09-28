@@ -108,9 +108,13 @@ start slow, like referral loops, and changes how the projection extrapolates.
 
 - **Delivery tracking:** delays show up as dashed extensions and colour
   changes, and the chart shows how much they move the overall goal.
-- **Portfolio view across KPIs:** the _All KPIs · average_ mode (described
-  below) folds every KPI into one "% of goal reached" scale. A portfolio of
-  initiatives that touch different metrics can then be judged together.
+- **Portfolio view across KPIs:** average mode (described below) folds
+  several KPIs into one "% of goal reached" scale. A portfolio of initiatives
+  that touch different metrics can then be judged together.
+- **Effort and budget tracking:** chart effort (hours, person-days, cost)
+  instead of an outcome. Bars are estimates, the fill is what's spent, the
+  goal line is the budget, and the projection shows whether the portfolio
+  will overrun it.
 - **Team and owner views:** filter by team, owner, status or any other
   property to see one team's contribution to a shared goal.
 - **Steering meetings:** the chart makes statements like "we're projected
@@ -126,8 +130,8 @@ Notion databases.
 
 ### Features
 
-- **Live data** from three databases: Initiatives, Impacts, and optionally
-  KPIs.
+- **Live data** from Initiatives, plus Impacts and KPIs where you use them.
+  KPIs can also live directly on Initiatives as number columns.
 - **Notion-style filter bar**, built from your Initiatives database. Every
   property can be filtered, whatever its type:
   - text, numbers and checkboxes,
@@ -139,7 +143,7 @@ Notion databases.
   Simple filters appear as chips. The advanced filter supports And / Or
   rules and groups.
 - **Chart settings** in a Notion-style panel (the sliders icon). Here you
-  choose the KPI, the database column the KPIs come from, the goal, the
+  choose one or more KPIs, where the KPIs come from, the goal, the
   default "If off plan" rule, which lines to show, and whether to show the
   table. The panel also has a legend.
 - **Write-back:** changing "If off plan" or "Growth" in the table updates the
@@ -163,7 +167,8 @@ such as Team, Owner, Status or Tags, can be filtered on automatically.
 | Growth      | select | `Linear` or `Exponential`                                               |
 | Note        | text   | Shown in the tooltip                                                    |
 
-**Impacts** has one row per initiative and each KPI it moves.
+**Impacts** has one row per initiative and each KPI it moves. It's optional
+if you keep KPIs on Initiatives instead (see below).
 
 | Property   | Type                             | Meaning                                                                      |
 | ---------- | -------------------------------- | ---------------------------------------------------------------------------- |
@@ -185,6 +190,7 @@ by relation or by the same title.
 | Goal      | number | Target. When empty, the goal is the plan total.             |
 | Goal by   | date   | When the goal should be reached                             |
 | Range ±   | number | Projection uncertainty: `0.3` or `30` means ±30% (default)  |
+| Kind      | select | `Impact` or `Effort`. Empty guesses from the name.          |
 
 A KPI without a row in the KPIs database is treated as follows:
 
@@ -193,17 +199,52 @@ A KPI without a row in the KPIs database is treated as follows:
 - If all its impacts are negative, it's a "decrease" KPI.
 - Its goal comes from the plan.
 
-### All KPIs · average
+### KPIs directly on Initiatives
 
-With more than one KPI, the KPI list offers **All KPIs · average**:
+You don't need an Impacts database if each initiative carries its numbers
+itself. Add number (or formula / rollup) columns in pairs named
+`<KPI> planned` and `<KPI> achieved`, for example `Revenue planned` and
+`Revenue achieved`. `plan`, `target` and `estimate` work for the first,
+`actual`, `now`, `current`, `spent`, `used` and `delivered` for the second.
+Then choose **Settings → KPI → KPIs from → Initiatives columns**. A KPIs row
+with the same title (`Revenue`) still adds unit, baseline and goal.
 
-- Every initiative that moves at least one KPI gets an equal share of a 100%
-  goal. With 9 initiatives, that's 11.1% each.
+### Effort instead of impact
+
+Impactt works for effort as well as outcomes, for example to see how much
+effort you've used and how much you still intend to use. Mark a KPI as
+effort with **Kind = Effort** in the KPIs database, or give it a name like
+"Effort", "Hours" or "Person-days". Then:
+
+- the bar height is the estimate and the fill is the effort spent,
+- the goal line is the **budget**, and the gap reads "over budget" or
+  "under budget",
+- spending more than estimated is the bad case: statuses read "Done, over
+  effort" or "Will overrun" instead of "Impact missed".
+
+The sample data has `Effort planned` and `Effort spent` columns on
+Initiatives to try this.
+
+### Choosing KPIs and average mode
+
+The KPI page in the settings lists every KPI with a checkmark:
+
+- **One KPI** is charted in its own unit (users, €, %).
+- **Several KPIs**, or **All KPIs · average**, are charted as the average
+  percentage of goal reached. For two KPIs out of four, only those two count.
+- **Include all initiatives** also brings in initiatives that move none of
+  the chosen KPIs. They share the 100% too and are judged by delivery: a
+  done initiative has reached its share, the others count as planned.
+
+In average mode:
+
+- Every initiative that moves at least one chosen KPI gets an equal share of
+  a 100% goal. With 9 initiatives, that's 11.1% each.
 - For each KPI it moves, the initiative's reach is achieved ÷ planned, capped
   at ±300%. Its achieved share is its share times the average of those
   reaches. An initiative at 50% on one KPI and 100% on another has reached
   75% of its share.
-- The goal date is the latest goal date among the KPIs.
+- The goal date is the latest goal date among the chosen KPIs.
 - Filters apply first, so the 100% is split among the initiatives still
   visible.
 
@@ -221,7 +262,7 @@ ntn workers deploy --name impactt-view
 ```
 
 In a Notion page, type `/custom` and choose the Impactt block. Then connect
-**Initiatives**, **Impacts** and, if you use it, **KPIs**. Until the
+**Initiatives** and, if you use them, **Impacts** and **KPIs**. Until the
 databases are connected, the block shows a setup hint.
 
 ---
@@ -259,9 +300,10 @@ ntn workers customblocks dev     # Notion mock host at localhost:9873
 ```
 
 The dev shell connects the sample databases in `data/` automatically. They
-contain the Impactt sample: 9 initiatives, 4 KPIs and 16 impact rows. They
-also include extra properties to filter on, and a "KPI tag" select for trying
-out a different KPI column. Restart the dev shell after editing the files.
+contain the Impactt sample: 9 initiatives, 5 KPIs (one of them effort) and
+16 impact rows. They also include extra properties to filter on, a "KPI tag"
+select for trying out a different KPI column, and `Effort planned` /
+`Effort spent` columns on Initiatives. Restart the dev shell after editing the files.
 
 To run the block without any Notion host:
 

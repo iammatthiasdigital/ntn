@@ -98,13 +98,22 @@ worker.customBlock("impactt", {
 						"Empty uses 0.3.",
 					type: "number",
 				},
+				kind: {
+					name: "Kind",
+					description:
+						"Impact (an outcome such as users or revenue) or Effort " +
+						"(work such as hours or person-days, where spending more " +
+						"than planned is the bad case). Empty guesses from the name.",
+					type: "select",
+				},
 			},
 		},
 		impacts: {
 			name: "Impacts",
 			description:
 				"One row per initiative and KPI it moves: the planned change and " +
-				"what it has achieved so far.",
+				"what it has achieved so far. Optional when Initiatives has " +
+				"number columns named \"<KPI> planned\" and \"<KPI> achieved\".",
 			icon: { type: "emoji", emoji: "📈" },
 			properties: {
 				name: { name: "Name", type: "title" },

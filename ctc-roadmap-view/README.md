@@ -1,16 +1,31 @@
 # Worker custom block: CTC roadmap view
 
-**TL;DR:** Two switchable views over a Features database, rendered inside a
-Notion page. **Roadmap** is a quarterly kanban of rows tagged `mandate` for
-the product `Compliance transaction(s)`, bucketed into Q1–Q4 by ETA — cards
-show the page icon (flag), resolved country name, and mandate scopes;
-completed quarters render green, upcoming ones blue, with a year picker.
-**Coverage** is a country status key: distinct countries in an AVAILABLE and
-a ROADMAP panel, driven by a Sales status property. All matching is
-case-insensitive, and every filter term is editable in the block's settings
-(⚙) so database wording changes don't need a code change. Lane colors are
-selectable; a PNG export renders the active view on a transparent
-background, fitted to a 16:9 slide canvas. Typeface: Manrope (bundled).
+Two boards over a Features database, in the same Notion UI as the other
+blocks in this repo (shared kit in `src/kit/`):
+
+- **Top bar**: title, export, filter, settings and share buttons.
+- **Roadmap**: a quarterly kanban of mandates for the product
+  `Compliance transaction(s)` tagged `mandate`, bucketed by ETA. Delivered
+  quarters use the first lane color and upcoming ones the second. A year
+  stepper sits under the top bar.
+- **Coverage**: countries in an Available and a Roadmap lane, by Sales status.
+- **Filters**: the Notion-style filter bar works on every property (for
+  example *Scopes contains B2B*).
+- **Settings** (sliders button): board, the Tags / Product scope, the status
+  terms of the two coverage lanes, lane colors and export format. All
+  matching is case-insensitive.
+- **Share view**: copies the view, including those settings and colors, as a
+  code.
+- **Export PNG** (download button): renders the active board on a
+  transparent background, optionally fitted to a 16:9 slide canvas.
+- **Board design** matches the slides: Manrope (bundled), bordered quarter
+  columns in the lane colors, centered flag cards.
+- **Missing properties** (toggle in settings, on by default): a list under the
+  board of rows in scope that lack an ETA, country, sales status or a
+  readable product.
+
+Views are remembered per block in each browser. Settings saved by the older
+version of the block seed the defaults once.
 
 ## Quickstart
 

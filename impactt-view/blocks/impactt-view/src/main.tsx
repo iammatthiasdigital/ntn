@@ -6,10 +6,13 @@ import { fallbackLabel } from "./filters/core"
 import { MOCK_ME, MOCK_USERS, mockSources, mockTitle, mockWriter } from "./mockData"
 import { useImpacttData } from "./useImpacttData"
 import type { ImpacttData } from "./sources"
+import { ErrorBoundary } from "./ErrorBoundary"
 import "./impactt.css"
 
 const params = new URLSearchParams(window.location.search)
-const isMock = params.has("mock")
+/** Replaced at build time: false in production builds. */
+declare const __MOCK__: boolean
+const isMock = __MOCK__ && params.has("mock")
 
 /** Standalone dev harness: seed data in memory, theme via ?theme=dark. */
 function MockRoot(): React.ReactNode {
@@ -39,10 +42,14 @@ function HostedApp(): React.ReactNode {
 
 createRoot(document.getElementById("root")!).render(
 	isMock ? (
-		<MockRoot />
+		<ErrorBoundary storagePrefix="impactt:">
+			<MockRoot />
+		</ErrorBoundary>
 	) : (
 		<NotionCustomBlock>
-			<HostedApp />
+			<ErrorBoundary storagePrefix="impactt:">
+				<HostedApp />
+			</ErrorBoundary>
 		</NotionCustomBlock>
 	)
 )

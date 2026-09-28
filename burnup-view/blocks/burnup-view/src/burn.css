@@ -1,0 +1,94 @@
+.burnchart {
+	position: relative;
+	width: 100%;
+	overflow: hidden;
+}
+.burnchart svg {
+	display: block;
+}
+.seg {
+	display: inline-flex;
+	margin-right: 4px;
+	padding: 2px;
+	border-radius: 6px;
+	background: var(--hover);
+}
+.seg button {
+	height: 22px;
+	padding: 0 8px;
+	border: 0;
+	border-radius: 4px;
+	background: none;
+	color: var(--ink2);
+	font: inherit;
+	font-size: 12px;
+	cursor: pointer;
+}
+.seg button[aria-checked="true"] {
+	background: var(--panel);
+	color: var(--ink);
+	box-shadow: rgba(15, 15, 15, 0.1) 0 0 0 1px, rgba(15, 15, 15, 0.1) 0 1px 2px;
+}
+.vibe {
+	position: relative;
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	margin: 0 0 10px;
+	padding: 10px 14px;
+	border-radius: 8px;
+	background: var(--blue-bg);
+	overflow: hidden;
+}
+.vibe.party,
+.vibe.good {
+	background: rgba(68, 131, 97, 0.1);
+}
+.vibe.meh {
+	background: rgba(203, 145, 47, 0.12);
+}
+.vibe.bad {
+	background: rgba(212, 76, 71, 0.1);
+}
+.vibe-e {
+	font-size: 26px;
+	line-height: 1;
+}
+.vibe-t {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	min-width: 0;
+}
+.vibe-t span {
+	color: var(--ink2);
+}
+.confetti {
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+}
+.confetti i {
+	position: absolute;
+	top: -10px;
+	width: 6px;
+	height: 10px;
+	border-radius: 1px;
+	animation: fall 1.8s ease-in 1 forwards;
+}
+@keyframes fall {
+	to {
+		top: 110%;
+		opacity: 0.2;
+	}
+}
+@media (prefers-reduced-motion: reduce) {
+	.confetti {
+		display: none;
+	}
+}
+.nb svg text.flagtxt {
+	font-size: 10px;
+	font-weight: 600;
+	fill: #fff;
+}

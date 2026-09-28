@@ -1,0 +1,282 @@
+{
+	"schema": {
+		"name": {
+			"name": "Name",
+			"type": "title"
+		},
+		"who": {
+			"name": "Who",
+			"type": "people"
+		},
+		"dates": {
+			"name": "Dates",
+			"type": "date"
+		},
+		"effort": {
+			"name": "Effort",
+			"type": "number"
+		},
+		"project": {
+			"name": "Project",
+			"type": "select"
+		},
+		"discipline": {
+			"name": "Discipline",
+			"type": "select"
+		},
+		"allocation": {
+			"name": "Allocation %",
+			"type": "number"
+		}
+	},
+	"rows": [
+		{
+			"id": "as-1",
+			"name": "Checkout redesign",
+			"who": [
+				{
+					"id": "user-ada-lovelace",
+					"table": "notion_user"
+				}
+			],
+			"dates": {
+				"type": "daterange",
+				"start_date": "2026-09-01",
+				"end_date": "2026-10-30"
+			},
+			"effort": 160,
+			"project": "Checkout",
+			"discipline": "Design",
+			"allocation": 0.5
+		},
+		{
+			"id": "as-2",
+			"name": "Payments API",
+			"who": [
+				{
+					"id": "user-ada-lovelace",
+					"table": "notion_user"
+				},
+				{
+					"id": "user-alan-turing",
+					"table": "notion_user"
+				}
+			],
+			"dates": {
+				"type": "daterange",
+				"start_date": "2026-10-05",
+				"end_date": "2026-11-27"
+			},
+			"effort": 240,
+			"project": "Checkout",
+			"discipline": "Engineering",
+			"allocation": 0.4
+		},
+		{
+			"id": "as-3",
+			"name": "Mobile onboarding",
+			"who": [
+				{
+					"id": "user-grace-hopper",
+					"table": "notion_user"
+				}
+			],
+			"dates": {
+				"type": "daterange",
+				"start_date": "2026-09-14",
+				"end_date": "2026-11-06"
+			},
+			"effort": 200,
+			"project": "Mobile app",
+			"discipline": "Engineering",
+			"allocation": 0.6
+		},
+		{
+			"id": "as-4",
+			"name": "Push notifications",
+			"who": [
+				{
+					"id": "user-grace-hopper",
+					"table": "notion_user"
+				}
+			],
+			"dates": {
+				"type": "daterange",
+				"start_date": "2026-10-19",
+				"end_date": "2026-12-11"
+			},
+			"effort": 180,
+			"project": "Mobile app",
+			"discipline": "Engineering",
+			"allocation": 0.5
+		},
+		{
+			"id": "as-5",
+			"name": "Offline mode",
+			"who": [
+				{
+					"id": "user-grace-hopper",
+					"table": "notion_user"
+				}
+			],
+			"dates": {
+				"type": "daterange",
+				"start_date": "2026-11-16",
+				"end_date": "2027-01-22"
+			},
+			"effort": 220,
+			"project": "Mobile app",
+			"discipline": "Engineering",
+			"allocation": 0.7
+		},
+		{
+			"id": "as-6",
+			"name": "Data warehouse",
+			"who": [
+				{
+					"id": "user-alan-turing",
+					"table": "notion_user"
+				}
+			],
+			"dates": {
+				"type": "daterange",
+				"start_date": "2026-08-24",
+				"end_date": "2026-10-16"
+			},
+			"effort": 200,
+			"project": "Analytics",
+			"discipline": "Engineering",
+			"allocation": 0.5
+		},
+		{
+			"id": "as-7",
+			"name": "KPI dashboards",
+			"who": [
+				{
+					"id": "user-alan-turing",
+					"table": "notion_user"
+				},
+				{
+					"id": "user-margaret-hamilton",
+					"table": "notion_user"
+				}
+			],
+			"dates": {
+				"type": "daterange",
+				"start_date": "2026-10-12",
+				"end_date": "2026-12-04"
+			},
+			"effort": 160,
+			"project": "Analytics",
+			"discipline": "Design",
+			"allocation": 0.3
+		},
+		{
+			"id": "as-8",
+			"name": "Hiring: 2 engineers",
+			"who": [
+				{
+					"id": "user-margaret-hamilton",
+					"table": "notion_user"
+				}
+			],
+			"dates": {
+				"type": "daterange",
+				"start_date": "2026-09-01",
+				"end_date": "2026-12-18"
+			},
+			"effort": 120,
+			"project": "Team",
+			"discipline": "Management",
+			"allocation": 0.2
+		},
+		{
+			"id": "as-9",
+			"name": "Q4 planning",
+			"who": [
+				{
+					"id": "user-ada-lovelace",
+					"table": "notion_user"
+				},
+				{
+					"id": "user-grace-hopper",
+					"table": "notion_user"
+				},
+				{
+					"id": "user-alan-turing",
+					"table": "notion_user"
+				},
+				{
+					"id": "user-margaret-hamilton",
+					"table": "notion_user"
+				}
+			],
+			"dates": {
+				"type": "daterange",
+				"start_date": "2026-10-26",
+				"end_date": "2026-11-06"
+			},
+			"effort": 64,
+			"project": "Team",
+			"discipline": "Management",
+			"allocation": 0.2
+		},
+		{
+			"id": "as-10",
+			"name": "Security audit",
+			"who": [
+				{
+					"id": "user-margaret-hamilton",
+					"table": "notion_user"
+				}
+			],
+			"dates": {
+				"type": "daterange",
+				"start_date": "2026-11-02",
+				"end_date": "2026-11-27"
+			},
+			"effort": 120,
+			"project": "Platform",
+			"discipline": "Engineering",
+			"allocation": 0.6
+		},
+		{
+			"id": "as-11",
+			"name": "Design system",
+			"who": [
+				{
+					"id": "user-ada-lovelace",
+					"table": "notion_user"
+				}
+			],
+			"dates": {
+				"type": "daterange",
+				"start_date": "2026-11-16",
+				"end_date": "2027-01-29"
+			},
+			"effort": 200,
+			"project": "Platform",
+			"discipline": "Design",
+			"allocation": 0.6
+		},
+		{
+			"id": "as-12",
+			"name": "Customer interviews",
+			"who": [
+				{
+					"id": "user-margaret-hamilton",
+					"table": "notion_user"
+				}
+			],
+			"dates": {
+				"type": "daterange",
+				"start_date": "2026-09-21",
+				"end_date": "2026-10-09"
+			},
+			"effort": 60,
+			"project": "Mobile app",
+			"discipline": "Research",
+			"allocation": 0.4
+		}
+	]
+}

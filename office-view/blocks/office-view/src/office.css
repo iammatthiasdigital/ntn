@@ -1,0 +1,521 @@
+.nb {
+	--free: #448361;
+	--free-bg: rgba(68, 131, 97, 0.08);
+	--part: #cb912f;
+	--part-bg: rgba(203, 145, 47, 0.1);
+	--busy: #9b9a97;
+	--busy-bg: rgba(55, 53, 47, 0.06);
+	--mine: #2383e2;
+	--mine-bg: rgba(35, 131, 226, 0.1);
+}
+.nb[data-theme="dark"] {
+	--free: #4dab9a;
+	--free-bg: rgba(77, 171, 154, 0.12);
+	--part: #dfab01;
+	--part-bg: rgba(223, 171, 1, 0.12);
+	--busy: #7f7f7f;
+	--busy-bg: rgba(255, 255, 255, 0.05);
+	--mine: #529cca;
+	--mine-bg: rgba(82, 156, 202, 0.16);
+}
+.daybar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 4px;
+	padding: 6px 0 10px;
+}
+.daystat {
+	font-size: 12px;
+	color: var(--ink2);
+}
+.floor {
+	margin: 14px 0 8px;
+	font-size: 12px;
+	font-weight: 500;
+	color: var(--ink2);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+.rooms {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+	gap: 10px;
+}
+.room {
+	border: 1px solid var(--line);
+	border-radius: 8px;
+	padding: 10px;
+	min-width: 0;
+}
+.room-h {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 8px;
+	margin-bottom: 8px;
+}
+.room-h b {
+	font-weight: 600;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.room-h span {
+	flex: none;
+	font-size: 12px;
+	color: var(--ink2);
+}
+.tiles {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+	gap: 6px;
+}
+.tile {
+	position: relative;
+	min-width: 0;
+	border: 1px solid transparent;
+	border-left: 3px solid var(--free);
+	border-radius: 5px;
+	background: var(--free-bg);
+	color: var(--ink);
+}
+.tile:hover {
+	border-color: var(--fieldline);
+	border-left-color: var(--free);
+}
+.tile.partial {
+	border-left-color: var(--part);
+	background: var(--part-bg);
+}
+.tile.busy {
+	border-left-color: var(--busy);
+	background: var(--busy-bg);
+	color: var(--ink2);
+}
+.tile.mine {
+	border-left-color: var(--mine);
+	background: var(--mine-bg);
+}
+.tile.offered {
+	border-left-color: var(--part);
+	background: var(--part-bg);
+	border-style: dashed solid dashed solid;
+}
+.tile-main {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 3px;
+	width: 100%;
+	min-height: 54px;
+	padding: 7px 22px 7px 8px;
+	border: 0;
+	background: none;
+	color: inherit;
+	font: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+.tile-claim {
+	display: none;
+	font-size: 11px;
+	font-weight: 600;
+	color: var(--blue);
+}
+.tile-main:hover .tile-claim {
+	display: block;
+}
+/* Swap the status for the claim hint only on tiles that can be claimed. */
+.tile-main:has(.tile-claim):hover > .tile-s,
+.tile-main:has(.tile-claim):hover > .tag {
+	display: none;
+}
+.tile-more {
+	position: absolute;
+	top: 4px;
+	right: 3px;
+	display: grid;
+	place-items: center;
+	width: 20px;
+	height: 20px;
+	border: 0;
+	border-radius: 4px;
+	background: none;
+	color: var(--muted);
+	cursor: pointer;
+}
+.tile-more:hover {
+	background: var(--hover);
+	color: var(--ink);
+}
+.tag {
+	max-width: 100%;
+	padding: 0 6px;
+	border-radius: 3px;
+	background: var(--busy-bg);
+	font-size: 11px;
+	line-height: 17px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.tag.me {
+	background: var(--mine);
+	color: #fff;
+}
+.sticky {
+	position: absolute;
+	right: -4px;
+	bottom: -8px;
+	z-index: 1;
+	max-width: 110px;
+	padding: 2px 6px;
+	background: #fff3a8;
+	color: #3b3312;
+	font-size: 10.5px;
+	line-height: 14px;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+	transform: rotate(-3deg);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	pointer-events: none;
+}
+.usual {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px 12px;
+	margin: 0 0 10px;
+	padding: 8px 12px;
+	border-radius: 8px;
+	background: var(--mine-bg);
+}
+.usual span {
+	flex: 1;
+	min-width: 200px;
+}
+.toast {
+	position: sticky;
+	bottom: 8px;
+	z-index: 20;
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	width: fit-content;
+	max-width: 100%;
+	margin: 10px auto 0;
+	padding: 8px 12px;
+	border-radius: 8px;
+	background: #2f2e2a;
+	color: #fff;
+	box-shadow: var(--popshadow);
+}
+.toast .ghost {
+	color: #9cc8f0;
+}
+.badge {
+	margin-left: 6px;
+	padding: 0 5px;
+	border-radius: 3px;
+	background: var(--part-bg);
+	color: var(--part);
+	font-size: 11px;
+}
+.brow-edit {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 2px 6px 6px 22px;
+}
+.bnote {
+	margin: 0 6px 6px 22px;
+	font-size: 12px;
+	font-style: italic;
+	color: var(--ink2);
+}
+.note-in {
+	flex: 1;
+	min-width: 90px;
+	height: 26px;
+	font-size: 12px;
+}
+.offer {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	font-size: 12px;
+	color: var(--ink2);
+	white-space: nowrap;
+	cursor: pointer;
+}
+.claimrow {
+	padding: 2px 14px 8px;
+}
+.claimrow .snote {
+	padding: 4px 0 0;
+}
+.btn.wide {
+	width: 100%;
+}
+.dot.offered {
+	background: var(--part);
+}
+.tl-b.offered,
+.strip-b.offered {
+	border-style: dashed;
+	opacity: 0.6;
+}
+.mine-row .note-in {
+	max-width: 220px;
+}
+.hint {
+	margin: 6px 6px 0;
+	font-size: 12px;
+	color: var(--muted);
+}
+.tile-t {
+	display: flex;
+	align-items: center;
+	gap: 5px;
+	max-width: 100%;
+	font-weight: 500;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.tile-s {
+	max-width: 100%;
+	font-size: 11px;
+	color: var(--ink2);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.glyph {
+	flex: none;
+	color: var(--ink2);
+	vertical-align: -2px;
+}
+
+/* timeline */
+.tl {
+	overflow-x: auto;
+}
+.tl-row {
+	display: flex;
+	align-items: center;
+	min-width: 560px;
+	height: 30px;
+	border-bottom: 1px solid var(--line);
+}
+.tl-head {
+	height: 22px;
+	border-bottom: 0;
+}
+.tl-room {
+	padding: 10px 0 4px;
+	font-size: 12px;
+	font-weight: 500;
+	color: var(--ink2);
+}
+.tl-name {
+	flex: none;
+	display: flex;
+	align-items: center;
+	gap: 5px;
+	width: 150px;
+	padding-right: 8px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.tl-track {
+	position: relative;
+	flex: 1;
+	height: 100%;
+	cursor: copy;
+}
+.tl-head .tl-track {
+	cursor: default;
+}
+.tl-hour {
+	position: absolute;
+	top: 4px;
+	transform: translateX(-50%);
+	font-size: 11px;
+	color: var(--muted);
+}
+.tl-grid {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	border-left: 1px solid var(--grid);
+}
+.tl-b {
+	position: absolute;
+	top: 5px;
+	bottom: 5px;
+	padding: 0 6px;
+	border-radius: 4px;
+	background: var(--busy-bg);
+	border: 1px solid var(--fieldline);
+	font-size: 11px;
+	line-height: 18px;
+	color: var(--ink2);
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+	cursor: default;
+}
+.tl-b.mine {
+	background: var(--mine-bg);
+	border-color: var(--mine);
+	color: var(--ink);
+}
+.tl-now {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	border-left: 1.5px solid var(--today);
+	pointer-events: none;
+}
+
+/* booking popover */
+.book .shead-t {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+.strip {
+	position: relative;
+	height: 22px;
+	margin: 4px 14px 18px;
+	border-radius: 4px;
+	background: var(--free-bg);
+}
+.strip-b {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	background: var(--busy);
+	opacity: 0.45;
+}
+.strip-b.mine {
+	background: var(--mine);
+}
+.strip-pick {
+	position: absolute;
+	top: -2px;
+	bottom: -2px;
+	border: 2px solid var(--blue);
+	border-radius: 4px;
+}
+.strip-l,
+.strip-r {
+	position: absolute;
+	top: 24px;
+	font-size: 11px;
+	color: var(--muted);
+}
+.strip-l {
+	left: 0;
+}
+.strip-r {
+	right: 0;
+}
+.blist {
+	padding: 0 8px;
+}
+.brow,
+.mine-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	min-height: 28px;
+	padding: 0 6px;
+}
+.brow-l,
+.mine-l {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.sub {
+	margin-left: 6px;
+	font-size: 12px;
+	color: var(--ink2);
+}
+.dot {
+	flex: none;
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: var(--busy);
+}
+.dot.mine {
+	background: var(--mine);
+}
+.bform {
+	display: flex;
+	align-items: flex-end;
+	gap: 8px;
+	padding: 4px 14px 10px;
+}
+.bfield {
+	display: flex;
+	flex-direction: column;
+	gap: 3px;
+	font-size: 12px;
+	color: var(--ink2);
+}
+.bfield.wide {
+	padding: 0 14px 8px;
+}
+.bfield .field,
+.bfield .dd {
+	font-size: 14px;
+	color: var(--ink);
+}
+.nform {
+	padding-bottom: 12px;
+}
+.nform .btn {
+	margin: 4px 14px 0;
+}
+.snote.bad {
+	color: var(--bad);
+}
+.btn {
+	height: 30px;
+	padding: 0 12px;
+	border: 1px solid var(--fieldline);
+	border-radius: 6px;
+	background: var(--panel);
+	color: var(--ink);
+	font: inherit;
+	font-weight: 500;
+	cursor: pointer;
+}
+.btn.primary {
+	border-color: transparent;
+	background: var(--blue);
+	color: #fff;
+}
+.btn:disabled {
+	opacity: 0.4;
+	cursor: default;
+}
+.mybookings {
+	margin-top: 16px;
+	border-top: 1px solid var(--line);
+	padding-top: 6px;
+}
+.mybookings h3 {
+	margin: 6px 0;
+	font-size: 14px;
+	font-weight: 600;
+}

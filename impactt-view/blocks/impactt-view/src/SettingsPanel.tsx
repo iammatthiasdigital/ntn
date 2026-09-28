@@ -9,12 +9,13 @@ import { Popover } from "./filters/popover"
 import { ArrowRight, Check, Close, PropIcon } from "./filters/icons"
 import { fmt, type Goal, type GoalMode, type Kpi, type Timing } from "./model"
 import type { Writer } from "./sources"
-import { AVG_KPI_ID } from "./dataset"
+import { COLUMNS_SOURCE } from "./dataset"
 
 export type SettingsPage = "root" | "kpi" | "column" | "timing" | "goal" | "lines" | "legend"
 
 export type SettingsState = {
-	kpiId: string | null
+	kpiIds: string[]
+	includeAll: boolean
 	kpiColumn: string | null
 	timing: Timing
 	goalModes: Record<string, GoalMode>
@@ -40,6 +41,8 @@ type Props = {
 	/** Impacts columns that can name the KPI, and the one in use. */
 	columns: { id: string; name: string; type: string }[]
 	kpiColumn: string | null
+	/** KPI ids chosen (valid ones only); empty = all. */
+	selected: string[]
 }
 
 /* ---------- icons (16px line glyphs, Notion style) ---------- */
@@ -148,9 +151,9 @@ function ToggleRow({ icon, label, on, onChange }: { icon: ReactNode; label: Reac
 	)
 }
 
-function PickRow({ label, sub, selected, onClick }: { label: string; sub?: string; selected: boolean; onClick: () => void }) {
+function PickRow({ label, sub, selected, onClick, checkbox }: { label: string; sub?: string; selected: boolean; onClick: () => void; checkbox?: boolean }) {
 	return (
-		<button type="button" className="srow" role="menuitemradio" aria-checked={selected} onClick={onClick}>
+		<button type="button" className="srow" role={checkbox ? "menuitemcheckbox" : "menuitemradio"} aria-checked={selected} onClick={onClick}>
 			<span className="srow-l">
 				{label}
 				{sub ? <span className="srow-sub">{sub}</span> : null}
@@ -207,33 +210,51 @@ export function SettingsPanel(p: Props) {
 				<Header title="KPI" onBack={back} onClose={p.onClose} />
 				<div className="sbody" role="menu">
 					{p.kpis.length === 0 ? <p className="snote">No impact rows name a KPI in this column yet.</p> : null}
-					{p.kpis.map((x) => (
+					{p.kpis.length > 1 ? (
 						<PickRow
-							key={x.id}
-							label={x.label}
-							selected={x.id === k.id}
+							label="All KPIs · average"
+							sub="100% = every initiative reaches its planned value, averaged over its KPIs"
+							selected={p.selected.length === 0}
 							onClick={() => {
-								setUi({ kpiId: x.id })
+								setUi({ kpiIds: [] })
 								p.onKpiChange()
-								back()
 							}}
 						/>
-					))}
-					{p.kpis.length > 1 ? (
-						<>
-							<div className="msep" />
+					) : null}
+					{p.kpis.map((x) => {
+						const on = p.selected.includes(x.id)
+						return (
 							<PickRow
-								label="All KPIs · average"
-								sub="100% = every initiative reaches its planned impact, averaged over its KPIs"
-								selected={k.id === AVG_KPI_ID}
+								key={x.id}
+								label={x.label}
+								sub={x.kind === "effort" ? "Effort" : undefined}
+								selected={on}
+								checkbox
 								onClick={() => {
-									setUi({ kpiId: AVG_KPI_ID })
+									const next = on ? p.selected.filter((id) => id !== x.id) : [...p.selected, x.id]
+									// Picking every KPI is the same as "All".
+									setUi({ kpiIds: next.length === p.kpis.length ? [] : next })
 									p.onKpiChange()
-									back()
 								}}
 							/>
-						</>
-					) : null}
+						)
+					})}
+					{p.kpis.length > 1 ? <p className="snote">One KPI is charted in its own unit. Several, or All, are charted as the average % of goal reached.</p> : null}
+					<div className="msep" />
+					<ToggleRow
+						icon={null}
+						label={
+							<>
+								Include all initiatives
+								<span className="srow-sub">Also those without the chosen KPIs, judged by delivery: done counts as reached</span>
+							</>
+						}
+						on={view.includeAll}
+						onChange={(v) => {
+							setUi({ includeAll: v })
+							p.onKpiChange()
+						}}
+					/>
 					<div className="msep" />
 					<NavRow icon={<ColumnIcon />} label="KPIs from" value={colName ?? "None"} onClick={() => setPage("column")} />
 				</div>
@@ -244,7 +265,7 @@ export function SettingsPanel(p: Props) {
 			<>
 				<Header title="KPIs from" onBack={() => setPage("kpi")} onClose={p.onClose} />
 				<div className="sbody" role="menu">
-					<p className="snote">The Impacts column that names the KPI. Each value in it becomes a KPI you can chart.</p>
+					<p className="snote">The Impacts column that names the KPI (each value becomes a KPI), or number columns on Initiatives named “KPI planned” and “KPI achieved”.</p>
 					{p.columns.map((c) => (
 						<button
 							type="button"
@@ -253,7 +274,7 @@ export function SettingsPanel(p: Props) {
 							role="menuitemradio"
 							aria-checked={c.id === p.kpiColumn}
 							onClick={() => {
-								setUi({ kpiColumn: c.id, kpiId: null })
+								setUi({ kpiColumn: c.id, kpiIds: [] })
 								p.onKpiChange()
 								setPage("kpi")
 							}}
@@ -262,7 +283,7 @@ export function SettingsPanel(p: Props) {
 								<PropIcon type={c.type} />
 							</span>
 							<span className="srow-l">{c.name}</span>
-							<span className="srow-v">{c.type === "relation" ? "Relation" : c.type === "select" ? "Select" : "Multi-select"}</span>
+							<span className="srow-v">{c.id === COLUMNS_SOURCE ? "Planned / achieved" : c.type === "relation" ? "Relation" : c.type === "select" ? "Select" : "Multi-select"}</span>
 							{c.id === p.kpiColumn ? (
 								<span className="srow-check">
 									<Check />
@@ -270,7 +291,7 @@ export function SettingsPanel(p: Props) {
 							) : null}
 						</button>
 					))}
-					{p.columns.length === 0 ? <p className="snote">Add a relation, select or multi-select property to the Impacts database.</p> : null}
+					{p.columns.length === 0 ? <p className="snote">Add a relation, select or multi-select property to Impacts, or “planned” and “achieved” number columns to Initiatives.</p> : null}
 				</div>
 			</>
 		)

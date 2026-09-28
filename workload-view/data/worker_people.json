@@ -1,0 +1,55 @@
+{
+	"schema": {
+		"name": {
+			"name": "Name",
+			"type": "title"
+		},
+		"person": {
+			"name": "Person",
+			"type": "people"
+		},
+		"hours": {
+			"name": "Hours per week",
+			"type": "number"
+		},
+		"workload": {
+			"name": "Workload %",
+			"type": "number"
+		}
+	},
+	"rows": [
+		{
+			"id": "pp-ada",
+			"name": "Ada Lovelace",
+			"person": [
+				{
+					"id": "user-ada-lovelace",
+					"table": "notion_user"
+				}
+			],
+			"hours": 40
+		},
+		{
+			"id": "pp-grace",
+			"name": "Grace Hopper",
+			"person": [
+				{
+					"id": "user-grace-hopper",
+					"table": "notion_user"
+				}
+			],
+			"hours": 32
+		},
+		{
+			"id": "pp-alan",
+			"name": "Alan Turing",
+			"person": [
+				{
+					"id": "user-alan-turing",
+					"table": "notion_user"
+				}
+			],
+			"workload": 0.5
+		}
+	]
+}

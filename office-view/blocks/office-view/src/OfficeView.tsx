@@ -1,0 +1,873 @@
+import { useEffect, useMemo, useState, type ReactNode } from "react"
+import { dayIso, EMPTY_FILTERS } from "./kit/filters/core"
+import { Plus } from "./kit/filters/icons"
+import { Popover, useAnchor } from "./kit/filters/popover"
+import { ClockIcon, ColumnIcon, LayersIcon, NavRow, Note, NumberRow, PersonIcon, PickRow, Sep, SettingsShell, TargetIcon, ToggleRow } from "./kit/settings"
+import { W, type BlockData, type SourceSnapshot } from "./kit/sources"
+import { oneOf, within } from "./kit/share"
+import { Loading, Setup, Toolbar, useFiltered, usePersistentView, type WithFilters } from "./kit/toolbar"
+import { addDay, bookingsOn, clash, dayLabel, firstFree, hhmm, readOffice, stateOf, takesOver, usualPlace, type Booking, type Office, type Place, type State } from "./office"
+
+export type Keys = "rooms" | "places" | "bookings"
+type Ready = Extract<BlockData<Keys>, { status: "ready" }>
+
+type View = WithFilters & {
+	layout: "rooms" | "timeline"
+	open: number
+	close: number
+	length: number
+	names: boolean
+	/** "office": the paper-company look; "notion": plain Notion styling. */
+	theme: "office" | "notion"
+	/** One click on a free place claims it for the whole day. */
+	quick: boolean
+}
+
+const DEFAULT: View = { layout: "rooms", open: 8 * 60, close: 19 * 60, length: 60, names: true, theme: "office", quick: true, filters: EMPTY_FILTERS, filterBar: true }
+
+/** Imported views stay within what the settings allow. */
+function sanitize(v: View): View {
+	const open = Math.round(within(v.open, 0, 23 * 60, DEFAULT.open) / 30) * 30
+	return {
+		...v,
+		layout: oneOf(v.layout, ["rooms", "timeline"] as const, DEFAULT.layout),
+		theme: oneOf(v.theme, ["office", "notion"] as const, DEFAULT.theme),
+		open,
+		close: Math.round(within(v.close, open + 60, 24 * 60, DEFAULT.close) / 30) * 30,
+		length: Math.round(within(v.length, 15, 12 * 60, DEFAULT.length)),
+	}
+}
+
+/** Wording per theme. */
+const COPY = {
+	office: {
+		title: "The Office",
+		free: "Up for grabs",
+		claim: "Claim it",
+		yours: "Hello, it's you",
+		empty: "Nobody's in. It's just you and the copier.",
+		mine: "Your desk, your rules",
+		moved: (from: string, to: string) => `📎 Moved your stuff from ${from} to ${to}.`,
+		claimed: (p: string) => `📎 ${p} is yours for the day. Put a plant on it.`,
+		usualFree: (p: string) => `Your usual spot, ${p}, is free. Claim it before someone from Accounting does.`,
+		usualMine: (p: string) => `You're at ${p} today. Same desk, same mug.`,
+		grabs: "Up for grabs",
+	},
+	notion: {
+		title: "Office",
+		free: "Free",
+		claim: "Book the day",
+		yours: "Yours",
+		empty: "No places yet. Add a room and places with the + button.",
+		mine: "Your bookings",
+		moved: (from: string, to: string) => `Moved your booking from ${from} to ${to}.`,
+		claimed: (p: string) => `Booked ${p} for the whole day.`,
+		usualFree: (p: string) => `Your usual place, ${p}, is free today.`,
+		usualMine: (p: string) => `You're at ${p} today.`,
+		grabs: "Can be taken",
+	},
+}
+type Copy = (typeof COPY)["office"]
+
+export function OfficeView({ data, theme }: { data: BlockData<Keys>; theme: "light" | "dark" }) {
+	return (
+		<div className="nb" data-theme={theme}>
+			{data.status === "loading" ? (
+				<Loading what="the office" />
+			) : data.status === "unbound" ? (
+				<Setup title="Connect your databases to open the office." missing={data.missing}>
+					<li>
+						<b>Places</b>: Name, Room (relation to Rooms), Type (select: Desk, Meeting room, Phone booth…), Seats, Features.
+					</li>
+					<li>
+						<b>Bookings</b>: Name, Place (relation to Places), Who (people), When (a date for the whole day, or with start and end time), Note, Up for grabs (checkbox).
+					</li>
+					<li>
+						<b>Rooms</b> (optional): Name, Floor, Type.
+					</li>
+				</Setup>
+			) : (
+				<Ready data={data} />
+			)}
+		</div>
+	)
+}
+
+/** Select options of a property, in schema order, plus values in use. */
+function optionsOf(src: SourceSnapshot, key: string): string[] {
+	const id = src.propertyIdsByKey[key]
+	const sch = id ? src.propertySchemasById[id] : undefined
+	const out = (sch?.options ?? []).map((o) => o.name)
+	for (const r of src.items) {
+		const v = r.propertiesByKey[key]
+		if (typeof v === "string" && v && !out.includes(v)) out.push(v)
+	}
+	return out
+}
+
+type Target = { place: Place; anchor: HTMLElement | null; start?: number }
+type Toast = { text: string; undo?: () => void }
+
+const first = (name: string) => name.split(" ")[0]
+const timeOf = (b: Booking) => (b.allDay ? "All day" : `${hhmm(b.start)}–${hhmm(b.end)}`)
+
+function Ready({ data }: { data: Ready }) {
+	const [view, setView] = usePersistentView(data.storageKey, DEFAULT)
+	const setUi = (f: Partial<View>) => setView((v) => ({ ...v, ...f }))
+	const today = useMemo(() => dayIso(new Date()), [])
+	const [day, setDay] = useState(today)
+	const [toast, setToast] = useState<Toast | null>(null)
+	const [target, setTarget] = useState<Target | null>(null)
+	const { rooms, places, bookings } = data.sources
+	const { properties, visible, filtering } = useFiltered(places, view.filters, data.resolvers, today)
+	const O = useMemo(() => readOffice(data.sources, data.resolvers, visible), [data.sources, data.resolvers, visible])
+	const me = data.resolvers.meId
+	const myName = me ? data.resolvers.userName(me) : undefined
+	const nowMin = useNow()
+	const at = day === today ? nowMin : undefined
+	const T = COPY[view.theme]
+	const [page, setPage] = useState<"root" | "layout" | "hours" | "theme">("root")
+	const canNote = bookings.propertyIdsByKey.note !== undefined
+	const canOffer = bookings.propertyIdsByKey.open !== undefined
+
+	useEffect(() => {
+		if (!toast) return
+		const t = window.setTimeout(() => setToast(null), 7000)
+		return () => window.clearTimeout(t)
+	}, [toast])
+
+	const fail = (err: string | null) => (err ? (setToast({ text: `Couldn't save: ${err}` }), true) : false)
+	const newBooking = (place: Place, when: object) => ({
+		name: W.title(`${place.name}${myName ? ` · ${myName}` : ""}`),
+		place: W.relation([place.id]),
+		...(me ? { who: W.people([me]) } : {}),
+		when,
+	})
+	// Undo reads the latest rows through a ref, since the claim arrives after the toast is made.
+	const latest = useLatest(data)
+	const undoClaim = (place: Place, d: string, restore?: Place) => async () => {
+		setToast(null)
+		const now = latest.current
+		const all = readOffice(now.sources, now.resolvers, null).bookings
+		const b = all.find((x) => x.placeId === place.id && x.day === d && !!me && x.who.includes(me) && x.allDay)
+		if (b) await now.mutations.archive("bookings", b.id)
+		if (restore) await now.mutations.create("bookings", newBooking(restore, W.date(d)))
+	}
+
+	/** Claims a place for the whole day; moves you off another place of the same type that day. */
+	const claimDay = async (place: Place) => {
+		if (!me) return setToast({ text: "Sign in to Notion to claim a place." })
+		const old = O.bookings.find((b) => b.day === day && b.allDay && b.who.includes(me) && b.placeId !== place.id && O.places.find((p) => p.id === b.placeId)?.type === place.type)
+		if (old && fail(await data.mutations.archive("bookings", old.id))) return
+		if (fail(await data.mutations.create("bookings", newBooking(place, W.date(day))))) return
+		const from = old ? O.places.find((p) => p.id === old.placeId) : undefined
+		setToast({ text: from ? T.moved(from.name, place.name) : T.claimed(place.name), undo: undoClaim(place, day, from) })
+	}
+	const book = async (place: Place, start: number, end: number) => {
+		if (fail(await data.mutations.create("bookings", newBooking(place, W.date(`${day}T${hhmm(start)}`, `${day}T${hhmm(end)}`))))) return
+		setToast({ text: `Booked ${place.name}, ${hhmm(start)}–${hhmm(end)}.` })
+	}
+	const cancel = async (b: Booking) => {
+		if (!fail(await data.mutations.archive("bookings", b.id))) setToast({ text: "Booking cancelled." })
+	}
+	const setNote = async (b: Booking, note: string) => {
+		if (note.trim() !== b.note) fail(await data.mutations.update("bookings", b.id, { note: W.text(note.trim()) }))
+	}
+	const setOffer = async (b: Booking, open: boolean) => {
+		if (!fail(await data.mutations.update("bookings", b.id, { open: W.checkbox(open) }))) setToast({ text: open ? "Marked up for grabs: others can take it over." : "It's yours again." })
+	}
+
+	const pick = (place: Place, anchor: HTMLElement) => {
+		const st = stateOf(O, place.id, day, view.open, view.close, me)
+		const wholeDayFree = !clash(O, place.id, day, view.open, view.close)
+		if (view.quick && (st === "free" || st === "offered") && wholeDayFree && !(at != null && at >= view.close)) void claimDay(place)
+		else setTarget({ place, anchor })
+	}
+
+	const settings = (anchor: HTMLElement | null, close: () => void) => {
+		const back = () => setPage("root")
+		const shut = () => {
+			setPage("root")
+			close()
+		}
+		if (page === "layout")
+			return (
+				<SettingsShell anchor={anchor} onClose={shut} title="Layout" onBack={back}>
+					<PickRow label="Rooms" sub="Rooms as cards, places as tiles" selected={view.layout === "rooms"} onClick={() => setUi({ layout: "rooms" })} />
+					<PickRow label="Timeline" sub="One row per place across the day" selected={view.layout === "timeline"} onClick={() => setUi({ layout: "timeline" })} />
+				</SettingsShell>
+			)
+		if (page === "theme")
+			return (
+				<SettingsShell anchor={anchor} onClose={shut} title="Theme" onBack={back}>
+					<PickRow label="The Office" sub="Paper, name tags, sticky notes" selected={view.theme === "office"} onClick={() => setUi({ theme: "office" })} />
+					<PickRow label="Notion" sub="Plain and quiet" selected={view.theme === "notion"} onClick={() => setUi({ theme: "notion" })} />
+				</SettingsShell>
+			)
+		if (page === "hours")
+			return (
+				<SettingsShell anchor={anchor} onClose={shut} title="Opening hours" onBack={back}>
+					<NumberRow label="Opens at" value={view.open / 60} min={0} step={0.5} onChange={(v) => setUi({ open: Math.max(0, Math.min(view.close - 60, Math.round(v * 2) * 30)) })} suffix="h" />
+					<NumberRow label="Closes at" value={view.close / 60} min={1} step={0.5} onChange={(v) => setUi({ close: Math.min(24 * 60, Math.max(view.open + 60, Math.round(v * 2) * 30)) })} suffix="h" />
+					<Note>Timed bookings are made within these hours, and availability is judged on them.</Note>
+				</SettingsShell>
+			)
+		return (
+			<SettingsShell anchor={anchor} onClose={shut} title="Office settings">
+				<NavRow icon={<LayersIcon />} label="Theme" value={view.theme === "office" ? "The Office" : "Notion"} onClick={() => setPage("theme")} />
+				<NavRow icon={<ColumnIcon />} label="Layout" value={view.layout === "rooms" ? "Rooms" : "Timeline"} onClick={() => setPage("layout")} />
+				<NavRow icon={<ClockIcon />} label="Opening hours" value={`${hhmm(view.open)}–${hhmm(view.close)}`} onClick={() => setPage("hours")} />
+				<Sep />
+				<ToggleRow icon={<TargetIcon />} label="One click claims the day" sub="Click a free place to book it all day; the clock button picks times" on={view.quick} onChange={(v) => setUi({ quick: v })} />
+				<NumberRow label="Default timed booking" value={view.length} min={15} step={15} onChange={(v) => setUi({ length: Math.max(15, Math.round(v / 15) * 15) })} suffix="min" />
+				<ToggleRow icon={<PersonIcon />} label="Show who booked" on={view.names} onChange={(v) => setUi({ names: v })} />
+			</SettingsShell>
+		)
+	}
+
+	const mine = O.bookings.filter((b) => me && b.who.includes(me) && (b.day > today || (b.day === today && b.end > nowMin))).sort((a, b) => a.day.localeCompare(b.day) || a.start - b.start)
+	const freeCount = O.places.filter((p) => ["free", "offered"].includes(stateOf(O, p.id, day, view.open, view.close, undefined, at))).length
+	const usual = usualPlace(O, me)
+	const usualP = usual ? O.places.find((p) => p.id === usual.placeId) : undefined
+	// Where you sit today: your whole-day claim (meetings don't count).
+	const mineToday = me ? O.bookings.find((b) => b.day === day && b.allDay && b.who.includes(me)) : undefined
+	const usualFree = usualP && !mineToday && !clash(O, usualP.id, day, view.open, view.close)
+
+	return (
+		<div className={view.theme === "office" ? "theme-office" : undefined}>
+			<Toolbar title={T.title} sub={dayLabel(day, today)} view={view} setView={setView} properties={properties} filtering={filtering} today={today} settings={settings}
+				actions={<NewMenu data={data} onDone={(t) => setToast(t ? { text: t } : null)} />}
+				share={{ block: "office", defaults: DEFAULT, schemas: places.propertySchemasById, sanitize }}
+			/>
+			<div className="tlbar daybar">
+				<button type="button" className="ghost ic big" aria-label="Previous day" onClick={() => setDay((d) => addDay(d, -1))}>
+					‹
+				</button>
+				<button type="button" className="ghost today" disabled={day === today} onClick={() => setDay(today)}>
+					Today
+				</button>
+				<button type="button" className="ghost ic big" aria-label="Next day" onClick={() => setDay((d) => addDay(d, 1))}>
+					›
+				</button>
+				<input className="field" type="date" aria-label="Day" value={day} onChange={(e) => e.target.value && setDay(e.target.value)} style={{ width: 150 }} />
+				<span className="spacer" />
+				<span className="daystat">
+					{freeCount} of {O.places.length} {day === today ? "free now" : "free all day"}
+				</span>
+			</div>
+
+			{mineToday || usualFree ? (
+				<div className="usual">
+					<span>{mineToday ? T.usualMine(O.places.find((p) => p.id === mineToday.placeId)?.name ?? mineToday.title) : T.usualFree(usualP!.name)}</span>
+					{!mineToday && usualP ? (
+						<button type="button" className="btn primary" onClick={() => void claimDay(usualP)}>
+							{T.claim}
+						</button>
+					) : null}
+				</div>
+			) : null}
+
+			{O.places.length === 0 ? (
+				<div className="state">{filtering ? "No places match the filters." : T.empty}</div>
+			) : view.layout === "rooms" ? (
+				<RoomsLayout O={O} day={day} view={view} T={T} me={me} at={at} onPick={pick} onDetails={(place, anchor) => setTarget({ place, anchor })} />
+			) : (
+				<TimelineLayout O={O} day={day} view={view} me={me} now={at ?? null} userName={data.resolvers.userName} onPick={(place, anchor, start) => setTarget({ place, anchor, start })} />
+			)}
+
+			{target ? (
+				<BookPopover
+					key={target.place.id + day + (target.start ?? "")}
+					target={target}
+					O={O}
+					day={day}
+					view={view}
+					T={T}
+					me={me}
+					now={at ?? null}
+					canNote={canNote}
+					canOffer={canOffer}
+					room={O.rooms.find((r) => r.places.includes(target.place))?.name}
+					onClaimDay={() => {
+						void claimDay(target.place)
+						setTarget(null)
+					}}
+					onBook={(s, e) => {
+						void book(target.place, s, e)
+						setTarget(null)
+					}}
+					onCancel={(b) => void cancel(b)}
+					onNote={(b, n) => void setNote(b, n)}
+					onOffer={(b, v) => void setOffer(b, v)}
+					onClose={() => setTarget(null)}
+				/>
+			) : null}
+
+			{toast ? (
+				<div className="toast" role="status">
+					<span>{toast.text}</span>
+					{toast.undo ? (
+						<button type="button" className="ghost sm" onClick={toast.undo}>
+							Undo
+						</button>
+					) : null}
+				</div>
+			) : null}
+
+			{mine.length ? (
+				<div className="mybookings">
+					<h3>{T.mine}</h3>
+					{mine.slice(0, 8).map((b) => (
+						<MyBooking key={b.id} b={b} place={O.places.find((x) => x.id === b.placeId)} today={today} T={T} canNote={canNote} canOffer={canOffer} onCancel={() => void cancel(b)} onNote={(n) => void setNote(b, n)} onOffer={(v) => void setOffer(b, v)} />
+					))}
+					{canNote || canOffer ? <p className="hint">Leave a note, or mark a booking up for grabs so a colleague can take the place (for example, when you leave at noon).</p> : null}
+				</div>
+			) : null}
+
+			<div className="foot">
+				{filtering ? (
+					<span>
+						Places are filtered.{" "}
+						<button type="button" className="ghost sm" onClick={() => setUi({ filters: EMPTY_FILTERS })}>
+							Clear filters
+						</button>
+					</span>
+				) : null}
+				{O.skipped ? <span>{O.skipped} bookings have no place or date and are left out.</span> : null}
+				{bookings.truncated || places.truncated || rooms.truncated ? <span>Only the first 999 rows of each database are read.</span> : null}
+			</div>
+		</div>
+	)
+}
+
+function useLatest<T>(v: T) {
+	const [ref] = useState(() => ({ current: v }))
+	ref.current = v
+	return ref
+}
+
+function MyBooking({ b, place, today, T, canNote, canOffer, onCancel, onNote, onOffer }: { b: Booking; place?: Place; today: string; T: Copy; canNote: boolean; canOffer: boolean; onCancel: () => void; onNote: (n: string) => void; onOffer: (v: boolean) => void }) {
+	const [note, setNote] = useState(b.note)
+	useEffect(() => setNote(b.note), [b.note])
+	return (
+		<div className="mine-row">
+			<span className={"dot" + (b.open ? " offered" : " mine")} />
+			<span className="mine-l">
+				{place?.name ?? b.title}
+				<span className="sub">
+					{dayLabel(b.day, today)} · {timeOf(b)}
+				</span>
+			</span>
+			{canNote ? (
+				<input
+					className="field note-in"
+					maxLength={200}
+					placeholder="Add a note…"
+					aria-label={`Note for ${place?.name ?? b.title}`}
+					value={note}
+					onChange={(e) => setNote(e.target.value)}
+					onBlur={() => onNote(note)}
+					onKeyDown={(e) => e.key === "Enter" && (e.currentTarget as HTMLInputElement).blur()}
+				/>
+			) : null}
+			{canOffer ? (
+				<label className="offer" title="Let a colleague take this place over">
+					<input type="checkbox" aria-label={`${T.grabs}: ${place?.name ?? b.title}`} checked={b.open} onChange={(e) => onOffer(e.target.checked)} />
+					{T.grabs}
+				</label>
+			) : null}
+			<button type="button" className="ghost sm" onClick={onCancel}>
+				Cancel
+			</button>
+		</div>
+	)
+}
+
+/** Minutes since local midnight, refreshed every minute. */
+function useNow(): number {
+	const get = () => {
+		const d = new Date()
+		return d.getHours() * 60 + d.getMinutes()
+	}
+	const [n, setN] = useState(get)
+	useEffect(() => {
+		const t = window.setInterval(() => setN(get()), 60000)
+		return () => window.clearInterval(t)
+	}, [])
+	return n
+}
+
+/* ---------- rooms layout ---------- */
+
+type TileProps = { O: Office; day: string; view: View; T: Copy; me?: string; at?: number; onPick: (p: Place, el: HTMLElement) => void; onDetails: (p: Place, el: HTMLElement) => void }
+
+function RoomsLayout(props: TileProps) {
+	const { O, day, view, me, at } = props
+	// Floors in the order the rooms come (Notion's order); rooms without a floor last.
+	const floors = [...new Set(O.rooms.map((r) => r.floor))].sort((a, b) => (a === "" ? 1 : b === "" ? -1 : 0))
+	return (
+		<div className="floors">
+			{floors.map((f) => (
+				<section key={f || "-"}>
+					{floors.length > 1 || f ? <h3 className="floor">{f || "Other"}</h3> : null}
+					<div className="rooms">
+						{O.rooms
+							.filter((r) => r.floor === f && r.places.length)
+							.map((r) => {
+								const states = r.places.map((p) => stateOf(O, p.id, day, view.open, view.close, me, at))
+								const free = states.filter((s) => s === "free" || s === "offered").length
+								return (
+									<div key={r.id} className="room">
+										<div className="room-h">
+											<b>{r.name}</b>
+											<span>
+												{r.type ? `${r.type} · ` : ""}
+												{free}/{r.places.length} free
+											</span>
+										</div>
+										<div className="tiles">
+											{r.places.map((p, i) => (
+												<Tile key={p.id} {...props} p={p} st={states[i]} />
+											))}
+										</div>
+									</div>
+								)
+							})}
+					</div>
+				</section>
+			))}
+		</div>
+	)
+}
+
+const STATE_LABEL: Record<State, string> = { free: "Free", partial: "Partly booked", busy: "Booked", mine: "Yours", offered: "Up for grabs" }
+
+function Tile({ O, p, st, day, view, T, me, at, onPick, onDetails }: TileProps & { p: Place; st: State }) {
+	const bs = bookingsOn(O, p.id, day)
+	const current = bs.find((b) => (at == null ? true : b.end > at)) ?? bs[0]
+	const who = current && view.names ? current.whoNames.map(first).join(", ") : ""
+	const note = bs.find((b) => b.note)?.note
+	let sub: ReactNode
+	if (st === "free" && !current) sub = <span className="tile-s">{`${p.type}${p.capacity && p.capacity > 1 ? ` · ${p.capacity} seats` : ""}`}</span>
+	else if (st === "mine") {
+		const m = bs.find((b) => !!me && b.who.includes(me) && (at == null || b.end > at))
+		sub = m && !m.allDay ? <span className="tile-s">{`${hhmm(m.start)}–${hhmm(m.end)} · you${bs.length > 1 ? ` +${bs.length - 1}` : ""}`}</span> : <span className="tag me">{T.yours}</span>
+	}
+	else if (st === "offered") sub = <span className="tile-s">{`${T.grabs}${who ? ` · ${who}` : ""}`}</span>
+	else if (current?.allDay) sub = who ? <span className="tag">{who}</span> : <span className="tile-s">All day</span>
+	else if (current) sub = <span className="tile-s">{`${hhmm(current.start)}–${hhmm(current.end)}${who ? ` ${who}` : ""}${bs.length > 1 ? ` +${bs.length - 1}` : ""}`}</span>
+	else sub = <span className="tile-s">{T.free}</span>
+	const quick = view.quick && (st === "free" || st === "offered")
+	return (
+		<div className={"tile " + st}>
+			<button type="button" className="tile-main" onClick={(e) => onPick(p, e.currentTarget)} title={[`${p.name}: ${STATE_LABEL[st]}`, ...bs.map((b) => [b.whoNames.join(", ") || b.title, timeOf(b), b.open ? "up for grabs" : "", b.note ? `“${b.note}”` : ""].filter(Boolean).join(" · ")), quick ? "Click to claim it for the day" : ""].filter(Boolean).join("\n")}>
+				<span className="tile-t">
+					<TypeGlyph type={p.type} />
+					{p.name}
+				</span>
+				{sub}
+				{quick ? <span className="tile-claim">{T.claim}</span> : null}
+			</button>
+			<button type="button" className="tile-more" aria-label={`Times and details for ${p.name}`} title="Times and details" onClick={(e) => onDetails(p, e.currentTarget)}>
+				<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden="true">
+					<circle cx="8" cy="8" r="6" />
+					<path d="M8 4.8V8l2.2 1.4" />
+				</svg>
+			</button>
+			{note ? (
+				<span className="sticky" title={note}>
+					{note}
+				</span>
+			) : null}
+		</div>
+	)
+}
+
+function TypeGlyph({ type }: { type: string }) {
+	const t = type.toLowerCase()
+	const d = /meet|conf/.test(t)
+		? "M3 5.5h10v6H3zM5 11.5v2M11 11.5v2M5.5 3.5h5"
+		: /phone|booth|call/.test(t)
+			? "M5.5 2.5h5v11h-5zM7.5 11h1"
+			: /park|car/.test(t)
+				? "M3 10.5l1.2-4h7.6l1.2 4v2.5H3zM5 13v1M11 13v1M5 10.5h.1M11 10.5h.1"
+				: /lounge|sofa/.test(t)
+					? "M2.5 8.5h11v4h-11zM4 8.5V6h8v2.5"
+					: "M2.5 6.5h11M4 6.5v7M12 6.5v7M6 4h4v2.5H6z"
+	return (
+		<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="glyph">
+			<path d={d} />
+		</svg>
+	)
+}
+
+/* ---------- timeline layout ---------- */
+
+function TimelineLayout({ O, day, view, me, now, userName, onPick }: { O: Office; day: string; view: View; me?: string; now: number | null; userName: (id: string) => string | undefined; onPick: (p: Place, el: HTMLElement, start: number) => void }) {
+	const span = view.close - view.open
+	const pct = (m: number) => `${((Math.min(Math.max(m, view.open), view.close) - view.open) / span) * 100}%`
+	const hours: number[] = []
+	for (let h = Math.ceil(view.open / 60) * 60; h <= view.close; h += 60) hours.push(h)
+	return (
+		<div className="tl">
+			<div className="tl-row tl-head">
+				<span className="tl-name" />
+				<span className="tl-track">
+					{hours.map((h) => (
+						<span key={h} className="tl-hour" style={{ left: pct(h), transform: h === view.close ? "translateX(-100%)" : undefined }}>
+							{h / 60}
+						</span>
+					))}
+				</span>
+			</div>
+			{O.rooms
+				.filter((r) => r.places.length)
+				.map((r) => (
+					<div key={r.id}>
+						<div className="tl-room">{r.name}</div>
+						{r.places.map((p) => (
+							<div key={p.id} className="tl-row">
+								<span className="tl-name" title={p.type}>
+									<TypeGlyph type={p.type} />
+									{p.name}
+								</span>
+								<span
+									className="tl-track"
+									role="button"
+									tabIndex={0}
+									aria-label={`Book ${p.name}`}
+									onClick={(e) => {
+										const r = e.currentTarget.getBoundingClientRect()
+										const m = view.open + Math.floor((((e.clientX - r.left) / r.width) * span) / 30) * 30
+										onPick(p, e.currentTarget, m)
+									}}
+									onKeyDown={(e) => e.key === "Enter" && onPick(p, e.currentTarget, view.open)}
+								>
+									{hours.map((h) => (
+										<span key={h} className="tl-grid" style={{ left: pct(h) }} />
+									))}
+									{bookingsOn(O, p.id, day).map((b) => (
+										<span
+											key={b.id}
+											className={"tl-b" + (me && b.who.includes(me) ? " mine" : "") + (b.open ? " offered" : "")}
+											style={{ left: pct(b.start), width: `calc(${pct(b.end)} - ${pct(b.start)})` }}
+											title={`${timeOf(b)} ${b.who.map((id) => userName(id) ?? "").join(", ")}${b.note ? ` — ${b.note}` : ""}${b.open ? " (up for grabs)" : ""}`}
+										>
+											{view.names && b.whoNames.length ? first(b.whoNames[0]) : timeOf(b)}
+											{b.note ? ` · ${b.note}` : ""}
+										</span>
+									))}
+									{now != null && now >= view.open && now <= view.close ? <span className="tl-now" style={{ left: pct(now) }} /> : null}
+								</span>
+							</div>
+						))}
+					</div>
+				))}
+		</div>
+	)
+}
+
+/* ---------- booking popover ---------- */
+
+function slots(open: number, close: number): number[] {
+	const out: number[] = []
+	for (let t = open; t <= close; t += 15) out.push(t)
+	return out
+}
+
+type PopProps = {
+	target: Target
+	O: Office
+	day: string
+	view: View
+	T: Copy
+	me?: string
+	now: number | null
+	room?: string
+	canNote: boolean
+	canOffer: boolean
+	onClaimDay: () => void
+	onBook: (s: number, e: number) => void
+	onCancel: (b: Booking) => void
+	onNote: (b: Booking, n: string) => void
+	onOffer: (b: Booking, v: boolean) => void
+	onClose: () => void
+}
+
+function BookPopover({ target, O, day, view, T, me, now, room, canNote, canOffer, onClaimDay, onBook, onCancel, onNote, onOffer, onClose }: PopProps) {
+	const p = target.place
+	const from = target.start ?? Math.max(view.open, now ?? view.open)
+	const initial = firstFree(O, p.id, day, from, view.length, view.open, view.close) ?? firstFree(O, p.id, day, view.open, 15, view.open, view.close) ?? view.open
+	const [start, setStart] = useState(initial)
+	const [end, setEnd] = useState(Math.min(view.close, initial + view.length))
+	const bs = bookingsOn(O, p.id, day)
+	const hit = clash(O, p.id, day, start, end)
+	const over = takesOver(O, p.id, day, start, end)
+	const past = now != null && end <= now
+	const dayFree = !clash(O, p.id, day, view.open, view.close) && !(now != null && now >= view.close)
+	const dayOver = takesOver(O, p.id, day, view.open, view.close)
+	const all = slots(view.open, view.close)
+	return (
+		<Popover anchor={target.anchor} onClose={onClose} width={320} className="settings book">
+			<div className="shead">
+				<span className="shead-t">
+					<TypeGlyph type={p.type} /> {p.name}
+				</span>
+			</div>
+			<div className="sbody">
+				<p className="snote">{[p.type, room, p.capacity && p.capacity > 1 ? `${p.capacity} seats` : null, ...p.features].filter(Boolean).join(" · ")}</p>
+				{dayFree ? (
+					<div className="claimrow">
+						<button type="button" className="btn primary wide" onClick={onClaimDay}>
+							{T.claim} for the whole day
+						</button>
+						{dayOver.length ? <p className="snote">Takes over from {dayOver.map((b) => b.whoNames[0] ?? "someone").join(", ")}, who marked it up for grabs.</p> : null}
+					</div>
+				) : null}
+				<DayStrip bs={bs} open={view.open} close={view.close} pick={{ start, end }} now={now} me={me} />
+				{bs.length ? (
+					<div className="blist">
+						{bs.map((b) => {
+							const mine = !!me && b.who.includes(me)
+							return (
+								<div key={b.id} className="brow-wrap">
+									<div className="brow">
+										<span className={"dot" + (b.open ? " offered" : mine ? " mine" : "")} />
+										<span className="brow-l">
+											{timeOf(b)} <span className="sub">{b.whoNames.join(", ") || b.title}</span>
+											{b.open ? <span className="badge">{T.grabs}</span> : null}
+										</span>
+										{mine ? (
+											<button type="button" className="ghost sm" onClick={() => onCancel(b)}>
+												Cancel
+											</button>
+										) : null}
+									</div>
+									{mine && (canNote || canOffer) ? (
+										<div className="brow-edit">
+											{canNote ? <NoteInput b={b} onNote={onNote} /> : null}
+											{canOffer ? (
+												<label className="offer">
+													<input type="checkbox" aria-label={T.grabs} checked={b.open} onChange={(e) => onOffer(b, e.target.checked)} />
+													{T.grabs}
+												</label>
+											) : null}
+										</div>
+									) : b.note ? (
+										<p className="bnote">“{b.note}”</p>
+									) : null}
+								</div>
+							)
+						})}
+					</div>
+				) : (
+					<p className="snote">No bookings on this day.</p>
+				)}
+				<div className="msep" />
+				<p className="snote">Or pick times</p>
+				<div className="bform">
+					<Field label="From">
+						<select
+							className="dd"
+							value={start}
+							onChange={(e) => {
+								const s = Number(e.target.value)
+								setStart(s)
+								if (end <= s) setEnd(Math.min(view.close, s + view.length))
+							}}
+						>
+							{all.slice(0, -1).map((t) => (
+								<option key={t} value={t}>
+									{hhmm(t)}
+								</option>
+							))}
+						</select>
+					</Field>
+					<Field label="To">
+						<select className="dd" value={end} onChange={(e) => setEnd(Number(e.target.value))}>
+							{all
+								.filter((t) => t > start)
+								.map((t) => (
+									<option key={t} value={t}>
+										{hhmm(t)}
+									</option>
+								))}
+						</select>
+					</Field>
+					<button type="button" className="btn" disabled={!!hit || past} onClick={() => onBook(start, end)}>
+						Book
+					</button>
+				</div>
+				{hit ? (
+					<p className="snote bad">
+						Overlaps {hit.whoNames[0] ?? "a booking"} {timeOf(hit)}.
+					</p>
+				) : past ? (
+					<p className="snote bad">That time has passed.</p>
+				) : over.length ? (
+					<p className="snote">Takes over from {over.map((b) => b.whoNames[0] ?? "someone").join(", ")} (up for grabs).</p>
+				) : null}
+			</div>
+		</Popover>
+	)
+}
+
+function NoteInput({ b, onNote }: { b: Booking; onNote: (b: Booking, n: string) => void }) {
+	const [v, setV] = useState(b.note)
+	return <input className="field note-in" maxLength={200} placeholder="Note, e.g. “Gone after 12”" value={v} onChange={(e) => setV(e.target.value)} onBlur={() => onNote(b, v)} onKeyDown={(e) => e.key === "Enter" && (e.currentTarget as HTMLInputElement).blur()} />
+}
+
+function DayStrip({ bs, open, close, pick, now, me }: { bs: Booking[]; open: number; close: number; pick: { start: number; end: number }; now: number | null; me?: string }) {
+	const pct = (m: number) => `${((Math.min(Math.max(m, open), close) - open) / (close - open)) * 100}%`
+	return (
+		<div className="strip" aria-hidden="true">
+			{bs.map((b) => (
+				<span key={b.id} className={"strip-b" + (me && b.who.includes(me) ? " mine" : "") + (b.open ? " offered" : "")} style={{ left: pct(b.start), width: `calc(${pct(b.end)} - ${pct(b.start)})` }} />
+			))}
+			<span className="strip-pick" style={{ left: pct(pick.start), width: `calc(${pct(pick.end)} - ${pct(pick.start)})` }} />
+			{now != null ? <span className="tl-now" style={{ left: pct(now) }} /> : null}
+			<span className="strip-l">{hhmm(open)}</span>
+			<span className="strip-r">{hhmm(close)}</span>
+		</div>
+	)
+}
+
+function Field({ label, children }: { label: string; children: ReactNode }) {
+	return (
+		<label className="bfield">
+			<span>{label}</span>
+			{children}
+		</label>
+	)
+}
+
+/* ---------- add rooms and places ---------- */
+
+function NewMenu({ data, onDone }: { data: Ready; onDone: (m: string | null) => void }) {
+	const a = useAnchor()
+	const [kind, setKind] = useState<"menu" | "room" | "place">("menu")
+	const close = () => {
+		a.close()
+		setKind("menu")
+	}
+	const { rooms, places } = data.sources
+	return (
+		<>
+			<button type="button" ref={a.ref} className="tool" aria-label="Add a room or place" title="Add a room or place" onClick={() => (a.open ? close() : a.toggle())}>
+				<Plus />
+			</button>
+			{a.open ? (
+				<Popover anchor={a.el} onClose={close} width={300} className="settings">
+					{kind === "menu" ? (
+						<>
+							<div className="shead">
+								<span className="shead-t">Add</span>
+							</div>
+							<div className="sbody">
+								<PickRow label="Room" sub={rooms.bound ? "A room or area that holds places" : "Connect a Rooms database first"} selected={false} onClick={() => rooms.bound && setKind("room")} />
+								<PickRow label="Place" sub="A desk, meeting room, booth, parking spot…" selected={false} onClick={() => setKind("place")} />
+							</div>
+						</>
+					) : kind === "room" ? (
+						<NewForm
+							title="New room"
+							fields={[
+								{ key: "name", label: "Name", type: "text" },
+								{ key: "floor", label: "Floor", type: "choice", options: optionsOf(rooms, "floor") },
+								{ key: "type", label: "Type", type: "choice", options: optionsOf(rooms, "type") },
+							]}
+							onBack={() => setKind("menu")}
+							onSave={async (v) => {
+								const err = await data.mutations.create("rooms", {
+									name: W.title(v.name),
+									...(v.floor && rooms.propertyIdsByKey.floor ? { floor: W.select(v.floor) } : {}),
+									...(v.type && rooms.propertyIdsByKey.type ? { type: W.select(v.type) } : {}),
+								})
+								onDone(err ? `Couldn't add the room: ${err}` : `Added room ${v.name}.`)
+								close()
+							}}
+						/>
+					) : (
+						<NewForm
+							title="New place"
+							fields={[
+								{ key: "name", label: "Name", type: "text" },
+								{ key: "type", label: "Type", type: "choice", options: optionsOf(places, "type").length ? optionsOf(places, "type") : ["Desk", "Meeting room", "Phone booth", "Parking"] },
+								...(rooms.bound ? [{ key: "room", label: "Room", type: "pick" as const, options: rooms.items.map((r) => ({ value: r.id, label: String(r.propertiesByKey.name ?? "Untitled") })) }] : []),
+								{ key: "capacity", label: "Seats", type: "number" },
+							]}
+							onBack={() => setKind("menu")}
+							onSave={async (v) => {
+								const err = await data.mutations.create("places", {
+									name: W.title(v.name),
+									...(v.type && places.propertyIdsByKey.type ? { type: W.select(v.type) } : {}),
+									...(v.room && places.propertyIdsByKey.room ? { room: W.relation([v.room]) } : {}),
+									...(v.capacity && places.propertyIdsByKey.capacity ? { capacity: W.number(Number(v.capacity)) } : {}),
+								})
+								onDone(err ? `Couldn't add the place: ${err}` : `Added ${v.name}.`)
+								close()
+							}}
+						/>
+					)}
+				</Popover>
+			) : null}
+		</>
+	)
+}
+
+type FieldSpec =
+	| { key: string; label: string; type: "text" | "number" }
+	| { key: string; label: string; type: "choice"; options: string[] }
+	| { key: string; label: string; type: "pick"; options: { value: string; label: string }[] }
+
+function NewForm({ title, fields, onBack, onSave }: { title: string; fields: FieldSpec[]; onBack: () => void; onSave: (v: Record<string, string>) => void }) {
+	const [v, setV] = useState<Record<string, string>>(() => Object.fromEntries(fields.map((f) => [f.key, f.type === "choice" ? (f.options[0] ?? "") : f.type === "pick" ? (f.options[0]?.value ?? "") : ""])))
+	const set = (k: string, x: string) => setV((o) => ({ ...o, [k]: x }))
+	return (
+		<>
+			<div className="shead">
+				<button type="button" className="ghost ic" aria-label="Back" onClick={onBack}>
+					‹
+				</button>
+				<span className="shead-t">{title}</span>
+			</div>
+			<form
+				className="sbody nform"
+				onSubmit={(e) => {
+					e.preventDefault()
+					if (v.name.trim()) onSave({ ...v, name: v.name.trim() })
+				}}
+			>
+				{fields.map((f) => (
+					<label key={f.key} className="bfield wide">
+						<span>{f.label}</span>
+						{f.type === "text" || f.type === "number" ? (
+							<input className="field" type={f.type} maxLength={200} autoFocus={f.key === "name"} min={f.type === "number" ? 1 : undefined} value={v[f.key]} onChange={(e) => set(f.key, e.target.value)} />
+						) : f.type === "choice" ? (
+							<>
+								<input className="field" maxLength={100} list={`opt-${f.key}`} value={v[f.key]} onChange={(e) => set(f.key, e.target.value)} />
+								<datalist id={`opt-${f.key}`}>
+									{f.options.map((o) => (
+										<option key={o} value={o} />
+									))}
+								</datalist>
+							</>
+						) : (
+							<select className="dd" value={v[f.key]} onChange={(e) => set(f.key, e.target.value)}>
+								<option value="">No room</option>
+								{(f as Extract<FieldSpec, { type: "pick" }>).options.map((o) => (
+									<option key={o.value} value={o.value}>
+										{o.label}
+									</option>
+								))}
+							</select>
+						)}
+					</label>
+				))}
+				<button type="submit" className="btn primary" disabled={!v.name.trim()}>
+					Add
+				</button>
+			</form>
+		</>
+	)
+}
