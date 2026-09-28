@@ -131,36 +131,8 @@
 	border-top: 1px solid var(--line);
 	font-size: 13px;
 }
-.ctc-missing .ctc-open {
-	padding: 0;
-	border: 0;
-	background: none;
-	text-align: left;
-	cursor: pointer;
-}
-.ctc-missing .ctc-open:hover {
-	text-decoration: underline;
-}
-.ctc-missing li b,
-.ctc-missing .ctc-open {
+.ctc-missing li b {
 	font-weight: 500;
 	margin-right: auto;
 }
 
-/* Cards open their Notion page. */
-.mr-card.is-link,
-.mr-cov-pill.is-link {
-	cursor: pointer;
-	transition: box-shadow 0.15s, transform 0.15s;
-}
-.mr-card.is-link:hover,
-.mr-cov-pill.is-link:hover {
-	box-shadow: 0 0 0 2px var(--mr-todo-border), var(--mr-card-shadow);
-}
-.is-complete .mr-card.is-link:hover,
-.is-roadmap .mr-cov-pill.is-link:hover {
-	box-shadow: 0 0 0 2px var(--mr-done-border), var(--mr-card-shadow);
-}
-.mr.is-exporting .is-link:hover {
-	box-shadow: var(--mr-card-shadow);
-}

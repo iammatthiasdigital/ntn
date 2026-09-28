@@ -232,6 +232,8 @@ export type ReadOptions = {
 	groupBy: GroupProp | null
 	/** Frames with no notes are left out. */
 	hideEmpty: boolean
+	/** Pack notes in frames into free slots, ignoring stored positions (while filtering). */
+	compact?: boolean
 	pageTitle: (id: string) => string | undefined
 	/** Property for "who wrote it": a people, Created by or Last edited by property id; null = Author, else Created by. */
 	authorBy?: string | null
@@ -265,7 +267,11 @@ export function readBoard(src: SourceSnapshot, local: LocalLayer, opts: ReadOpti
 		raws.push({ r, x: numberOf(prop(src, r, "x")), y: numberOf(prop(src, r, "y")), values, home, done })
 	}
 	if (opts.hideEmpty) topics = topics.filter((t) => raws.some((w) => w.home === t.id))
-	const widths = topics.map((t) => local.frames[t.id]?.w ?? FRAME_W)
+	// Auto width: wider frames for more notes (2 columns up to 4 notes, then 3, then 4) keep them compact.
+	const counts = new Map<string, number>()
+	for (const w of raws) if (w.home) counts.set(w.home, (counts.get(w.home) ?? 0) + 1)
+	const autoCols = (n: number) => (n <= 4 ? 2 : n <= 9 ? 3 : 4)
+	const widths = topics.map((t) => local.frames[t.id]?.w ?? 20 + autoCols(counts.get(t.id) ?? 0) * ROW)
 	const grid = frameGrid(topics.length, opts.perRow, widths)
 	const origin = new Map(topics.map((t, i) => [t.id, grid[i]]))
 
@@ -282,7 +288,7 @@ export function readBoard(src: SourceSnapshot, local: LocalLayer, opts: ReadOpti
 	const frameBox = grid.map((g) => ({ x1: g.x - STICKY / 2, y1: g.y - STICKY / 2, x2: g.x + widths[grid.indexOf(g)] - STICKY / 2, y2: g.y + FRAME_MIN_H }))
 	const kept = new Set<Raw>()
 	for (const w of raws) {
-		if (w.x === null || w.y === null) continue
+		if (w.x === null || w.y === null || (opts.compact && w.home)) continue
 		const p = { x: w.x, y: w.y }
 		if (w.home && origin.has(w.home)) {
 			const list = taken.get(w.home) ?? []

@@ -23,11 +23,14 @@ the view code (see below) when others should see them too.
   Drag a frame's corner to resize it (widths snap to whole note columns);
   double-click the corner to fit the notes again. Sizes are local, like
   colors.
-- **Fits the block.** By default the board is as tall as its content at the
-  block's width, with as many frames per row as fit at a readable zoom. A
-  fixed height and a fixed number of frames per row are in the settings.
-- **Open in Notion.** The small arrow on a note (on hover) opens its page in
-  a new tab, without showing the link.
+- **Fits the block.** By default the whole board is shown at the
+  block's width (up to 640px tall, never below 50% zoom; taller boards
+  scroll), re-fitting when the block resizes. Frames widen as they fill.
+  Drag the handle under the board to set a height; double-click it to fit
+  again. A fixed number of frames per row is in the settings.
+- **Filters reshape the board.** While a filter is on, only matching notes
+  count: they pack into their frames from the top, frames without matches are
+  hidden, and the board shrinks to fit. Hidden done notes never take space.
 - **Title.** Click the block's title to rename it. It's saved with the view.
 - **Positions that survive regrouping.** Notes store their position relative
   to their frame. Notes without a position, or whose position no longer fits

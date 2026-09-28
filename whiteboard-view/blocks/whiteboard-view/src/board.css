@@ -985,31 +985,6 @@
 .wb-frame:hover .wb-resize {
 	opacity: 1;
 }
-.wb-open {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	width: 22px;
-	height: 22px;
-	margin-right: 2px;
-	padding: 0;
-	border: 0;
-	border-radius: 6px;
-	background: none;
-	color: rgba(55, 53, 47, 0.55);
-	cursor: pointer;
-	opacity: 0;
-	transition: opacity 0.15s;
-}
-.wb-card:hover .wb-open,
-.wb-card.selected .wb-open,
-.wb-open:focus-visible {
-	opacity: 1;
-}
-.wb-open:hover {
-	background: rgba(55, 53, 47, 0.1);
-	color: rgba(55, 53, 47, 0.9);
-}
 .wb-title,
 .wb-title-in {
 	margin: 0 0 0 -4px;
@@ -1027,4 +1002,23 @@
 .wb-title-in {
 	width: 16em;
 	outline: 2px solid rgba(35, 131, 226, 0.4);
+}
+/* Drag under the board to set its height. */
+.wb-hgrip {
+	display: flex;
+	justify-content: center;
+	margin-top: -6px;
+	padding: 4px 0;
+	cursor: ns-resize;
+	touch-action: none;
+}
+.wb-hgrip span {
+	width: 44px;
+	height: 4px;
+	border-radius: 2px;
+	background: var(--fieldline);
+	transition: background 0.15s;
+}
+.wb-hgrip:hover span {
+	background: var(--ink2);
 }

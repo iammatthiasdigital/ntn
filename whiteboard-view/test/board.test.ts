@@ -123,3 +123,14 @@ test("who wrote it can come from Created by or any people property", () => {
 	assert.deepEqual(n1.authorIds, [(s.items.find((r) => r.id === "n1")!.propertiesById.created_by as { id: string }[])[0].id])
 	assert.deepEqual(readBoard(s, EMPTY_LOCAL, opts()).items.find((i) => i.id === "n1")!.authorIds, ["user-ada-lovelace"])
 })
+
+test("filtered boards pack their notes and shrink the frames", () => {
+	const all = readBoard(src(), EMPTY_LOCAL, opts({ showDone: false }))
+	const only = new Set(["n4", "n9"])
+	const f = readBoard(src(), EMPTY_LOCAL, opts({ showDone: false, visible: only, compact: true }))
+	const n9 = f.items.find((i) => i.id === "n9")!
+	const g = f.groups.find((x) => x.id === n9.groupId)!
+	assert.equal(n9.x, g.x + 20)
+	assert.ok(f.groups.every((x, i) => x.h <= all.groups[i].h))
+	assert.ok(Math.max(...f.groups.map((x) => x.y + x.h)) <= Math.max(...all.groups.map((x) => x.y + x.h)))
+})

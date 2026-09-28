@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as RPointerEvent, type ReactNode } from "react"
 import { dayIso, EMPTY_FILTERS } from "./kit/filters/core"
-import { openPage } from "./kit/openPage"
 import { Plus } from "./kit/filters/icons"
 import { PropIcon } from "./kit/filters/icons"
 import { ColumnIcon, LayersIcon, NavRow, Note, NumberRow, PersonIcon, PickRow, Sep, SettingsShell, TargetIcon, ToggleRow } from "./kit/settings"
@@ -138,21 +137,26 @@ let tmp = 0
 
 function Ready({ data }: { data: Ready }) {
 	const [view, setView] = usePersistentView(data.storageKey, DEFAULT)
+	// Views saved with the old fixed defaults (600px, 4 per row) switch to fitting the block.
+	useEffect(() => {
+		if (view.height === 600 && view.perRow === 4) setView((v) => ({ ...v, height: 0, perRow: 0 }))
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [])
 	const setUi = (f: Partial<View>) => setView((v) => ({ ...v, ...f }))
 	const today = useMemo(() => dayIso(new Date()), [])
 	const { items: itemsSrc } = data.sources
 	const [local, setLocal] = useLocalLayer(`${data.storageKey}:board`)
 	/** The canvas width, for fitting the board to the block. */
 	const [boxW, setBoxW] = useState(800)
-	// 0 = as many frames per row as fit the block at a readable zoom (~65%).
-	const perRow = view.perRow > 0 ? view.perRow : Math.max(1, Math.floor(((boxW - 48) / 0.65 - 2 * MARGIN + FRAME_GAP) / (FRAME_W + FRAME_GAP)))
+	// 0 = as many frames per row as fit the block at half size, so the board stays wide and short.
+	const perRow = view.perRow > 0 ? view.perRow : Math.max(2, Math.floor(((boxW - 48) / 0.5 - 2 * MARGIN + FRAME_GAP) / (FRAME_W + FRAME_GAP)))
 	const { properties: allProps, visible, filtering } = useFiltered(itemsSrc, view.filters, data.resolvers, today)
 	const hidden = useMemo(() => new Set(HIDDEN_PROPS.map((k) => itemsSrc.propertyIdsByKey[k]).filter(Boolean)), [itemsSrc.propertyIdsByKey])
 	const properties = useMemo(() => allProps.filter((p) => !hidden.has(p.id)), [allProps, hidden])
 	const groupProp = useMemo(() => resolveGroupBy(itemsSrc, view.groupBy), [itemsSrc, view.groupBy])
 	const base = useMemo(
-		() => readBoard(itemsSrc, local, { perRow, showDone: true, visible: filtering ? visible : null, groupBy: groupProp, hideEmpty: view.hideEmpty, pageTitle: data.resolvers.pageTitle, authorBy: view.authorBy === "auto" ? null : view.authorBy }),
-		[itemsSrc, local, perRow, visible, filtering, groupProp, view.hideEmpty, data.resolvers.pageTitle, view.authorBy]
+		() => readBoard(itemsSrc, local, { perRow, showDone: view.showDone, compact: filtering, visible: filtering ? visible : null, groupBy: groupProp, hideEmpty: view.hideEmpty || filtering, pageTitle: data.resolvers.pageTitle, authorBy: view.authorBy === "auto" ? null : view.authorBy }),
+		[itemsSrc, local, perRow, visible, filtering, view.showDone, groupProp, view.hideEmpty, data.resolvers.pageTitle, view.authorBy]
 	)
 	const me = data.resolvers.meId
 	const has = (k: string) => itemsSrc.propertyIdsByKey[k] !== undefined
@@ -309,8 +313,11 @@ function Ready({ data }: { data: Ready }) {
 		return { x1: Math.min(...boxes.map((b) => b.x)), y1: Math.min(...boxes.map((b) => b.y)), x2: Math.max(...boxes.map((b) => b.x + b.w)), y2: Math.max(...boxes.map((b) => b.y + b.h)) }
 	}, [base, view.showDone])
 	const autoH = view.height === 0
-	const fitScale = bounds ? clamp((boxW - 48) / (bounds.x2 - bounds.x1), ZOOMS[0], 1) : 1
-	const boardH = autoH ? clamp(Math.round((bounds ? bounds.y2 - bounds.y1 : 360) * fitScale + 150), 320, 4000) : view.height
+	// Fit mode shows the whole board at the block's width, no taller than FIT_MAX_H (it zooms out instead).
+	const FIT_MAX_H = 640
+	// Never below half size: a very tall board scrolls (drag or wheel) rather than shrinking to unreadable.
+	const fitScale = bounds ? clamp(Math.min((boxW - 48) / (bounds.x2 - bounds.x1), (FIT_MAX_H - 150) / (bounds.y2 - bounds.y1)), 0.5, 1) : 1
+	const boardH = autoH ? clamp(Math.round((bounds ? bounds.y2 - bounds.y1 : 360) * fitScale + 150), 320, FIT_MAX_H) : view.height
 	useEffect(() => {
 		if (!autoH || !bounds) return
 		setScale(fitScale)
@@ -781,7 +788,7 @@ function Ready({ data }: { data: Ready }) {
 				<ToggleRow label="Show done notes" sub="Faded, with a check. The bin shows them too." on={view.showDone} onChange={(v) => setUi({ showDone: v })} />
 				<Sep />
 				<NumberRow label="Frames per row (0 = fit)" value={view.perRow} min={0} onChange={(v) => setUi({ perRow: Math.max(0, Math.min(12, Math.round(v))) })} />
-				<ToggleRow label="Fit height to the board" sub="The block grows with its frames and notes" on={autoH} onChange={(v) => setUi({ height: v ? 0 : boardH })} />
+				<ToggleRow label="Fit height to the board" sub="Shows the whole board, up to 640px tall" on={autoH} onChange={(v) => setUi({ height: v ? 0 : boardH })} />
 				{autoH ? null : <NumberRow label="Board height" value={view.height} min={320} step={40} onChange={(v) => setUi({ height: Math.max(320, Math.min(4000, Math.round(v))) })} suffix="px" />}
 			</SettingsShell>
 		)
@@ -967,6 +974,30 @@ function Ready({ data }: { data: Ready }) {
 				) : null}
 			</div>
 			</div>
+			<div
+				className="wb-hgrip"
+				role="separator"
+				aria-orientation="horizontal"
+				aria-label="Board height"
+				title={autoH ? "Drag to set the board height" : "Drag to set the board height · double-click to fit the board again"}
+				onPointerDown={(e) => {
+					e.preventDefault()
+					const y0 = e.clientY
+					const h0 = boardH
+					const move = (ev: PointerEvent) => setUi({ height: Math.round(clamp(h0 + ev.clientY - y0, 320, 4000) / 10) * 10 })
+					const up = () => {
+						window.removeEventListener("pointermove", move)
+						window.removeEventListener("pointerup", up)
+						window.removeEventListener("pointercancel", up)
+					}
+					window.addEventListener("pointermove", move)
+					window.addEventListener("pointerup", up)
+					window.addEventListener("pointercancel", up)
+				}}
+				onDoubleClick={() => setUi({ height: 0 })}
+			>
+				<span />
+			</div>
 			{party ? <Party it={party.it} text={party.text} today={doneToday} color={fillOf(party.it)} onClose={() => feed(party.it)} /> : null}
 		</div>
 	)
@@ -1076,24 +1107,6 @@ function StickyView({ it, fill, tool, selected, editing, dragging, hidden, autho
 								</span>
 							) : (
 								<span />
-							)}
-							<span className="spacer" />
-							{it.id.startsWith("tmp-") ? null : (
-								<button
-									type="button"
-									className="wb-open"
-									aria-label="Open in Notion"
-									title="Open in Notion"
-									onPointerDown={(e) => e.stopPropagation()}
-									onClick={(e) => {
-										e.stopPropagation()
-										openPage(it.id)
-									}}
-								>
-									<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-										<path d="M9 3h4v4M13 3 7.5 8.5M11 9.5V13H3V5h3.5" />
-									</svg>
-								</button>
 							)}
 							{onDone ? (
 								<button
