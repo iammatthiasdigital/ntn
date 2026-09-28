@@ -57,7 +57,7 @@ const FLY_MS = 820
 
 export function BoardView({ data, theme }: { data: BlockData<Keys>; theme: "light" | "dark" }) {
 	return (
-		<div className="nb" data-theme={theme}>
+		<div className="nb wb-block" data-theme={theme}>
 			{data.status === "loading" ? (
 				<Loading what="the whiteboard" />
 			) : data.status === "unbound" ? (
