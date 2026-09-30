@@ -3,10 +3,13 @@
 **A chart that answers the question most roadmaps can't:
 _will the work we planned actually get us to our goal, and when?_**
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/impactt-chart-dark.svg">
-  <img alt="Impactt chart: initiatives as stacked bars on a timeline, sized by their impact on weekly active users, climbing toward a 30k goal with plan, actual and projected lines" src="docs/impactt-chart-light.svg" width="100%">
-</picture>
+<a href="docs/video/impactt-explainer.mp4">
+  <img alt="Animated walkthrough: six enterprise initiatives on a roadmap turn into an Impactt chart, fill in with what has been delivered, and the projection lands $1.2M short of a $12M goal" src="docs/video/impactt-explainer.gif" width="100%">
+</a>
+
+The animation is a cut from the
+**[68-second explainer](docs/video/impactt-explainer.mp4)** (with sound),
+which follows one enterprise example from roadmap to projection.
 
 Impactt is a new chart type created by **Matthias**
 ([matthias.digital](https://matthias.digital)). It combines three well-known
@@ -28,13 +31,10 @@ toward its goal. At a glance you can see:
 - which are late or under-delivering,
 - and whether all of them together still reach the goal by the promised date.
 
-<a href="docs/video/impactt-explainer.mp4">
-  <img alt="Animated walkthrough: six enterprise initiatives on a roadmap turn into an Impactt chart, fill in with what has been delivered, and the projection lands $1.2M short of a $12M goal" src="docs/video/impactt-explainer.gif" width="100%">
-</a>
-
-The animation is a cut from the
-**[68-second explainer](docs/video/impactt-explainer.mp4)** (with sound),
-which follows one enterprise example from roadmap to projection.
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/impactt-chart-dark.svg">
+  <img alt="Impactt chart: initiatives as stacked bars on a timeline, sized by their impact on weekly active users, climbing toward a 30k goal with plan, actual and projected lines" src="docs/impactt-chart-light.svg" width="100%">
+</picture>
 
 This repository contains Impactt as a **Notion custom block**. The same chart
 is also a standalone, shareable
