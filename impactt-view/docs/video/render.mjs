@@ -6,15 +6,17 @@
  *
  *   node docs/video/render.mjs                     → docs/video/impactt-explainer.mp4
  *   node docs/video/render.mjs --mute              no soundtrack
+ *   node docs/video/render.mjs --gif               also cut the README GIF, impactt-explainer.gif
  *   node docs/video/render.mjs --fps 30 --out x.mp4
  *   node docs/video/render.mjs --stills 2,8.5,40 --dir /tmp/stills   PNGs at those seconds
  */
-import { spawn } from "node:child_process"
+import { spawn, spawnSync } from "node:child_process"
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs"
 import { homedir, tmpdir } from "node:os"
 import { dirname, join, resolve } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import { writeScore } from "./score.mjs"
+import "./cues.js"
 
 const here = dirname(fileURLToPath(import.meta.url))
 const args = process.argv.slice(2)
@@ -115,6 +117,17 @@ async function openFilm({ send }) {
 	}
 }
 
+/** Cuts the stretches named in cues.js into a looping GIF for the README. */
+function writeGif(mp4, gif) {
+	const cuts = globalThis.IMPACTT_CUES.gif
+	const graph =
+		cuts.map(([a, z], i) => `[0:v]trim=${a}:${z},setpts=PTS-STARTPTS[c${i}]`).join(";") +
+		`;${cuts.map((_, i) => `[c${i}]`).join("")}concat=n=${cuts.length}:v=1,fps=12.5,scale=880:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=128:stats_mode=diff[p];[b][p]paletteuse=dither=none:diff_mode=rectangle`
+	const r = spawnSync("ffmpeg", ["-y", "-loglevel", "error", "-i", mp4, "-filter_complex", graph, "-loop", "0", gif], { stdio: "inherit" })
+	if (r.status) throw new Error("ffmpeg (gif) exited with " + r.status)
+	console.log(`gif → ${gif}`)
+}
+
 const chrome = await launch()
 try {
 	if (stills) {
@@ -163,6 +176,7 @@ try {
 		await done
 		if (!mute) rmSync(score, { force: true })
 		console.log(`\r${n1 - n0} frames in ${((Date.now() - t0) / 1000).toFixed(0)} s → ${out}`)
+		if (args.includes("--gif")) writeGif(out, out.replace(/\.mp4$/, "") + ".gif")
 	}
 } finally {
 	await chrome.close()

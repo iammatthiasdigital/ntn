@@ -8,7 +8,8 @@
 	The Impactt explainer film. Every frame is a pure function of time:
 	FILM.seek(t) draws second t, so render.mjs can step through it frame by
 	frame. Opened in a browser, this page is a silent preview with a scrubber.
-	The numbers come from data.js (npx tsx docs/video/data.ts).
+	The numbers come from data.js (npx tsx docs/video/data.ts); the timing
+	comes from cues.js, which the score is written to as well.
 -->
 <style>
 	:root {
@@ -84,15 +85,16 @@
 </head>
 <body>
 <div id="fit"><div id="stage"></div></div>
-<div id="ui"><button id="play" aria-label="Play">▶</button><input id="scrub" type="range" min="0" max="68" step="0.01" value="0"><span id="time"></span></div>
+<div id="ui"><button id="play" aria-label="Play">▶</button><input id="scrub" type="range" min="0" step="0.01" value="0"><span id="time"></span></div>
 <script src="data.js"></script>
+<script src="cues.js"></script>
 <script>
 (() => {
 	const F = window.IMPACTT_FILM
-	const DUR = 68
+	const Q = window.IMPACTT_CUES
+	const DUR = Q.duration
 	const FPS = 60
-	/* One bar of the score is 3.2 s; scenes change on its beats. */
-	const T = { A: 0, B: 3.2, C: 6.4, D: 11.2, E: 16, F: 19.2, G: 25.6, G2: 28.8, G3: 32, G4: 36.8, G5: 43.2, H: 48, I: 51.2, J: 56.8, K: 60.8 }
+	const T = Q.scene
 
 	/* ---------- helpers ---------- */
 	const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v))
@@ -212,8 +214,8 @@
 		const num = pill.querySelector("b")
 		return (t) => {
 			l.at(t, 0.15)
-			popIn(pill, t, 1.0)
-			num.textContent = money(Math.round(lerp(0, F.goal.value, eo(pr(t, 1.1, 2.2))) / 1e6) * 1e6)
+			popIn(pill, t, Q.goalPill)
+			num.textContent = money(Math.round(lerp(0, F.goal.value, eo(pr(t, ...Q.goalCount))) / 1e6) * 1e6)
 		}
 	})
 
@@ -225,7 +227,7 @@
 		const pills = F.bars.map((b) => h("div", { class: "pill", text: b.name }, box))
 		return (t) => {
 			l.at(t, T.B + 0.1)
-			pills.forEach((p, i) => popIn(p, t, T.B + 0.85 + i * 0.13))
+			pills.forEach((p, i) => popIn(p, t, Q.pills.at + i * Q.pills.step))
 		}
 	})
 
@@ -241,9 +243,9 @@
 		const l2 = line(caps, "sub", "But not if the plan is on track.", "top:176px")
 		return (t) => {
 			l.at(t, T.D + 0.1)
-			l2.at(t, T.D + 2.3, Infinity, 0.05)
-			popIn(card, t, T.D + 0.35, 0.8)
-			const p = eo(pr(t, T.D + 0.7, T.D + 2.1))
+			l2.at(t, T.D + 2.4, Infinity, 0.05)
+			popIn(card, t, Q.kpiCard, 0.8)
+			const p = eo(pr(t, ...Q.kpiCount))
 			val.textContent = money(Math.round((F.now.actual * p) / 1e5) * 1e5)
 			bar.style.width = (F.now.actual / F.goal.value) * 100 * p + "%"
 			foot.firstChild.textContent = Math.round(F.goal.reached * p) + "% of goal"
@@ -278,31 +280,31 @@
 		const mid = h("div", { class: "caps", style: "top:650px" }, root)
 		const title = line(mid, "h1", "Impactt", "top:0")
 		const sub = line(mid, "sub", "A new chart type.", "top:178px;font-size:50px")
-		const M0 = T.F + 2.5
+		const M0 = Q.merge[0]
 		return (t) => {
 			const m = eio(pr(t, M0, M0 + 0.9))
 			parts.forEach((p, i) => {
-				const a = pr(t, T.F + 0.15 + i * 0.5, T.F + 0.85 + i * 0.5)
+				const a = pr(t, Q.cards.at + i * Q.cards.step, Q.cards.at + i * Q.cards.step + 0.7)
 				p.style.left = lerp(X0[i], 960, m) + "px"
 				p.style.opacity = pr(a, 0, 0.3) * (1 - smooth(pr(m, 0.55, 1)))
 				p.style.transform = `translateY(${(1 - eo(a)) * 22}px) scale(${lerp(0.88, 1, back(a)) * lerp(1, 0.92, m)})`
 				p.lastChild.style.opacity = 1 - pr(m, 0, 0.4)
 			})
 			ops.forEach((o, i) => {
-				o.style.opacity = pr(t, T.F + 0.55 + i * 0.5, T.F + 0.85 + i * 0.5) * (1 - pr(m, 0, 0.3))
+				o.style.opacity = pr(t, Q.cards.at + (i + 0.5) * Q.cards.step, Q.cards.at + (i + 1) * Q.cards.step) * (1 - pr(m, 0, 0.3))
 			})
 			const q = pr(t, M0 + 0.45, M0 + 1.2)
 			imp.style.opacity = pr(q, 0, 0.35)
 			imp.style.transform = `scale(${lerp(0.9, 1.06, back(q))})`
-			title.at(t, M0 + 0.75)
-			sub.at(t, M0 + 1.25)
+			title.at(t, Q.title)
+			sub.at(t, Q.title + 0.5)
 		}
 	})
 
 	/* H · One more thing. */
 	scene([[T.H, T.I]], (root) => {
 		const l = line(h("div", { class: "mid" }, root), "h1", "One more thing.")
-		return (t) => l.at(t, T.H + 0.2, Infinity, 0.12)
+		return (t) => l.at(t, Q.oneMore, Infinity, 0.12)
 	})
 
 	/* J · What the projection says. */
@@ -311,7 +313,7 @@
 		const a = line(mid, "h1", F.goal.gap + ".", "font-size:200px")
 		const b = line(mid, "sub", `Spotted ${word(F.goal.monthsLeft)} months before the deadline.`, "margin-top:36px;font-size:52px")
 		return (t) => {
-			a.at(t, T.J + 0.15, Infinity, 0.12)
+			a.at(t, T.J + 0.05, Infinity, 0.12)
 			b.at(t, T.J + 0.7, Infinity, 0.05)
 		}
 	})
@@ -328,9 +330,9 @@
 			const sub = line(mid, "sub", "Know if the plan will reach the goal.", "margin-top:18px;font-size:52px")
 			const foot = h("div", { class: "foot", text: "A custom block for Notion  ·  matthias.digital" }, root)
 			return (t) => {
-				popIn(mark, t, T.K + 0.2, 0.9)
-				title.at(t, T.K + 0.45)
-				sub.at(t, T.K + 1.15, Infinity, 0.06)
+				popIn(mark, t, T.K + 0.05, 0.9)
+				title.at(t, T.K + 0.4)
+				sub.at(t, T.K + 1.2, Infinity, 0.06)
 				foot.style.opacity = smooth(pr(t, T.K + 2.4, T.K + 3.2))
 			}
 		},
@@ -516,7 +518,7 @@
 				const home = { x: 0, y: 0, z: 1 }
 				const near = { x: 118, y: 78, z: 1.18 }
 				if (t < T.H) return to(home, near, eio(pr(t, T.G5 + 0.1, T.G5 + 1.6)))
-				return to(home, near, eio(pr(t, T.I + 3.2, T.I + 5.0)))
+				return to(home, near, eio(pr(t, Q.gap - 0.4, Q.gap + 1.4)))
 			}
 
 			return (t) => {
@@ -530,27 +532,27 @@
 				cG1.at(t, T.G + 0.1, T.G2)
 				cG2.at(t, T.G2 + 0.05, T.G3)
 				cG3.at(t, T.G3 + 0.05, T.G4)
-				cG4.at(t, T.G4 + 0.05, T.G4 + 3.4)
-				cG4b.at(t, T.G4 + 3.45, T.G5)
+				cG4.at(t, T.G4 + 0.05, Q.sweep[1] - 0.6)
+				cG4b.at(t, Q.sweep[1] - 0.55, T.G5)
 				cG5.at(t, T.G5 + 0.05, T.H)
-				cI.at(t, T.I + 0.1, T.I + 3.5)
-				cI2.at(t, T.I + 3.55, T.J)
+				cI.at(t, T.I + 0.1, Q.gap - 0.05)
+				cI2.at(t, Q.gap, T.J)
 
 				/* where the story stands */
-				const tau = t < T.G4 + 0.5 ? -1 : lerp(0, F.today, smooth(pr(t, T.G4 + 0.5, T.G4 + 4.2)))
+				const tau = t < Q.sweep[0] ? -1 : lerp(0, F.today, smooth(pr(t, ...Q.sweep)))
 				const pj1 = eio(pr(t, T.I + 0.7, T.I + 1.9))
-				const pj2 = smooth(pr(t, T.I + 1.7, T.I + 3.5))
-				const pj3 = eo(pr(t, T.I + 3.7, T.I + 4.4))
+				const pj2 = smooth(pr(t, ...Q.projection))
+				const pj3 = eo(pr(t, Q.gap, Q.gap + 0.7))
 				gY.setAttribute("opacity", smooth(pr(t, T.G2 + 0.1, T.G2 + 0.9)))
-				const gl = eio(pr(t, T.G3 + 1.1, T.G3 + 2.5))
+				const gl = eio(pr(t, ...Q.goalLine))
 
 				/* bars */
 				let shift = 0
 				for (const bb of bars) {
 					const { b, i } = bb
-					const appear = t < T.D ? eo(pr(t, T.C + 0.4 + i * 0.13, T.C + 1.25 + i * 0.13)) : 1
+					const appear = t < T.D ? eo(pr(t, Q.rows.at + i * Q.rows.step, Q.rows.at + i * Q.rows.step + 0.85)) : 1
 					// From its roadmap row to its place in the stack.
-					const m1 = eio(pr(t, T.G2 + 0.15 + i * 0.09, T.G2 + 1.4 + i * 0.09))
+					const m1 = eio(pr(t, Q.morph[0] + i * 0.09, Q.morph[1] - (F.bars.length - 1 - i) * 0.09))
 					const base = b.planBase + shift
 					const started = b.state === "planned" ? 0 : smooth(pr(tau, b.sa, b.sa + 0.4))
 					const done = b.state === "done" ? smooth(pr(tau, b.end - 0.4, b.end + 0.1)) : 0
@@ -615,11 +617,11 @@
 				set(projClip, { x: X(F.today) - 2, width: (gx - X(F.today) + 12) * pj2 })
 
 				set(goalL, { x2: lerp(PL, gx, gl), opacity: gl > 0 ? 1 : 0 })
-				goalF.setAttribute("opacity", smooth(pr(gl, 0.92, 1)))
+				goalF.setAttribute("opacity", smooth(pr(t, Q.goalLine[1] - 0.15, Q.goalLine[1] + 0.05)))
 				goalT.setAttribute("opacity", smooth(pr(gl, 0.15, 0.5)))
 
 				/* today */
-				const tOn = smooth(pr(t, T.G4 + 0.2, T.G4 + 0.5))
+				const tOn = smooth(pr(t, Q.sweep[0] - 0.3, Q.sweep[0]))
 				const tx = X(Math.max(0, tau))
 				set(todayL, { x1: tx, x2: tx, opacity: tOn })
 				set(todayD, { cx: tx, opacity: tOn })
@@ -637,23 +639,23 @@
 				set(gapL, { y2: ge })
 				set(gapB, { y1: ge, y2: ge })
 				gapG.setAttribute("opacity", pj3 > 0 ? 1 : 0)
-				gapT.setAttribute("opacity", smooth(pr(t, T.I + 3.95, T.I + 4.4)))
+				gapT.setAttribute("opacity", smooth(pr(t, Q.gap + 0.2, Q.gap + 0.65)))
 
 				/* brackets */
-				const wp = eo(pr(t, T.G + 0.9, T.G + 1.6))
+				const wp = eo(pr(t, Q.widthBracket, Q.widthBracket + 0.7))
 				const wa = X(demo.pa)
 				const wb = X(demo.pe)
 				const wm = (wa + wb) / 2
 				wL.setAttribute("d", `M${lerp(wm, wa, wp)} ${wY - 8}V${wY}H${lerp(wm, wb, wp)}V${wY - 8}`)
-				wG.setAttribute("opacity", t >= T.G ? smooth(pr(t, T.G + 0.9, T.G + 1.2)) * (1 - smooth(pr(t, T.G2 - 0.2, T.G2 + 0.1))) : 0)
-				const hp = eo(pr(t, T.G2 + 1.75, T.G2 + 2.35))
+				wG.setAttribute("opacity", t >= T.G ? smooth(pr(t, Q.widthBracket, Q.widthBracket + 0.3)) * (1 - smooth(pr(t, T.G2 - 0.2, T.G2 + 0.1))) : 0)
+				const hp = eo(pr(t, Q.heightBracket, Q.heightBracket + 0.6))
 				const hb = Y(demo.planBase)
 				hL.setAttribute("d", `M${hX - 8} ${hb}H${hX}V${lerp(hb, Y(demo.planBase + demo.P), hp)}H${hX - 8}`)
-				hG.setAttribute("opacity", smooth(pr(t, T.G2 + 1.75, T.G2 + 2.05)) * (1 - smooth(pr(t, T.G3 - 0.1, T.G3 + 0.2))))
+				hG.setAttribute("opacity", smooth(pr(t, Q.heightBracket, Q.heightBracket + 0.3)) * (1 - smooth(pr(t, T.G3 - 0.1, T.G3 + 0.2))))
 
 				/* chips */
 				chips.forEach((ch, j) => {
-					const p = pr(t, T.G5 + 1.1 + j * 0.55, T.G5 + 1.8 + j * 0.55)
+					const p = pr(t, Q.chips.at + j * Q.chips.step, Q.chips.at + j * Q.chips.step + 0.7)
 					const k = lerp(0.85, 1, back(p))
 					set(ch.g, { opacity: t < T.H ? pr(p, 0, 0.3) : 0, transform: `translate(${ch.x} ${ch.yc}) scale(${k}) translate(${-ch.x} ${-ch.yc})` })
 				})
@@ -668,6 +670,7 @@
 	const scrub = document.getElementById("scrub")
 	const time = document.getElementById("time")
 	const play = document.getElementById("play")
+	scrub.max = DUR
 	let now = 0
 	let playing = false
 	let last = 0

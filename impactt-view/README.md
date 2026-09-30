@@ -28,6 +28,14 @@ toward its goal. At a glance you can see:
 - which are late or under-delivering,
 - and whether all of them together still reach the goal by the promised date.
 
+<a href="docs/video/impactt-explainer.mp4">
+  <img alt="Animated walkthrough: six enterprise initiatives on a roadmap turn into an Impactt chart, fill in with what has been delivered, and the projection lands $1.2M short of a $12M goal" src="docs/video/impactt-explainer.gif" width="100%">
+</a>
+
+The animation is a cut from the
+**[68-second explainer](docs/video/impactt-explainer.mp4)** (with sound),
+which follows one enterprise example from roadmap to projection.
+
 This repository contains Impactt as a **Notion custom block**. The same chart
 is also a standalone, shareable
 **[Claude artifact](https://claude.ai/artifact/5646C96dx3gznmWJykuqF3)**:
@@ -343,6 +351,7 @@ blocks/impactt-view/src/
   impactt.css                Notion light/dark palette and styles
 data/                        Sample databases for the dev shell
 docs/                        README graphics (chart renders are exported from the block)
+docs/video/                  The explainer film: film.html, cue sheet, score, renderer
 test/                        Unit tests
 ```
 
