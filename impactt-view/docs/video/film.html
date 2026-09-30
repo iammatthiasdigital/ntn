@@ -1,0 +1,725 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Impactt explainer</title>
+<!--
+	The Impactt explainer film. Every frame is a pure function of time:
+	FILM.seek(t) draws second t, so render.mjs can step through it frame by
+	frame. Opened in a browser, this page is a silent preview with a scrubber.
+	The numbers come from data.js (npx tsx docs/video/data.ts).
+-->
+<style>
+	:root {
+		--ink: #111110;
+		--cink: #37352f;
+		--ink2: #787774;
+		--muted: #9b9a97;
+		--line: rgba(55, 53, 47, 0.13);
+		--grid: rgba(55, 53, 47, 0.07);
+		--col: rgba(55, 53, 47, 0.03);
+		--soft: #f7f7f5;
+		--softline: #e9e9e7;
+		--goal: #9065b0;
+		--today: #eb5757;
+		--bad: #d44c47;
+		--sans: "SF Pro Display", -apple-system, BlinkMacSystemFont, "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif;
+	}
+	html, body { margin: 0; height: 100%; background: #ececea; overflow: hidden; }
+	body { font-family: var(--sans); -webkit-font-smoothing: antialiased; color: var(--ink); }
+	#fit { position: absolute; left: 0; top: 0; transform-origin: 0 0; box-shadow: 0 10px 50px rgba(15, 15, 15, 0.16); }
+	#stage { position: relative; width: 1920px; height: 1080px; background: #fff; overflow: hidden; }
+	body.render { background: #fff; }
+	body.render #fit { box-shadow: none; }
+	body.render #ui { display: none; }
+
+	#ui { position: absolute; left: 0; right: 0; bottom: 0; height: 56px; display: flex; align-items: center; gap: 14px; padding: 0 20px; box-sizing: border-box; font-size: 13px; color: #37352f; }
+	#ui button { width: 34px; height: 34px; border-radius: 17px; border: 0; background: #111110; color: #fff; font-size: 13px; cursor: pointer; }
+	#ui input { flex: 1; accent-color: #111110; }
+	#ui span { font-variant-numeric: tabular-nums; min-width: 92px; text-align: right; }
+
+	.scene { position: absolute; inset: 0; }
+	.mid { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+	.h1 { font-size: 138px; font-weight: 700; letter-spacing: -0.042em; line-height: 1.06; text-align: center; white-space: nowrap; }
+	.cap { font-size: 80px; font-weight: 700; letter-spacing: -0.036em; line-height: 1.1; text-align: center; white-space: nowrap; }
+	.sub { font-size: 42px; font-weight: 500; letter-spacing: -0.016em; line-height: 1.2; color: var(--ink2); text-align: center; white-space: nowrap; }
+	.w { display: inline-block; }
+	.num { font-variant-numeric: tabular-nums; }
+
+	/* headline + sub pinned above a chart or card */
+	.caps { position: absolute; left: 0; right: 0; top: 0; height: 280px; }
+	.caps > div { position: absolute; left: 0; right: 0; }
+	.capband { position: absolute; left: 0; right: 0; top: 0; height: 280px; background: linear-gradient(#fff 0, #fff 82%, rgba(255, 255, 255, 0) 100%); }
+
+	.gpill { margin-top: 56px; display: flex; align-items: center; gap: 20px; padding: 24px 46px 24px 38px; border-radius: 999px; background: var(--soft); box-shadow: inset 0 0 0 1.5px var(--softline); font-size: 46px; font-weight: 500; letter-spacing: -0.02em; color: var(--ink2); }
+	.gpill b { color: var(--ink); font-weight: 700; min-width: 2.6em; }
+	.gpill i { width: 8px; height: 8px; border-radius: 4px; background: var(--muted); }
+	.pills { margin-top: 60px; width: 1320px; display: flex; flex-wrap: wrap; justify-content: center; gap: 22px; }
+	.pill { padding: 20px 40px; border-radius: 999px; background: var(--soft); box-shadow: inset 0 0 0 1.5px var(--softline); font-size: 42px; font-weight: 600; letter-spacing: -0.02em; color: var(--cink); }
+
+	.kpi { position: absolute; left: 50%; top: 350px; width: 860px; margin-left: -430px; box-sizing: border-box; padding: 56px 68px 60px; border-radius: 40px; background: var(--soft); box-shadow: inset 0 0 0 1.5px var(--softline); }
+	.kpi .lab { font-size: 36px; font-weight: 500; color: var(--ink2); letter-spacing: -0.015em; }
+	.kpi .val { font-size: 230px; font-weight: 700; letter-spacing: -0.05em; line-height: 1.15; }
+	.kpi .track { margin-top: 26px; height: 16px; border-radius: 8px; background: #e3e2e0; overflow: hidden; }
+	.kpi .bar { height: 100%; border-radius: 8px; background: var(--cink); }
+	.kpi .kfoot { margin-top: 24px; display: flex; justify-content: space-between; font-size: 32px; font-weight: 500; color: var(--ink2); letter-spacing: -0.015em; }
+
+	.concept { position: absolute; top: 210px; width: 396px; height: 358px; margin-left: -198px; }
+	.concept svg { display: block; border-radius: 26px; background: var(--soft); box-shadow: inset 0 0 0 1.5px var(--softline); }
+	.concept.imp svg { background: #f4f0f8; box-shadow: inset 0 0 0 1.5px #d9cbe6; }
+	.concept p { margin: 22px 0 0; text-align: center; font-size: 38px; font-weight: 600; letter-spacing: -0.02em; color: var(--cink); }
+	.op { position: absolute; top: 340px; width: 80px; margin-left: -40px; text-align: center; font-size: 72px; font-weight: 300; color: var(--muted); }
+
+	.foot { position: absolute; left: 0; right: 0; bottom: 78px; text-align: center; font-size: 30px; font-weight: 500; letter-spacing: -0.01em; color: var(--muted); }
+
+	svg.chart { position: absolute; left: 0; top: 0; }
+	svg text { font-family: var(--sans); }
+	.ax { font-size: 21px; font-weight: 500; fill: var(--muted); }
+	.bn { font-size: 22px; font-weight: 600; letter-spacing: -0.008em; }
+	.bs { font-size: 19.5px; font-weight: 500; font-variant-numeric: tabular-nums; }
+	.note { font-size: 24px; font-weight: 600; fill: var(--cink); letter-spacing: -0.01em; }
+	.halo { paint-order: stroke; stroke: #fff; stroke-width: 7px; stroke-linejoin: round; }
+</style>
+</head>
+<body>
+<div id="fit"><div id="stage"></div></div>
+<div id="ui"><button id="play" aria-label="Play">▶</button><input id="scrub" type="range" min="0" max="68" step="0.01" value="0"><span id="time"></span></div>
+<script src="data.js"></script>
+<script>
+(() => {
+	const F = window.IMPACTT_FILM
+	const DUR = 68
+	const FPS = 60
+	/* One bar of the score is 3.2 s; scenes change on its beats. */
+	const T = { A: 0, B: 3.2, C: 6.4, D: 11.2, E: 16, F: 19.2, G: 25.6, G2: 28.8, G3: 32, G4: 36.8, G5: 43.2, H: 48, I: 51.2, J: 56.8, K: 60.8 }
+
+	/* ---------- helpers ---------- */
+	const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v))
+	const pr = (t, a, b) => clamp((t - a) / (b - a))
+	const lerp = (a, b, p) => a + (b - a) * p
+	const eo = (p) => 1 - Math.pow(1 - p, 4)
+	const eio = (p) => (p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2)
+	const smooth = (p) => p * p * (3 - 2 * p)
+	const back = (p) => 1 + 2.3 * Math.pow(p - 1, 3) + 1.3 * Math.pow(p - 1, 2)
+	const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c])
+	const h = (tag, attrs = {}, parent) => {
+		const e = document.createElement(tag)
+		for (const k in attrs) {
+			if (k === "text") e.textContent = attrs[k]
+			else if (k === "html") e.innerHTML = attrs[k]
+			else e.setAttribute(k, attrs[k])
+		}
+		if (parent) parent.appendChild(e)
+		return e
+	}
+	const NS = "http://www.w3.org/2000/svg"
+	const s = (tag, attrs = {}, parent) => {
+		const e = document.createElementNS(NS, tag)
+		for (const k in attrs) {
+			if (k === "text") e.textContent = attrs[k]
+			else e.setAttribute(k, attrs[k])
+		}
+		if (parent) parent.appendChild(e)
+		return e
+	}
+	const set = (e, attrs) => {
+		for (const k in attrs) e.setAttribute(k, attrs[k])
+	}
+	const rgb = (c) => [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16))
+	const mix = (a, b, p) => a.map((v, i) => v + (b[i] - v) * p)
+	const css = (c) => `rgb(${c.map((v) => Math.round(v)).join(",")})`
+	const short = (n) => String(Math.round(n * 10) / 10)
+	const money = (v) => "$" + (v >= 1e6 ? short(v / 1e6) + "M" : v >= 1e3 ? short(v / 1e3) + "k" : short(v))
+	const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+	const WORDS = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve"]
+	const word = (n) => WORDS[n] ?? String(n)
+	const Word = (n) => word(n).replace(/^./, (c) => c.toUpperCase())
+	/** Value of a sampled curve [[t, v], …] at t. */
+	const at = (pts, t) => {
+		if (!pts.length) return 0
+		if (t <= pts[0][0]) return pts[0][1]
+		const last = pts[pts.length - 1]
+		if (t >= last[0]) return last[1]
+		let lo = 0
+		let hi = pts.length - 1
+		while (hi - lo > 1) {
+			const m = (lo + hi) >> 1
+			if (pts[m][0] <= t) lo = m
+			else hi = m
+		}
+		return lerp(pts[lo][1], pts[hi][1], (t - pts[lo][0]) / (pts[hi][0] - pts[lo][0]))
+	}
+
+	/* ---------- text ---------- */
+	/** A line of text whose words rise into place one after another. */
+	function line(parent, cls, text, style = "") {
+		const el = h("div", { class: cls, style, html: text.split(" ").map((w) => `<span class="w">${esc(w)}</span>`).join(" ") }, parent)
+		const ws = [...el.children]
+		return {
+			el,
+			/** Words come in from `tin`; the whole line leaves just before `tout`. */
+			at(t, tin, tout = Infinity, stagger = 0.075) {
+				const on = t >= tin && t < tout
+				el.style.visibility = on ? "visible" : "hidden"
+				if (!on) return
+				const out = smooth(pr(t, tout - 0.28, tout))
+				el.style.opacity = 1 - out
+				el.style.transform = out ? `translateY(${-out * 16}px)` : ""
+				el.style.filter = out ? `blur(${out * 8}px)` : ""
+				ws.forEach((w, i) => {
+					const p = eo(pr(t, tin + i * stagger, tin + i * stagger + 0.8))
+					w.style.opacity = p
+					w.style.transform = `translateY(${(1 - p) * 0.36}em)`
+					w.style.filter = p < 1 ? `blur(${(1 - p) * 12}px)` : ""
+				})
+			},
+		}
+	}
+	/** Fade and scale an element in with a small overshoot. */
+	function popIn(el, t, t0, dur = 0.7) {
+		const p = pr(t, t0, t0 + dur)
+		el.style.opacity = pr(t, t0, t0 + 0.22)
+		el.style.transform = `translateY(${(1 - eo(p)) * 22}px) scale(${lerp(0.88, 1, back(p))})`
+	}
+
+	/* ---------- scenes ---------- */
+	const stage = document.getElementById("stage")
+	const scenes = []
+	/** `windows` are the [from, to) spans the scene is on screen. */
+	function scene(windows, build, fout = 0.25) {
+		const root = h("div", { class: "scene" }, stage)
+		scenes.push({ windows, root, update: build(root), fout })
+	}
+	function seek(t) {
+		t = clamp(t, 0, DUR)
+		for (const sc of scenes) {
+			const w = sc.windows.find(([a, b]) => t >= a && t < b)
+			sc.root.style.display = w ? "" : "none"
+			if (!w) continue
+			sc.root.style.opacity = smooth(pr(t, w[0], w[0] + 0.3)) * (1 - (sc.fout ? smooth(pr(t, w[1] - sc.fout, w[1])) : 0))
+			sc.update(t)
+		}
+	}
+
+	const FLAG = `<svg width="40" height="46" viewBox="0 0 40 46"><path d="M8 4v38" stroke="#9065b0" stroke-width="4" stroke-linecap="round"/><path d="M8 5l24 7.5L8 20z" fill="#9065b0" stroke="#9065b0" stroke-width="3" stroke-linejoin="round"/></svg>`
+
+	/* A · One goal. */
+	scene([[T.A, T.B]], (root) => {
+		const mid = h("div", { class: "mid" }, root)
+		const l = line(mid, "h1", "One goal.")
+		const pill = h("div", { class: "gpill", html: `${FLAG}<b class="num"></b><span>${esc(F.kpi)}</span><i></i><span>by ${esc(F.goal.byLong)}</span>` }, mid)
+		const num = pill.querySelector("b")
+		return (t) => {
+			l.at(t, 0.15)
+			popIn(pill, t, 1.0)
+			num.textContent = money(Math.round(lerp(0, F.goal.value, eo(pr(t, 1.1, 2.2))) / 1e6) * 1e6)
+		}
+	})
+
+	/* B · Six initiatives. */
+	scene([[T.B, T.C]], (root) => {
+		const mid = h("div", { class: "mid" }, root)
+		const l = line(mid, "h1", `${Word(F.bars.length)} initiatives.`)
+		const box = h("div", { class: "pills" }, mid)
+		const pills = F.bars.map((b) => h("div", { class: "pill", text: b.name }, box))
+		return (t) => {
+			l.at(t, T.B + 0.1)
+			pills.forEach((p, i) => popIn(p, t, T.B + 0.85 + i * 0.13))
+		}
+	})
+
+	/* D · A dashboard shows how much. */
+	scene([[T.D, T.E]], (root) => {
+		const card = h("div", { class: "kpi" }, root)
+		h("div", { class: "lab", text: F.kpi }, card)
+		const val = h("div", { class: "val num" }, card)
+		const bar = h("div", { class: "bar" }, h("div", { class: "track" }, card))
+		const foot = h("div", { class: "kfoot", html: `<span class="num"></span><span>Goal ${esc(F.goal.headline)}</span>` }, card)
+		const caps = h("div", { class: "caps" }, root)
+		const l = line(caps, "cap", "A dashboard shows how much.", "top:68px")
+		const l2 = line(caps, "sub", "But not if the plan is on track.", "top:176px")
+		return (t) => {
+			l.at(t, T.D + 0.1)
+			l2.at(t, T.D + 2.3, Infinity, 0.05)
+			popIn(card, t, T.D + 0.35, 0.8)
+			const p = eo(pr(t, T.D + 0.7, T.D + 2.1))
+			val.textContent = money(Math.round((F.now.actual * p) / 1e5) * 1e5)
+			bar.style.width = (F.now.actual / F.goal.value) * 100 * p + "%"
+			foot.firstChild.textContent = Math.round(F.goal.reached * p) + "% of goal"
+		}
+	})
+
+	/* E · The question. */
+	scene([[T.E, T.F]], (root) => {
+		const mid = h("div", { class: "mid" }, root)
+		const a = line(mid, "h1", "Will the plan")
+		const b = line(mid, "h1", "reach the goal?")
+		return (t) => {
+			a.at(t, T.E + 0.1)
+			b.at(t, T.E + 0.4)
+		}
+	})
+
+	/* F · Gantt + Marimekko + Burn-up = Impactt. */
+	scene([[T.F, T.G]], (root) => {
+		const art = {
+			Gantt: `<line x1="20" y1="170" x2="195" y2="170" stroke="#c7c6c3"/><rect x="25" y="30" width="60" height="16" rx="4" fill="#529cca"/><rect x="60" y="60" width="80" height="16" rx="4" fill="#529cca"/><rect x="100" y="90" width="45" height="16" rx="4" fill="#9b9a97"/><rect x="130" y="120" width="60" height="16" rx="4" fill="#9b9a97"/><line x1="110" y1="20" x2="110" y2="170" stroke="#eb5757" stroke-width="1.2"/>`,
+			Marimekko: `<line x1="20" y1="170" x2="195" y2="170" stroke="#c7c6c3"/><rect x="22" y="100" width="30" height="70" fill="#d3e5ef" stroke="#529cca"/><rect x="52" y="50" width="70" height="120" fill="#dbeddb" stroke="#448361"/><rect x="122" y="120" width="25" height="50" fill="#fadec9" stroke="#d9730d"/><rect x="147" y="75" width="46" height="95" fill="#e8deee" stroke="#9065b0"/>`,
+			"Burn-up": `<g fill="none"><line x1="20" y1="170" x2="195" y2="170" stroke="#c7c6c3"/><line x1="20" y1="35" x2="195" y2="35" stroke="#9065b0" stroke-width="1.5" stroke-dasharray="7 4"/><path d="M20 170 L70 130 L120 90 L180 40" stroke="#b4b3af" stroke-width="1.4" stroke-dasharray="2 4" stroke-linecap="round"/><path d="M20 170 L55 152 L80 140 L105 112" stroke="#37352f" stroke-width="2.4"/><path d="M105 112 L140 85 L180 58" stroke="#787774" stroke-width="1.5" stroke-dasharray="5 4"/></g><circle cx="105" cy="112" r="4" fill="#37352f"/>`,
+			Impactt: `<line x1="20" y1="170" x2="195" y2="170" stroke="#c7c6c3"/><line x1="20" y1="32" x2="195" y2="32" stroke="#9065b0" stroke-width="1.5" stroke-dasharray="7 4"/><rect x="25" y="152" width="40" height="18" rx="3" fill="#448361"/><rect x="58" y="126" width="36" height="26" rx="3" fill="#d44c47"/><rect x="88" y="92" width="44" height="34" rx="3" fill="#529cca" fill-opacity=".18" stroke="#529cca" stroke-width="1.4"/><rect x="88" y="108" width="18" height="18" rx="2" fill="#529cca"/><rect x="126" y="60" width="40" height="32" rx="3" fill="#9b9a97" fill-opacity=".18" stroke="#9b9a97" stroke-width="1.4"/><rect x="160" y="36" width="32" height="24" rx="3" fill="#9b9a97" fill-opacity=".18" stroke="#9b9a97" stroke-width="1.4"/><path d="M25 170 L65 152 L94 126 L106 108" fill="none" stroke="#37352f" stroke-width="2"/><path d="M106 108 L166 70 L192 42" fill="none" stroke="#787774" stroke-width="1.3" stroke-dasharray="5 4"/><line x1="106" y1="20" x2="106" y2="170" stroke="#eb5757" stroke-width="1.1"/>`,
+		}
+		const card = (name, imp) => h("div", { class: "concept" + (imp ? " imp" : ""), html: `<svg width="396" height="358" viewBox="0 0 210 190">${art[name]}</svg>${imp ? "" : `<p>${name}</p>`}` }, root)
+		const X0 = [450, 960, 1470]
+		const parts = ["Gantt", "Marimekko", "Burn-up"].map((n) => card(n))
+		const ops = [705, 1215].map((x) => h("div", { class: "op", style: `left:${x}px`, text: "+" }, root))
+		const imp = card("Impactt", true)
+		imp.style.left = "960px"
+		const mid = h("div", { class: "caps", style: "top:650px" }, root)
+		const title = line(mid, "h1", "Impactt", "top:0")
+		const sub = line(mid, "sub", "A new chart type.", "top:178px;font-size:50px")
+		const M0 = T.F + 2.5
+		return (t) => {
+			const m = eio(pr(t, M0, M0 + 0.9))
+			parts.forEach((p, i) => {
+				const a = pr(t, T.F + 0.15 + i * 0.5, T.F + 0.85 + i * 0.5)
+				p.style.left = lerp(X0[i], 960, m) + "px"
+				p.style.opacity = pr(a, 0, 0.3) * (1 - smooth(pr(m, 0.55, 1)))
+				p.style.transform = `translateY(${(1 - eo(a)) * 22}px) scale(${lerp(0.88, 1, back(a)) * lerp(1, 0.92, m)})`
+				p.lastChild.style.opacity = 1 - pr(m, 0, 0.4)
+			})
+			ops.forEach((o, i) => {
+				o.style.opacity = pr(t, T.F + 0.55 + i * 0.5, T.F + 0.85 + i * 0.5) * (1 - pr(m, 0, 0.3))
+			})
+			const q = pr(t, M0 + 0.45, M0 + 1.2)
+			imp.style.opacity = pr(q, 0, 0.35)
+			imp.style.transform = `scale(${lerp(0.9, 1.06, back(q))})`
+			title.at(t, M0 + 0.75)
+			sub.at(t, M0 + 1.25)
+		}
+	})
+
+	/* H · One more thing. */
+	scene([[T.H, T.I]], (root) => {
+		const l = line(h("div", { class: "mid" }, root), "h1", "One more thing.")
+		return (t) => l.at(t, T.H + 0.2, Infinity, 0.12)
+	})
+
+	/* J · What the projection says. */
+	scene([[T.J, T.K]], (root) => {
+		const mid = h("div", { class: "mid" }, root)
+		const a = line(mid, "h1", F.goal.gap + ".", "font-size:200px")
+		const b = line(mid, "sub", `Spotted ${word(F.goal.monthsLeft)} months before the deadline.`, "margin-top:36px;font-size:52px")
+		return (t) => {
+			a.at(t, T.J + 0.15, Infinity, 0.12)
+			b.at(t, T.J + 0.7, Infinity, 0.05)
+		}
+	})
+
+	/* K · End card. */
+	scene(
+		[[T.K, DUR + 1]],
+		(root) => {
+			const mid = h("div", { class: "mid", style: "padding-bottom:40px" }, root)
+			const mark = h("div", {
+				html: `<svg width="228" height="180" viewBox="0 0 190 150"><line x1="6" y1="16" x2="184" y2="16" stroke="#9065b0" stroke-width="4" stroke-dasharray="14 9" stroke-linecap="round"/><rect x="8" y="106" width="58" height="36" rx="9" fill="#448361"/><rect x="50" y="66" width="62" height="40" rx="9" fill="#529cca"/><rect x="98" y="24" width="82" height="42" rx="9" fill="#9b9a97" fill-opacity=".18" stroke="#9b9a97" stroke-width="3.5"/></svg>`,
+			}, mid)
+			const title = line(mid, "h1", "Impactt", "font-size:176px;margin-top:22px")
+			const sub = line(mid, "sub", "Know if the plan will reach the goal.", "margin-top:18px;font-size:52px")
+			const foot = h("div", { class: "foot", text: "A custom block for Notion  ·  matthias.digital" }, root)
+			return (t) => {
+				popIn(mark, t, T.K + 0.2, 0.9)
+				title.at(t, T.K + 0.45)
+				sub.at(t, T.K + 1.15, Infinity, 0.06)
+				foot.style.opacity = smooth(pr(t, T.K + 2.4, T.K + 3.2))
+			}
+		},
+		0
+	)
+
+	/* ---------- the chart: C (as a roadmap), G (the build) and I (the projection) ---------- */
+	scene(
+		[
+			[T.C, T.D],
+			[T.G, T.H],
+			[T.I, T.J],
+		],
+		(root) => {
+			const PL = 300
+			const PR = 1700
+			const YT = 330
+			const CH = 640
+			const YB = YT + CH
+			const HL = YT - 12
+			const X = (t) => PL + ((t - F.t0) / (F.t1 - F.t0)) * (PR - PL)
+			const SV = (v) => (v / F.yMax) * CH
+			const Y = (v) => YB - SV(v)
+			const ROW = (i) => YT + 34 + i * 98
+			const ROWH = 46
+			const INK = "#37352f"
+			const INK2 = "#787774"
+			const C = { up: rgb("#9b9a97"), ok: rgb("#529cca"), bad: rgb("#1f4e79"), met: rgb("#448361"), miss: rgb("#d44c47") }
+
+			const svg = s("svg", { class: "chart", width: 1920, height: 1080, viewBox: "0 0 1920 1080" }, root)
+			const defs = s("defs", {}, svg)
+			const sh = s("filter", { id: "sh", x: "-20%", y: "-60%", width: "140%", height: "240%" }, defs)
+			s("feDropShadow", { dx: 0, dy: 5, stdDeviation: 9, "flood-color": "#0f0f0f", "flood-opacity": 0.13 }, sh)
+			const projClip = s("rect", { y: 0, height: 1080 }, s("clipPath", { id: "pc" }, defs))
+			const cam = s("g", {}, svg)
+			const gAxis = s("g", {}, cam)
+			const gHead = s("g", {}, cam)
+			const gY = s("g", {}, cam)
+			const gLines = s("g", { fill: "none" }, cam)
+			const gToday = s("g", {}, cam)
+			const gBars = s("g", {}, cam)
+			const gFg = s("g", {}, cam)
+			const gNote = s("g", {}, cam)
+
+			/* time header and columns */
+			F.quarters.forEach((q, j) => {
+				if (j % 2) s("rect", { x: X(q.a), y: HL, width: X(q.b) - X(q.a), height: YB - HL, fill: "var(--col)" }, gAxis)
+				s("text", { class: "ax", x: (X(q.a) + X(q.b)) / 2, y: HL - 14, "text-anchor": "middle", text: q.label }, gHead)
+			})
+			s("line", { x1: PL, x2: PR, y1: HL, y2: HL, stroke: "var(--line)", "stroke-width": 1.5 }, gAxis)
+			s("line", { x1: PL, x2: PR, y1: YB, y2: YB, stroke: "var(--line)", "stroke-width": 1.5 }, gAxis)
+			s("line", { x1: PL, x2: PL, y1: HL, y2: YB, stroke: "var(--line)", "stroke-width": 1.5 }, gAxis)
+			/* value axis */
+			F.yTicks.forEach((k, j) => {
+				if (j) s("line", { x1: PL, x2: PR, y1: Y(k.v), y2: Y(k.v), stroke: "var(--grid)", "stroke-width": 1.5 }, gY)
+				s("text", { class: "ax num", x: PL - 16, y: Y(k.v) + 7, "text-anchor": "end", text: k.label }, gY)
+			})
+
+			/* totals, behind the bars */
+			const bandP = s("path", { fill: "rgba(55,53,47,0.06)", "clip-path": "url(#pc)" }, gLines)
+			const planP = s("path", { stroke: "#b4b3af", "stroke-width": 2.4, "stroke-dasharray": "3 8", "stroke-linecap": "round" }, gLines)
+			const projP = s("path", { stroke: "#787774", "stroke-width": 2.6, "stroke-dasharray": "10 8", "clip-path": "url(#pc)" }, gLines)
+			const actP = s("path", { stroke: INK, "stroke-width": 4, "stroke-linejoin": "round", "stroke-linecap": "round" }, gLines)
+			const path = (pts, tMax = Infinity) => {
+				let d = ""
+				for (const [t, v] of pts) {
+					if (t > tMax) break
+					d += (d ? "L" : "M") + X(t).toFixed(1) + " " + Y(v).toFixed(1)
+				}
+				if (d && tMax < pts[pts.length - 1][0]) d += "L" + X(tMax).toFixed(1) + " " + Y(at(pts, tMax)).toFixed(1)
+				return d
+			}
+			projP.setAttribute("d", path(F.curves.proj))
+			bandP.setAttribute(
+				"d",
+				path(F.curves.projHi) +
+					[...F.curves.projLo]
+						.reverse()
+						.map(([t, v]) => "L" + X(t).toFixed(1) + " " + Y(v).toFixed(1))
+						.join("") +
+					"Z"
+			)
+
+			/* bars */
+			const label = (g, white, clip) => {
+				const gg = s("g", clip ? { "clip-path": clip } : {}, g)
+				return {
+					name: s("text", { class: "bn", fill: white ? "#fff" : INK }, gg),
+					sub: s("text", { class: "bs", fill: white ? "rgba(255,255,255,0.94)" : INK2 }, gg),
+				}
+			}
+			const bars = F.bars.map((b, i) => {
+				const g = s("g", {}, gBars)
+				const plan = s("rect", { rx: 9, "stroke-width": 2.4 }, g)
+				const ink = label(g, false)
+				const clipR = s("rect", { rx: 9 }, s("clipPath", { id: "sc" + i }, defs))
+				const solid = s("rect", { rx: 9 }, g)
+				const wht = label(g, true, `url(#sc${i})`)
+				const dash = s("rect", { rx: 9, fill: "none", "stroke-width": 2.2, "stroke-dasharray": "8 6" }, g)
+				ink.name.textContent = wht.name.textContent = b.name
+				return { b, i, plan, solid, clipR, dash, ink, wht, nameW: ink.name.getComputedTextLength(), oneLine: SV(b.P) < 60 }
+			})
+			/* "+3.6 mo" sits in the stretch a slipping bar adds */
+			const late = s("text", { class: "bs", "font-weight": 600 }, gBars)
+
+			/* goal */
+			const gx = X(F.goal.by)
+			const gy = Y(F.goal.value)
+			const goalL = s("line", { x1: PL, y1: gy, y2: gy, stroke: "var(--goal)", "stroke-width": 2.2, "stroke-dasharray": "12 7" }, gFg)
+			const goalF = s("path", { d: `M${gx} ${gy - 20} L${gx} ${gy + 2} M${gx} ${gy - 20} L${gx + 17} ${gy - 14} L${gx} ${gy - 8}`, fill: "var(--goal)", stroke: "var(--goal)", "stroke-width": 2.8, "stroke-linejoin": "round", "stroke-linecap": "round" }, gFg)
+			const goalT = s("text", { x: PL + 16, y: gy - 14, "font-size": 24, "font-weight": 600, fill: "var(--goal)", class: "halo", text: F.goal.label }, gFg)
+
+			/* today */
+			const todayL = s("line", { y1: HL, y2: YB, stroke: "var(--today)", "stroke-width": 2 }, gToday)
+			const todayD = s("circle", { cy: HL, r: 6, fill: "var(--today)" }, gFg)
+			const actD = s("circle", { r: 8.5, fill: INK, stroke: "#fff", "stroke-width": 3.5 }, gFg)
+			const PW = 252
+			const pillG = s("g", {}, gFg)
+			s("rect", { width: PW, height: 50, rx: 25, fill: "#fff", stroke: "rgba(55,53,47,0.14)", "stroke-width": 1.5, filter: "url(#sh)" }, pillG)
+			const pillA = s("text", { x: 22, y: 33, "font-size": 22, "font-weight": 600, fill: "var(--today)" }, pillG)
+			const pillB = s("text", { x: PW - 22, y: 33, "font-size": 22, "font-weight": 700, fill: INK, "text-anchor": "end", class: "num" }, pillG)
+
+			/* projection end and the gap to the goal */
+			const py = Y(F.goal.proj)
+			const bx = gx - 12
+			const gapG = s("g", { stroke: "var(--bad)", "stroke-width": 3.6, "stroke-linecap": "round" }, gFg)
+			const gapL = s("line", { x1: bx, x2: bx, y1: gy }, gapG)
+			const gapA = s("line", { x1: bx - 8, x2: bx + 8, y1: gy, y2: gy }, gapG)
+			const gapB = s("line", { x1: bx - 8, x2: bx + 8 }, gapG)
+			const projD = s("circle", { cx: gx, cy: py, r: 7.5, fill: "#787774", stroke: "#fff", "stroke-width": 3.5 }, gFg)
+			const topBar = Math.max(...F.bars.map((b) => b.base + b.P))
+			const gapT = s("text", { x: bx - 16, y: Math.min(gy, Y(topBar)) - 20, "text-anchor": "end", "font-size": 27, "font-weight": 700, fill: "var(--bad)", class: "halo num", text: F.goal.gapLabel }, gFg)
+
+			/* brackets: width is time, height is impact */
+			const demo = F.bars[F.bars.length - 1]
+			const di = F.bars.length - 1
+			const wG = s("g", {}, gNote)
+			const wY = ROW(di) + ROWH + 18
+			const wL = s("path", { fill: "none", stroke: INK, "stroke-width": 2.6, "stroke-linecap": "round", "stroke-linejoin": "round" }, wG)
+			s("text", { class: "note", x: (X(demo.pa) + X(demo.pe)) / 2, y: wY + 38, "text-anchor": "middle", text: demo.window }, wG)
+			const hG = s("g", {}, gNote)
+			const hX = X(demo.pe) + 20
+			const hL = s("path", { fill: "none", stroke: INK, "stroke-width": 2.6, "stroke-linecap": "round", "stroke-linejoin": "round" }, hG)
+			s("text", { class: "note", x: hX + 18, y: Y(demo.planBase + demo.P / 2) + 9, "font-size": 27, text: demo.impact }, hG)
+
+			/* what each started initiative has delivered */
+			const chip = (x, yc, color, bold, rest) => {
+				const g = s("g", {}, gNote)
+				s("line", { x1: x - 18, x2: x, y1: yc, y2: yc, stroke: "var(--muted)", "stroke-width": 2 }, g)
+				const box = s("rect", { x, y: yc - 24, height: 48, rx: 14, fill: "#fff", stroke: "rgba(55,53,47,0.14)", "stroke-width": 1.5, filter: "url(#sh)" }, g)
+				s("circle", { cx: x + 22, cy: yc, r: 6.5, fill: color }, g)
+				const tx = s("text", { x: x + 38, y: yc + 7.5, "font-size": 21.5, fill: INK2, "font-weight": 500, class: "num" }, g)
+				s("tspan", { "font-weight": 700, fill: INK, text: bold }, tx)
+				s("tspan", { text: rest }, tx)
+				box.setAttribute("width", 38 + tx.getComputedTextLength() + 20)
+				return { g, x, yc }
+			}
+			const chips = F.bars
+				.filter((b) => b.state !== "planned" && b.N !== b.P)
+				.map((b) => {
+					const done = b.state === "done"
+					return chip(X(done ? b.end : b.pe) + 18, Y(b.base + (done ? b.N * 0.42 : b.P / 2)), css(done ? C.miss : C.ok), b.achieved, ` of ${b.planned} ${done ? "delivered" : "so far"}`)
+				})
+
+			/* captions */
+			h("div", { class: "capband" }, root)
+			const caps = h("div", { class: "caps" }, root)
+			const capC = line(caps, "cap", "A roadmap shows when.", "top:68px")
+			const subC = line(caps, "sub", "But not what the work is worth.", "top:176px")
+			const cap = (text) => line(caps, "cap", text, "top:92px")
+			const cG1 = cap("Width is time.")
+			const cG2 = cap("Height is impact.")
+			const cG3 = cap("Stacked, they climb to the goal.")
+			const cG4 = cap("Then comes reality.")
+			const cG4b = cap("Solid is what’s delivered.")
+			const cG5 = cap("See exactly where it slips.")
+			const cI = cap("It projects where you’ll land.")
+			const cI2 = cap("Long before you get there.")
+
+			/** Camera: the stage point at the top-left corner, and the zoom. */
+			const camAt = (t) => {
+				const to = (a, b, p) => ({ x: lerp(a.x, b.x, p), y: lerp(a.y, b.y, p), z: lerp(a.z, b.z, p) })
+				const home = { x: 0, y: 0, z: 1 }
+				const near = { x: 118, y: 78, z: 1.18 }
+				if (t < T.H) return to(home, near, eio(pr(t, T.G5 + 0.1, T.G5 + 1.6)))
+				return to(home, near, eio(pr(t, T.I + 3.2, T.I + 5.0)))
+			}
+
+			return (t) => {
+				const c = camAt(t)
+				cam.setAttribute("transform", `scale(${c.z}) translate(${-c.x} ${-c.y})`)
+				// Zoomed in, the quarter labels slide under the caption.
+				gHead.setAttribute("opacity", 1 - smooth(pr(c.z, 1, 1.1)))
+
+				capC.at(t, T.C + 0.1, T.D)
+				subC.at(t, T.C + 2.3, T.D, 0.05)
+				cG1.at(t, T.G + 0.1, T.G2)
+				cG2.at(t, T.G2 + 0.05, T.G3)
+				cG3.at(t, T.G3 + 0.05, T.G4)
+				cG4.at(t, T.G4 + 0.05, T.G4 + 3.4)
+				cG4b.at(t, T.G4 + 3.45, T.G5)
+				cG5.at(t, T.G5 + 0.05, T.H)
+				cI.at(t, T.I + 0.1, T.I + 3.5)
+				cI2.at(t, T.I + 3.55, T.J)
+
+				/* where the story stands */
+				const tau = t < T.G4 + 0.5 ? -1 : lerp(0, F.today, smooth(pr(t, T.G4 + 0.5, T.G4 + 4.2)))
+				const pj1 = eio(pr(t, T.I + 0.7, T.I + 1.9))
+				const pj2 = smooth(pr(t, T.I + 1.7, T.I + 3.5))
+				const pj3 = eo(pr(t, T.I + 3.7, T.I + 4.4))
+				gY.setAttribute("opacity", smooth(pr(t, T.G2 + 0.1, T.G2 + 0.9)))
+				const gl = eio(pr(t, T.G3 + 1.1, T.G3 + 2.5))
+
+				/* bars */
+				let shift = 0
+				for (const bb of bars) {
+					const { b, i } = bb
+					const appear = t < T.D ? eo(pr(t, T.C + 0.4 + i * 0.13, T.C + 1.25 + i * 0.13)) : 1
+					// From its roadmap row to its place in the stack.
+					const m1 = eio(pr(t, T.G2 + 0.15 + i * 0.09, T.G2 + 1.4 + i * 0.09))
+					const base = b.planBase + shift
+					const started = b.state === "planned" ? 0 : smooth(pr(tau, b.sa, b.sa + 0.4))
+					const done = b.state === "done" ? smooth(pr(tau, b.end - 0.4, b.end + 0.1)) : 0
+					if (b.state === "done") shift += (b.N - b.P) * done
+					let col = mix(mix(C.up, C.ok, started), b.st === "miss" ? C.miss : C.met, done)
+					if (b.st === "bad") col = mix(col, C.bad, pj1)
+					const cc = css(col)
+
+					const x0 = X(b.pa)
+					const y = lerp(ROW(i), Y(base + b.P), m1)
+					const hh = lerp(ROWH, SV(b.P), m1)
+					set(bb.plan, { x: x0, y, width: Math.max(0, (X(b.pe) - x0) * appear), height: hh, fill: cc, "fill-opacity": 0.15, stroke: cc, "stroke-opacity": appear * lerp(1, 0.55, done) })
+
+					/* delivered so far, as of the sweep */
+					const te = Math.min(tau, b.end)
+					const on = b.state !== "planned" && te > b.sa
+					const v = on ? at(b.fill, te) : 0
+					const sr = { x: X(b.sa), y: Y(base + v), width: on ? Math.max(3, X(te) - X(b.sa)) : 0, height: on ? Math.max(3, SV(v)) : 0 }
+					set(bb.solid, { ...sr, fill: cc })
+					set(bb.clipR, sr)
+
+					/* labels: ink on the page, white where the solid runs under them */
+					let ay = lerp(y, Y(base + b.N), done)
+					// A label the goal line would strike through moves below the line.
+					if (gy > ay + 4 && gy < ay + 56 && hh > gy - ay + 62) ay += (gy - ay + 6) * smooth(pr(gl, 0.55, 0.95))
+					const nx = x0 + 13
+					const ny = ay + lerp(31, bb.oneLine ? 28 : 26, m1)
+					const planOp = smooth(pr(m1, 0.55, 1))
+					let subTxt = b.impact
+					let subOp = planOp
+					if (b.state === "done" && b.N !== b.P) {
+						if (done > 0.5) subTxt = b.dev
+						subOp *= Math.abs(2 * done - 1)
+					} else if (b.state === "active") {
+						const dev = b.timing === "fixed" ? smooth(pr(pj1, 0.55, 1)) : 0
+						if (dev > 0) subTxt = b.dev
+						subOp = Math.max(subOp * (1 - started), dev)
+					}
+					for (const l of [bb.ink, bb.wht]) {
+						set(l.name, { x: nx, y: ny, opacity: smooth(pr(appear, 0.35, 0.9)) })
+						l.sub.textContent = bb.oneLine ? "· " + subTxt : subTxt
+						set(l.sub, bb.oneLine ? { x: nx + bb.nameW + 8, y: ny, opacity: subOp } : { x: nx, y: ay + 48, opacity: subOp })
+					}
+
+					/* projection outline */
+					if (b.state === "active") {
+						const a = Math.min(b.pa, b.sa)
+						const flex = b.timing !== "fixed"
+						const pv = flex ? b.P : lerp(b.P, b.proj, pj1)
+						set(bb.dash, { x: X(a), y: Y(base + pv), width: X(flex ? lerp(b.pe, b.pend, pj1) : b.pe) - X(a), height: SV(pv), stroke: cc, opacity: smooth(pr(t, T.I + 0.45, T.I + 0.75)) })
+						if (flex) {
+							late.textContent = b.dev
+							set(late, { x: X(b.pe) + 14, y: Y(base) - 15, fill: cc, opacity: smooth(pr(pj1, 0.7, 1)) })
+						}
+					} else bb.dash.setAttribute("opacity", 0)
+				}
+
+				/* lines */
+				const pl = eio(pr(t, T.G3 + 0.3, T.G3 + 1.9))
+				planP.setAttribute("d", pl > 0 ? path(F.curves.plan, F.t1 * pl) : "")
+				actP.setAttribute("d", tau > 0 ? path(F.curves.actual, tau) : "")
+				set(projClip, { x: X(F.today) - 2, width: (gx - X(F.today) + 12) * pj2 })
+
+				set(goalL, { x2: lerp(PL, gx, gl), opacity: gl > 0 ? 1 : 0 })
+				goalF.setAttribute("opacity", smooth(pr(gl, 0.92, 1)))
+				goalT.setAttribute("opacity", smooth(pr(gl, 0.15, 0.5)))
+
+				/* today */
+				const tOn = smooth(pr(t, T.G4 + 0.2, T.G4 + 0.5))
+				const tx = X(Math.max(0, tau))
+				set(todayL, { x1: tx, x2: tx, opacity: tOn })
+				set(todayD, { cx: tx, opacity: tOn })
+				const act = at(F.curves.actual, Math.max(0, tau))
+				set(actD, { cx: tx, cy: Y(act), opacity: tOn })
+				const mo = Math.floor(Math.max(0, tau))
+				pillA.textContent = tau > F.today - 0.04 ? "Today" : `${MON[(F.start[1] + mo) % 12]} ${F.start[0] + Math.floor((F.start[1] + mo) / 12)}`
+				pillA.setAttribute("fill", tau > F.today - 0.04 ? "var(--today)" : INK2)
+				pillB.textContent = money(Math.round(act / 1e5) * 1e5)
+				set(pillG, { transform: `translate(${clamp(tx - PW / 2, PL + 12, PR - PW)} ${YT + 14})`, opacity: tOn })
+
+				/* projection end and gap */
+				projD.setAttribute("opacity", smooth(pr(pj2, 0.97, 1)))
+				const ge = lerp(gy, py, pj3)
+				set(gapL, { y2: ge })
+				set(gapB, { y1: ge, y2: ge })
+				gapG.setAttribute("opacity", pj3 > 0 ? 1 : 0)
+				gapT.setAttribute("opacity", smooth(pr(t, T.I + 3.95, T.I + 4.4)))
+
+				/* brackets */
+				const wp = eo(pr(t, T.G + 0.9, T.G + 1.6))
+				const wa = X(demo.pa)
+				const wb = X(demo.pe)
+				const wm = (wa + wb) / 2
+				wL.setAttribute("d", `M${lerp(wm, wa, wp)} ${wY - 8}V${wY}H${lerp(wm, wb, wp)}V${wY - 8}`)
+				wG.setAttribute("opacity", t >= T.G ? smooth(pr(t, T.G + 0.9, T.G + 1.2)) * (1 - smooth(pr(t, T.G2 - 0.2, T.G2 + 0.1))) : 0)
+				const hp = eo(pr(t, T.G2 + 1.75, T.G2 + 2.35))
+				const hb = Y(demo.planBase)
+				hL.setAttribute("d", `M${hX - 8} ${hb}H${hX}V${lerp(hb, Y(demo.planBase + demo.P), hp)}H${hX - 8}`)
+				hG.setAttribute("opacity", smooth(pr(t, T.G2 + 1.75, T.G2 + 2.05)) * (1 - smooth(pr(t, T.G3 - 0.1, T.G3 + 0.2))))
+
+				/* chips */
+				chips.forEach((ch, j) => {
+					const p = pr(t, T.G5 + 1.1 + j * 0.55, T.G5 + 1.8 + j * 0.55)
+					const k = lerp(0.85, 1, back(p))
+					set(ch.g, { opacity: t < T.H ? pr(p, 0, 0.3) : 0, transform: `translate(${ch.x} ${ch.yc}) scale(${k}) translate(${-ch.x} ${-ch.yc})` })
+				})
+			}
+		}
+	)
+
+	/* ---------- player ---------- */
+	const render = /[?&]render\b/.test(location.search)
+	document.body.classList.toggle("render", render)
+	const fit = document.getElementById("fit")
+	const scrub = document.getElementById("scrub")
+	const time = document.getElementById("time")
+	const play = document.getElementById("play")
+	let now = 0
+	let playing = false
+	let last = 0
+	const show = (t) => {
+		now = t
+		seek(t)
+		scrub.value = t
+		time.textContent = `${t.toFixed(1)} / ${DUR}s`
+	}
+	const layout = () => {
+		if (render) return
+		const k = Math.min(innerWidth / 1920, (innerHeight - 56) / 1080)
+		fit.style.transform = `scale(${k})`
+		fit.style.left = (innerWidth - 1920 * k) / 2 + "px"
+		fit.style.top = (innerHeight - 56 - 1080 * k) / 2 + "px"
+	}
+	const tick = (ts) => {
+		if (!playing) return
+		const t = now + (ts - last) / 1000
+		last = ts
+		if (t >= DUR) {
+			playing = false
+			play.textContent = "▶"
+			show(DUR)
+			return
+		}
+		show(t)
+		requestAnimationFrame(tick)
+	}
+	const toggle = () => {
+		playing = !playing
+		play.textContent = playing ? "❚❚" : "▶"
+		if (playing) {
+			if (now >= DUR) now = 0
+			last = performance.now()
+			requestAnimationFrame(tick)
+		}
+	}
+	play.onclick = toggle
+	scrub.oninput = () => show(Number(scrub.value))
+	addEventListener("keydown", (e) => {
+		if (e.key === " ") {
+			e.preventDefault()
+			toggle()
+		}
+	})
+	addEventListener("resize", layout)
+	layout()
+	const start = Number(new URLSearchParams(location.search).get("t")) || 0
+	show(start)
+	window.FILM = { duration: DUR, fps: FPS, seek }
+})()
+</script>
+</body>
+</html>
